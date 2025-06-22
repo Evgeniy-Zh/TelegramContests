@@ -573,13 +573,13 @@ public class ChatAvatarContainer extends FrameLayout implements NotificationCent
                 }
                 args.putBoolean("reportSpam", parentFragment.hasReportSpam());
                 args.putInt("actionBarColor", getThemedColor(Theme.key_actionBarDefault));
-                ProfileActivity fragment = new ProfileActivity(args, sharedMediaPreloader);
-                if (!monoforum) {
-                    fragment.setUserInfo(parentFragment.getCurrentUserInfo(), parentFragment.profileChannelMessageFetcher, parentFragment.birthdayAssetsFetcher);
-                }
-                if (fromChatAnimation) {
-                    fragment.setPlayProfileAnimation(byAvatar ? 2 : 1);
-                }
+                BaseFragment fragment = ProfileActivity._new(args, sharedMediaPreloader);
+//                if (!monoforum) {
+//                    fragment.setUserInfo(parentFragment.getCurrentUserInfo(), parentFragment.profileChannelMessageFetcher, parentFragment.birthdayAssetsFetcher);
+//                }
+//                if (fromChatAnimation) {
+//                    fragment.setPlayProfileAnimation(byAvatar ? 2 : 1);
+//                }
                 parentFragment.presentFragment(fragment, removeLast);
             }
         } else if (chat != null) {
