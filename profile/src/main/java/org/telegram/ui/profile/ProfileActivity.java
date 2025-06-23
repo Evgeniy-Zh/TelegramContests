@@ -308,6 +308,7 @@ import org.telegram.ui.PremiumPreviewFragment;
 import org.telegram.ui.PrivacyControlActivity;
 import org.telegram.ui.PrivacySettingsActivity;
 import org.telegram.ui.PrivacyUsersActivity;
+import org.telegram.ui.ProfileActivityFactory;
 import org.telegram.ui.ProfileBirthdayEffect;
 import org.telegram.ui.ProfileNotificationsActivity;
 import org.telegram.ui.ProxyListActivity;
@@ -379,7 +380,7 @@ import java.util.zip.ZipOutputStream;
 public class ProfileActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate, DialogsActivity.DialogsActivityDelegate, SharedMediaLayout.SharedMediaPreloaderDelegate, ImageUpdater.ImageUpdaterDelegate, SharedMediaLayout.Delegate {
 
     static {
-        org.telegram.ui.ProfileActivity.factory = ProfileActivity::new;
+        ProfileActivityFactory.factory = ProfileActivity::new;
     }
 
 
