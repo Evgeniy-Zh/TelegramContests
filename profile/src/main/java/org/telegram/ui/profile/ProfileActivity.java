@@ -4673,10 +4673,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         profileHeaderLayout = new ProfileHeaderLayout(context, this);
         profileHeaderLayout.setUserInfo(userInfo);
         AndroidUtilities.updateViewVisibilityAnimated(profileHeaderLayout.avatarContainer, true, 1f, false);
+
         frameLayout.addView(profileHeaderLayout.avatarContainer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.START, 0, 0, 0, 0));
-        profileHeaderLayout.innerAvatarContainer.setPivotX(0);
-        profileHeaderLayout.innerAvatarContainer.setPivotY(0);
-        profileHeaderLayout.avatarContainer.addView(profileHeaderLayout.innerAvatarContainer, LayoutHelper.createFrame(42, 42, Gravity.TOP | Gravity.LEFT, 64, 0, 0, 0));
+
         avatarImage = new org.telegram.ui.ProfileActivity.AvatarImageView(context) {
             @Override
             public void onInitializeAccessibilityNodeInfo(AccessibilityNodeInfo info) {
