@@ -1,7 +1,12 @@
 package org.telegram.ui.profile;
 
 import static org.telegram.messenger.AndroidUtilities.dp;
+import static org.telegram.messenger.AndroidUtilities.lerp;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
@@ -12,17 +17,24 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 
 import androidx.core.graphics.ColorUtils;
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 
 import com.google.android.datatransport.runtime.firebase.transport.LogEventDropped;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.MessagesController;
+import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
 import org.telegram.tgnet.TLRPC;
@@ -32,10 +44,13 @@ import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.SimpleTextView;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AudioPlayerAlert;
+import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.CanvasButton;
+import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.ProfileGalleryView;
 import org.telegram.ui.Components.RLottieImageView;
+import org.telegram.ui.Components.VectorAvatarThumbDrawable;
 import org.telegram.ui.Stars.ProfileGiftsView;
 import org.telegram.ui.Stories.ProfileStoriesView;
 
@@ -215,14 +230,62 @@ public class ProfileHeaderLayout {
         innerAvatarContainer.setPivotX(0);
         innerAvatarContainer.setPivotY(0);
         avatarContainer.addView(innerAvatarContainer, LayoutHelper.createFrame(42, 42, Gravity.TOP | Gravity.LEFT, 64, 0, 0, 0));
-        avatarContainer.setTransitionName("avatarContainer");
         innerAvatarContainer.addView(avatarImage, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         
         avatarContainer.addView(giftsView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         avatarContainer.addView(mediaCounterTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 118.33f, -2, 8, 0));
-
+        
+        setUpNameText();
+        
         fallbackImage.setRoundRadius(AndroidUtilities.dp(11));
+
+    }
+    
+    private void setUpNameText() {
+        for (int a = 0; a < nameTextView.length; a++) {
+            // TODO:
+//            if (playProfileAnimation == 0 && a == 0) {
+//                continue;
+//            }
+            nameTextView[a] = new SimpleTextView(context) {
+                @Override
+                public void onInitializeAccessibilityNodeInfo(AccessibilityNodeInfo info) {
+                    super.onInitializeAccessibilityNodeInfo(info);
+                    //TODO: setup accessibility
+                }
+                @Override
+                protected void onDraw(Canvas canvas) {
+                    final int wasRightDrawableX = getRightDrawableX();
+                    super.onDraw(canvas);
+                    if (wasRightDrawableX != getRightDrawableX()) {
+                        updateCollectibleHint();
+                    }
+                }
+            };
+            if (a == 1) {
+                nameTextView[a].setTextColor(parentFragment.getThemedColor(Theme.key_profile_title));
+            } else {
+                nameTextView[a].setTextColor(parentFragment.getThemedColor(Theme.key_actionBarDefaultTitle));
+            }
+            nameTextView[a].setPadding(0, dp(6), 0, dp(a == 0 ? 12 : 4));
+            nameTextView[a].setTextSize(18);
+            nameTextView[a].setGravity(Gravity.LEFT);
+            nameTextView[a].setTypeface(AndroidUtilities.bold());
+            nameTextView[a].setLeftDrawableTopPadding(-dp(1.3f));
+            nameTextView[a].setPivotX(0);
+            nameTextView[a].setPivotY(0);
+            nameTextView[a].setAlpha(a == 0 ? 0.0f : 1.0f);
+            if (a == 1) {
+                nameTextView[a].setScrollNonFitText(true);
+                nameTextView[a].setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            }
+            nameTextView[a].setFocusable(a == 0);
+            nameTextView[a].setEllipsizeByGradient(true);
+            nameTextView[a].setRightDrawableOutside(a == 0);
+
+            avatarContainer.addView(nameTextView[a], LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 118, -6, 0, 0));
+        }
 
     }
 
