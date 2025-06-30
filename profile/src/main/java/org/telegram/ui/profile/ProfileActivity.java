@@ -396,7 +396,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private String nameTextViewRightDrawable2ContentDescription = null;
     
     private AudioPlayerAlert.ClippingTextViewSwitcher mediaCounterTextView;
-    private AnimatorSet writeButtonAnimation;
     private AnimatorSet qrItemAnimation;
     private Drawable lockIconDrawable;
     private final Drawable[] verifiedDrawable = new Drawable[2];
@@ -535,7 +534,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
     private ValueAnimator expandAnimator;
     private boolean isInLandscapeMode;
-    private boolean isPulledDown;
 
     private Paint whitePaint = new Paint();
 
@@ -815,7 +813,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     };
     private boolean fragmentOpened;
     private NestedFrameLayout contentView;
-    private float titleAnimationsYDiff;
     private float customAvatarProgress;
     private float customPhotoOffset;
     private boolean hasCustomPhoto;
@@ -1024,7 +1021,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         private Rect blurBounds = new Rect();
     }
 
-    private class OverlaysView extends View implements ProfileGalleryView.Callback {
+    class OverlaysView extends View implements ProfileGalleryView.Callback {
 
         private final int statusBarHeight = actionBar.getOccupyStatusBar() && !inBubbleMode ? AndroidUtilities.statusBarHeight : 0;
 
@@ -1461,7 +1458,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }
     }
 
-    private class PagerIndicatorView extends View {
+    public class PagerIndicatorView extends View {
 
         private final RectF indicatorRect = new RectF();
 
@@ -1490,7 +1487,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             animator.setInterpolator(CubicBezierInterpolator.EASE_BOTH);
             animator.addUpdateListener(a -> {
                 final float value = AndroidUtilities.lerp(animatorValues, a.getAnimatedFraction());
-                if (searchItem != null && !isPulledDown) {
+                if (searchItem != null && !profileHeaderLayout.isPulledDown()) {
                     searchItem.setScaleX(1f - value);
                     searchItem.setScaleY(1f - value);
                     searchItem.setAlpha(1f - value);
@@ -1593,7 +1590,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             if (otherItem == null || avatarsViewPager == null) {
                 return;
             }
-            if (isPulledDown) {
+            if (profileHeaderLayout.isPulledDown()) {
                 int position = avatarsViewPager.getRealPosition();
                 if (position == 0) {
                     otherItem.hideSubItem(set_as_main);
@@ -1643,7 +1640,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }
 
         public void refreshVisibility(float durationFactor) {
-            setIndicatorVisible(isPulledDown && avatarsViewPager.getRealCount() > 20, durationFactor);
+            setIndicatorVisible(profileHeaderLayout.isPulledDown() && avatarsViewPager.getRealCount() > 20, durationFactor);
         }
 
         @Override
@@ -1912,7 +1909,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
     @Override
     public boolean isActionBarCrossfadeEnabled() {
-        return !isPulledDown;
+        return !profileHeaderLayout.isPulledDown();
     }
 
     @Override
@@ -2567,7 +2564,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                             updateProfileData(false);
                         }
                         if (avatarsViewPager.getRealCount() == 1) {
-                            setForegroundImage(true);
+                            profileHeaderLayout.setForegroundImage(true);
                         }
                         if (photo == null || avatarsViewPager.getRealPosition() == 0) {
                             TLRPC.Photo nextPhoto = avatarsViewPager.getPhoto(1);
@@ -2714,102 +2711,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     profileHeaderLayout.nameTextView[0].setRightPadding(profileHeaderLayout.nameTextView[0].getMeasuredWidth() - previousTransitionFragment.getAvatarContainer().getTitleTextView().getMeasuredWidth());
                 }
 
-                if (!fragmentOpened && (expandPhoto || openAnimationInProgress && playProfileAnimation == 2)) {
-                    ignoreLayout = true;
-
-                    if (expandPhoto) {
-                        if (searchItem != null) {
-                            searchItem.setAlpha(0.0f);
-                            searchItem.setEnabled(false);
-                            searchItem.setVisibility(GONE);
-                        }
-                        profileHeaderLayout.nameTextView[1].setTextColor(Color.WHITE);
-                        profileHeaderLayout.nameTextView[1].setPivotY(profileHeaderLayout.nameTextView[1].getMeasuredHeight());
-                        profileHeaderLayout.nameTextView[1].setScaleX(1.67f);
-                        profileHeaderLayout.nameTextView[1].setScaleY(1.67f);
-                        if (scamDrawable != null) {
-                            scamDrawable.setColor(Color.argb(179, 255, 255, 255));
-                        }
-                        if (lockIconDrawable != null) {
-                            lockIconDrawable.setColorFilter(Color.WHITE, PorterDuff.Mode.MULTIPLY);
-                        }
-                        if (verifiedCrossfadeDrawable[0] != null) {
-                            verifiedCrossfadeDrawable[0].setProgress(1f);
-                        }
-                        if (verifiedCrossfadeDrawable[1] != null) {
-                            verifiedCrossfadeDrawable[1].setProgress(1f);
-                        }
-                        if (premiumCrossfadeDrawable[0] != null) {
-                            premiumCrossfadeDrawable[0].setProgress(1f);
-                        }
-                        if (premiumCrossfadeDrawable[1] != null) {
-                            premiumCrossfadeDrawable[1].setProgress(1f);
-                        }
-                        updateEmojiStatusDrawableColor(1f);
-                        profileHeaderLayout.onlineTextView[1].setTextColor(0xB3FFFFFF);
-                        actionBar.setItemsBackgroundColor(Theme.ACTION_BAR_WHITE_SELECTOR_COLOR, false);
-                        actionBar.setItemsColor(Color.WHITE, false);
-                        overlaysView.setOverlaysVisible();
-                        overlaysView.setAlphaValue(1.0f, false);
-                        avatarImage.setForegroundAlpha(1.0f);
-                        profileHeaderLayout.innerAvatarContainer.setVisibility(View.GONE);
-                        avatarsViewPager.resetCurrentItem();
-                        avatarsViewPager.setVisibility(View.VISIBLE);
-                        if (showStatusButton != null) {
-                            showStatusButton.setBackgroundColor(0x23ffffff);
-                        }
-                        if (storyView != null) {
-                            storyView.setExpandProgress(1f);
-                        }
-                        if (giftsView != null) {
-                            giftsView.setExpandProgress(1f);
-                        }
-                        expandPhoto = false;
-                        updateCollectibleHint();
-                    }
-
-                    profileHeaderLayout.allowPullingDown = true;
-                    isPulledDown = true;
-                    NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.needCheckSystemBarColors, true);
-                    if (otherItem != null) {
-                        if (!getMessagesController().isChatNoForwards(currentChat)) {
-                            otherItem.showSubItem(gallery_menu_save);
-                        } else {
-                            otherItem.hideSubItem(gallery_menu_save);
-                        }
-                        if (imageUpdater != null) {
-                            otherItem.showSubItem(edit_avatar);
-                            otherItem.showSubItem(delete_avatar);
-                            otherItem.hideSubItem(logout);
-                        }
-                    }
-                    profileHeaderLayout.currentExpanAnimatorFracture = 1.0f;
-
-                    int paddingTop;
-                    int paddingBottom;
-                    if (isInLandscapeMode) {
-                        paddingTop = dp(88f);
-                        paddingBottom = 0;
-                    } else {
-                        paddingTop = listView.getMeasuredWidth();
-                        paddingBottom = Math.max(0, getMeasuredHeight() - (listContentHeight + dp(88) + actionBarHeight));
-                    }
-                    if (banFromGroup != 0) {
-                        paddingBottom += dp(48);
-                        listView.setBottomGlowOffset(dp(48));
-                    } else {
-                        listView.setBottomGlowOffset(0);
-                    }
-                    initialAnimationExtraHeight = paddingTop - actionBarHeight;
-                    if (playProfileAnimation == 0) {
-                        profileHeaderLayout.extraHeight = initialAnimationExtraHeight;
-                    }
-                    layoutManager.scrollToPositionWithOffset(0, -actionBarHeight);
-                    listView.setPadding(0, paddingTop, 0, paddingBottom);
-                    measureChildWithMargins(listView, widthMeasureSpec, 0, heightMeasureSpec, 0);
-                    listView.layout(0, actionBarHeight, listView.getMeasuredWidth(), actionBarHeight + listView.getMeasuredHeight());
-                    ignoreLayout = false;
-                } else if (fragmentOpened && !openAnimationInProgress && !firstLayout) {
+                if (fragmentOpened && !openAnimationInProgress && !firstLayout) {
                     ignoreLayout = true;
 
                     int paddingTop;
@@ -3548,7 +3450,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     if (profileHeaderLayout.allowPullingDown) {
                         final View view = layoutManager.findViewByPosition(0);
                         if (view != null) {
-                            if (isPulledDown) {
+                            if (profileHeaderLayout.isPulledDown()) {
                                 final int actionBarHeight = ActionBar.getCurrentActionBarHeight() + (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0);
                                 listView.smoothScrollBy(0, view.getTop() - listView.getMeasuredWidth() + actionBarHeight, CubicBezierInterpolator.EASE_OUT_QUINT);
                             } else {
@@ -3589,6 +3491,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 updateBottomButtonY();
             }
         };
+        profileHeaderLayout.setListView(listView);
         listView.setVerticalScrollBarEnabled(false);
         DefaultItemAnimator defaultItemAnimator = new DefaultItemAnimator() {
 
@@ -3662,7 +3565,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                             dy = canScroll;
                             profileHeaderLayout.allowPullingDown = false;
                         } else if (listView.getScrollState() == RecyclerListView.SCROLL_STATE_DRAGGING) {
-                            if (!isPulledDown) {
+                            if (!profileHeaderLayout.isPulledDown()) {
                                 dy /= 2;
                             }
                         }
@@ -4648,7 +4551,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             listView.setPadding(0, dp(88), 0, 0);
         }
 
-        topView = new TopView(context);
+        profileHeaderLayout.topView = topView = new TopView(context);
         topView.setBackgroundColorId(peerColor, false);
         topView.setBackgroundColor(getThemedColor(Theme.key_avatar_backgroundActionBarBlue));
         frameLayout.addView(topView);
@@ -4787,7 +4690,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (avatarsViewPager != null) {
             avatarsViewPager.onDestroy();
         }
-        overlaysView = new OverlaysView(context);
+        overlaysView = profileHeaderLayout.overlaysView = new OverlaysView(context);
         avatarsViewPager = new ProfileGalleryView(context, userId != 0 ? userId : -chatId, actionBar, listView, avatarImage, getClassGuid(), overlaysView) {
             @Override
             protected void setCustomAvatarProgress(float progress) {
@@ -4810,7 +4713,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         profileHeaderLayout.avatarContainer.addView(overlaysView);
         avatarImage.setAvatarsViewPager(avatarsViewPager);
 
-        avatarsViewPagerIndicatorView = new PagerIndicatorView(context);
+        avatarsViewPagerIndicatorView = profileHeaderLayout.avatarsViewPagerIndicatorView = new PagerIndicatorView(context);
         profileHeaderLayout.avatarContainer.addView(avatarsViewPagerIndicatorView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         frameLayout.addView(actionBar);
@@ -4831,60 +4734,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             }
         }
 
-        for (int a = 0; a < profileHeaderLayout.onlineTextView.length; a++) {
-            if (a == 1) {
-                profileHeaderLayout.onlineTextView[a] = new LinkSpanDrawable.ClickableSmallTextView(context) {
-
-                    @Override
-                    public void setAlpha(float alpha) {
-                        super.setAlpha(alpha);
-                        checkPhotoDescriptionAlpha();
-                    }
-
-                    @Override
-                    public void setTranslationY(float translationY) {
-                        super.setTranslationY(translationY);
-                        profileHeaderLayout.onlineTextView[2].setTranslationY(translationY);
-                        profileHeaderLayout.onlineTextView[3].setTranslationY(translationY);
-                    }
-
-                    @Override
-                    public void setTranslationX(float translationX) {
-                        super.setTranslationX(translationX);
-                        profileHeaderLayout.onlineTextView[2].setTranslationX(translationX);
-                        profileHeaderLayout.onlineTextView[3].setTranslationX(translationX);
-                    }
-
-                    @Override
-                    public void setTextColor(int color) {
-                        super.setTextColor(color);
-                        if (profileHeaderLayout.onlineTextView[2] != null) {
-                            profileHeaderLayout.onlineTextView[2].setTextColor(color);
-                            profileHeaderLayout.onlineTextView[3].setTextColor(color);
-                        }
-                        if (showStatusButton != null) {
-                            showStatusButton.setTextColor(Theme.multAlpha(Theme.adaptHSV(color, -.02f, +.15f), 1.4f));
-                        }
-                    }
-                };
-            } else {
-                profileHeaderLayout.onlineTextView[a] = new LinkSpanDrawable.ClickableSmallTextView(context);
-            }
-
-            profileHeaderLayout.onlineTextView[a].setEllipsizeByGradient(true);
-            profileHeaderLayout.onlineTextView[a].setTextColor(applyPeerColor(getThemedColor(Theme.key_avatar_subtitleInProfileBlue), true, null));
-            profileHeaderLayout.onlineTextView[a].setTextSize(14);
-            profileHeaderLayout.onlineTextView[a].setGravity(Gravity.LEFT);
-            profileHeaderLayout.onlineTextView[a].setAlpha(a == 0 ? 0.0f : 1.0f);
-            if (a == 1 || a == 2 || a == 3) {
-                profileHeaderLayout.onlineTextView[a].setPadding(dp(4), dp(2), dp(4), dp(2));
-            }
-            if (a > 0) {
-                profileHeaderLayout.onlineTextView[a].setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-            }
-            profileHeaderLayout.onlineTextView[a].setFocusable(a == 0);
-            profileHeaderLayout.avatarContainer.addView(profileHeaderLayout.onlineTextView[a], LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 118 - (a == 1 || a == 2 || a == 3? 4 : 0), (a == 1 || a == 2 || a == 3 ? -2 : 0), (a == 0 ? rightMargin - (hasTitleExpanded ? 10 : 0) : 8) - (a == 1 || a == 2 || a == 3 ? 4 : 0), 0));
-        }
         checkPhotoDescriptionAlpha();
         profileHeaderLayout.avatarContainer.addView(animatedStatusView);
 
@@ -4934,6 +4783,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
         giftsView = profileHeaderLayout.giftsView = new ProfileGiftsView(context, currentAccount, getDialogId(), profileHeaderLayout.innerAvatarContainer, avatarImage, resourcesProvider);
 
+        profileHeaderLayout.setUpView();
+
         updateProfileData(true);
 
         writeButtonSetBackground();
@@ -4962,7 +4813,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             onWriteButtonClick();
         });
 
-        profileHeaderLayout.setUpView();
 
         needLayout(false);
 
@@ -4987,7 +4837,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 }
                 if (searchItem != null) {
                     scrolling = newState != RecyclerView.SCROLL_STATE_IDLE;
-                    searchItem.setEnabled(!scrolling && !isPulledDown);
+                    searchItem.setEnabled(!scrolling && !profileHeaderLayout.isPulledDown());
                 }
                 sharedMediaLayout.scrollingByUser = listView.scrollingByUser;
             }
@@ -5009,7 +4859,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         undoView = new UndoView(context, null, false, resourcesProvider);
         frameLayout.addView(undoView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM | Gravity.LEFT, 8, 0, 8, 8));
 
-        expandAnimator = ValueAnimator.ofFloat(0f, 1f);
+        expandAnimator = profileHeaderLayout.expandAnimator = ValueAnimator.ofFloat(0f, 1f);
         expandAnimator.addUpdateListener(anim -> {
             profileHeaderLayout.setAvatarExpandProgress(anim.getAnimatedFraction());
         });
@@ -5022,7 +4872,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
             @Override
             public void onAnimationEnd(Animator animation) {
-                actionBar.setItemsBackgroundColor(isPulledDown ? Theme.ACTION_BAR_WHITE_SELECTOR_COLOR : peerColor != null ? 0x20ffffff : getThemedColor(Theme.key_avatar_actionBarSelectorBlue), false);
+                actionBar.setItemsBackgroundColor(profileHeaderLayout.isPulledDown() ? Theme.ACTION_BAR_WHITE_SELECTOR_COLOR : peerColor != null ? 0x20ffffff : getThemedColor(Theme.key_avatar_actionBarSelectorBlue), false);
                 avatarImage.clearForeground();
                 doNotSetForeground = false;
                 updateStoriesViewBounds(false);
@@ -6844,358 +6694,23 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             }
         }
 
-        if (profileHeaderLayout.innerAvatarContainer != null) {
-            final float diff = Math.min(1f, profileHeaderLayout.extraHeight / dp(88f));
+        profileHeaderLayout.needLayout(animated, newTop, openingAvatar, initialAnimationExtraHeight);
 
-            listView.setTopGlowOffset((int) profileHeaderLayout.extraHeight);
-
-            listView.setOverScrollMode(profileHeaderLayout.extraHeight > dp(88f) && profileHeaderLayout.extraHeight < listView.getMeasuredWidth() - newTop ? View.OVER_SCROLL_NEVER : View.OVER_SCROLL_ALWAYS);
-
-            if (profileHeaderLayout.writeButton != null) {
-                profileHeaderLayout.writeButton.setTranslationY((actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() + profileHeaderLayout.extraHeight + searchTransitionOffset - dp(29.5f));
-
-                boolean writeButtonVisible = diff > 0.2f && !searchMode && (imageUpdater == null || setAvatarRow == -1);
-                if (writeButtonVisible && chatId != 0) {
-                    writeButtonVisible = ChatObject.isChannel(currentChat) && !currentChat.megagroup && chatInfo != null && chatInfo.linked_chat_id != 0 && infoHeaderRow != -1;
-                }
-                if (!openAnimationInProgress) {
-                    boolean currentVisible = profileHeaderLayout.writeButton.getTag() == null;
-                    if (writeButtonVisible != currentVisible) {
-                        if (writeButtonVisible) {
-                            profileHeaderLayout.writeButton.setTag(null);
-                        } else {
-                            profileHeaderLayout.writeButton.setTag(0);
-                        }
-                        if (writeButtonAnimation != null) {
-                            AnimatorSet old = writeButtonAnimation;
-                            writeButtonAnimation = null;
-                            old.cancel();
-                        }
-                        if (animated) {
-                            writeButtonAnimation = new AnimatorSet();
-                            if (writeButtonVisible) {
-                                writeButtonAnimation.setInterpolator(new DecelerateInterpolator());
-                                writeButtonAnimation.playTogether(
-                                        ObjectAnimator.ofFloat(profileHeaderLayout.writeButton, View.SCALE_X, 1.0f),
-                                        ObjectAnimator.ofFloat(profileHeaderLayout.writeButton, View.SCALE_Y, 1.0f),
-                                        ObjectAnimator.ofFloat(profileHeaderLayout.writeButton, View.ALPHA, 1.0f)
-                                );
-                            } else {
-                                writeButtonAnimation.setInterpolator(new AccelerateInterpolator());
-                                writeButtonAnimation.playTogether(
-                                        ObjectAnimator.ofFloat(profileHeaderLayout.writeButton, View.SCALE_X, 0.2f),
-                                        ObjectAnimator.ofFloat(profileHeaderLayout.writeButton, View.SCALE_Y, 0.2f),
-                                        ObjectAnimator.ofFloat(profileHeaderLayout.writeButton, View.ALPHA, 0.0f)
-                                );
-                            }
-                            writeButtonAnimation.setDuration(150);
-                            writeButtonAnimation.addListener(new AnimatorListenerAdapter() {
-                                @Override
-                                public void onAnimationEnd(Animator animation) {
-                                    if (writeButtonAnimation != null && writeButtonAnimation.equals(animation)) {
-                                        writeButtonAnimation = null;
-                                    }
-                                }
-                            });
-                            writeButtonAnimation.start();
-                        } else {
-                            profileHeaderLayout.writeButton.setScaleX(writeButtonVisible ? 1.0f : 0.2f);
-                            profileHeaderLayout.writeButton.setScaleY(writeButtonVisible ? 1.0f : 0.2f);
-                            profileHeaderLayout.writeButton.setAlpha(writeButtonVisible ? 1.0f : 0.0f);
-                        }
-                    }
-
-                    if (qrItem != null) {
-                        updateQrItemVisibility(animated);
-                        if (!animated) {
-                            float translation = dp(48) * qrItem.getAlpha();
-                            qrItem.setTranslationX(translation);
-                            if (avatarsViewPagerIndicatorView != null) {
-                                avatarsViewPagerIndicatorView.setTranslationX(translation - dp(48));
-                            }
-                        }
-                    }
-                }
-
-                if (storyView != null) {
-                    storyView.setExpandCoords(profileHeaderLayout.avatarContainer.getMeasuredWidth() - dp(40), writeButtonVisible, (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() + profileHeaderLayout.extraHeight + searchTransitionOffset);
-                }
-                if (giftsView != null) {
-                    giftsView.setExpandCoords(profileHeaderLayout.avatarContainer.getMeasuredWidth() - dp(40), writeButtonVisible, (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() + profileHeaderLayout.extraHeight + searchTransitionOffset);
-                }
-            }
-
-            float h = openAnimationInProgress ? initialAnimationExtraHeight : profileHeaderLayout.extraHeight;
-            if (h > dp(88f) || isPulledDown) {
-                profileHeaderLayout.expandProgress = Math.max(0f, Math.min(1f, (h - dp(88f)) / (listView.getMeasuredWidth() - newTop - dp(88f))));
-                profileHeaderLayout.avatarScale = lerp((42f + 18f) / 42f, (42f + 42f + 18f) / 42f, Math.min(1f, profileHeaderLayout.expandProgress * 3f));
-                if (storyView != null) {
-                    storyView.invalidate();
-                }
-                if (giftsView != null) {
-                    giftsView.invalidate();
-                }
-
-                final float durationFactor = Math.min(AndroidUtilities.dpf2(2000f), Math.max(AndroidUtilities.dpf2(1100f), Math.abs(profileHeaderLayout.listViewVelocityY))) / AndroidUtilities.dpf2(1100f);
-
-                if (profileHeaderLayout.allowPullingDown && (openingAvatar || profileHeaderLayout.expandProgress >= 0.33f)) {
-                    if (!isPulledDown) {
-                        if (otherItem != null) {
-                            if (!getMessagesController().isChatNoForwards(currentChat)) {
-                                otherItem.showSubItem(gallery_menu_save);
-                            } else {
-                                otherItem.hideSubItem(gallery_menu_save);
-                            }
-                            if (imageUpdater != null) {
-                                otherItem.showSubItem(add_photo);
-                                otherItem.showSubItem(edit_avatar);
-                                otherItem.showSubItem(delete_avatar);
-                                otherItem.hideSubItem(set_as_main);
-                                otherItem.hideSubItem(logout);
-                            }
-                        }
-                        if (searchItem != null) {
-                            searchItem.setEnabled(false);
-                        }
-                        isPulledDown = true;
-                        NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.needCheckSystemBarColors, true);
-                        overlaysView.setOverlaysVisible(true, durationFactor);
-                        avatarsViewPagerIndicatorView.refreshVisibility(durationFactor);
-                        avatarsViewPager.setCreateThumbFromParent(true);
-                        avatarsViewPager.getAdapter().notifyDataSetChanged();
-                        expandAnimator.cancel();;
-                        float value = lerp(profileHeaderLayout.expandAnimatorValues, profileHeaderLayout.currentExpanAnimatorFracture);
-                        profileHeaderLayout.expandAnimatorValues[0] = value;
-                        profileHeaderLayout.expandAnimatorValues[1] = 1f;
-                        if (storyView != null && !storyView.isEmpty()) {
-                            expandAnimator.setInterpolator(new FastOutSlowInInterpolator());
-                            expandAnimator.setDuration((long) ((1f - value) * 1.3f * 250f / durationFactor));
-                        } else {
-                            expandAnimator.setInterpolator(CubicBezierInterpolator.EASE_BOTH);
-                            expandAnimator.setDuration((long) ((1f - value) * 250f / durationFactor));
-                        }
-                        expandAnimator.addListener(new AnimatorListenerAdapter() {
-                            @Override
-                            public void onAnimationStart(Animator animation) {
-                                setForegroundImage(false);
-                                avatarsViewPager.setAnimatedFileMaybe(avatarImage.getImageReceiver().getAnimation());
-                                avatarsViewPager.resetCurrentItem();
-                            }
-
-                            @Override
-                            public void onAnimationEnd(Animator animation) {
-                                expandAnimator.removeListener(this);
-                                topView.setBackgroundColor(Color.BLACK);
-                                profileHeaderLayout.innerAvatarContainer.setVisibility(View.GONE);
-                                avatarsViewPager.setVisibility(View.VISIBLE);
-                            }
-                        });
-                        expandAnimator.start();
-                    }
-                    ViewGroup.LayoutParams params = avatarsViewPager.getLayoutParams();
-                    params.width = listView.getMeasuredWidth();
-                    params.height = (int) (h + newTop);
-                    avatarsViewPager.requestLayout();
-                    if (!expandAnimator.isRunning()) {
-                        float additionalTranslationY = 0;
-                        if (openAnimationInProgress && playProfileAnimation == 2) {
-                            additionalTranslationY = -(1.0f -profileHeaderLayout.getAvatarAnimationProgress()) * dp(50);
-                        }
-                        profileHeaderLayout.onlineX = AndroidUtilities.dpf2(16f) - profileHeaderLayout.onlineTextView[1].getLeft();
-                        profileHeaderLayout.nameTextView[1].setTranslationX(AndroidUtilities.dpf2(18f) - profileHeaderLayout.nameTextView[1].getLeft());
-                        profileHeaderLayout.nameTextView[1].setTranslationY(newTop + h - AndroidUtilities.dpf2(38f) - profileHeaderLayout.nameTextView[1].getBottom() + additionalTranslationY);
-                        profileHeaderLayout.onlineTextView[1].setTranslationX(profileHeaderLayout.onlineX + customPhotoOffset);
-                        profileHeaderLayout.onlineTextView[1].setTranslationY(newTop + h - AndroidUtilities.dpf2(18f) - profileHeaderLayout.onlineTextView[1].getBottom() + additionalTranslationY);
-                        mediaCounterTextView.setTranslationX(profileHeaderLayout.onlineTextView[1].getTranslationX());
-                        mediaCounterTextView.setTranslationY(profileHeaderLayout.onlineTextView[1].getTranslationY());
-                        updateCollectibleHint();
-                    }
-                } else {
-                    if (isPulledDown) {
-                        isPulledDown = false;
-                        NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.needCheckSystemBarColors, true);
-                        if (otherItem != null) {
-                            otherItem.hideSubItem(gallery_menu_save);
-                            if (imageUpdater != null) {
-                                otherItem.hideSubItem(set_as_main);
-                                otherItem.hideSubItem(edit_avatar);
-                                otherItem.hideSubItem(delete_avatar);
-                                otherItem.showSubItem(add_photo);
-                                otherItem.showSubItem(logout);
-//                                otherItem.showSubItem(edit_name);
-                            }
-                        }
-                        if (searchItem != null) {
-                            searchItem.setEnabled(!scrolling);
-                        }
-                        overlaysView.setOverlaysVisible(false, durationFactor);
-                        avatarsViewPagerIndicatorView.refreshVisibility(durationFactor);
-                        expandAnimator.cancel();
-                        avatarImage.getImageReceiver().setAllowStartAnimation(true);
-                        avatarImage.getImageReceiver().startAnimation();
-
-                        float value = lerp(profileHeaderLayout.expandAnimatorValues, profileHeaderLayout.currentExpanAnimatorFracture);
-                        profileHeaderLayout.expandAnimatorValues[0] = value;
-                        profileHeaderLayout.expandAnimatorValues[1] = 0f;
-                        expandAnimator.setInterpolator(CubicBezierInterpolator.EASE_BOTH);
-                        if (!isInLandscapeMode) {
-                            expandAnimator.setDuration((long) (value * 250f / durationFactor));
-                        } else {
-                            expandAnimator.setDuration(0);
-                        }
-                        topView.setBackgroundColor(getThemedColor(Theme.key_avatar_backgroundActionBarBlue));
-
-                        if (!doNotSetForeground) {
-                            BackupImageView imageView = avatarsViewPager.getCurrentItemView();
-                            if (imageView != null) {
-                                if (imageView.getImageReceiver().getDrawable() instanceof VectorAvatarThumbDrawable) {
-                                    avatarImage.drawForeground(false);
-                                } else {
-                                    avatarImage.drawForeground(true);
-                                    avatarImage.setForegroundImageDrawable(imageView.getImageReceiver().getDrawableSafe());
-                                }
-                            }
-                        }
-
-                        avatarImage.setForegroundAlpha(1f);
-                        profileHeaderLayout.innerAvatarContainer.setVisibility(View.VISIBLE);
-                        avatarsViewPager.setVisibility(View.GONE);
-                        expandAnimator.start();
-                    }
-
-                    profileHeaderLayout.innerAvatarContainer.setScaleX(profileHeaderLayout.avatarScale);
-                    profileHeaderLayout.innerAvatarContainer.setScaleY(profileHeaderLayout.avatarScale);
-
-                    if (expandAnimator == null || !expandAnimator.isRunning()) {
-                        profileHeaderLayout.refreshNameAndOnlineXY();
-                        profileHeaderLayout.nameTextView[1].setTranslationX(profileHeaderLayout.nameX);
-                        profileHeaderLayout.nameTextView[1].setTranslationY(profileHeaderLayout.nameY);
-                        profileHeaderLayout.onlineTextView[1].setTranslationX(profileHeaderLayout.onlineX + customPhotoOffset);
-                        profileHeaderLayout.onlineTextView[1].setTranslationY(profileHeaderLayout.onlineY);
-                        mediaCounterTextView.setTranslationX(profileHeaderLayout.onlineX);
-                        mediaCounterTextView.setTranslationY(profileHeaderLayout.onlineY);
-                        updateCollectibleHint();
+        if(!openAnimationInProgress) {
+            if (qrItem != null) {
+                updateQrItemVisibility(animated);
+                if (!animated) {
+                    float translation = dp(48) * qrItem.getAlpha();
+                    qrItem.setTranslationX(translation);
+                    if (avatarsViewPagerIndicatorView != null) {
+                        avatarsViewPagerIndicatorView.setTranslationX(translation - dp(48));
                     }
                 }
             }
 
-            if (openAnimationInProgress && playProfileAnimation == 2) {
-                float avX = 0;
-                float avY = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2.0f - 21 * AndroidUtilities.density + actionBar.getTranslationY();
-
-                profileHeaderLayout.nameTextView[0].setTranslationX(0);
-                profileHeaderLayout.nameTextView[0].setTranslationY((float) Math.floor(avY) + dp(1.3f));
-                profileHeaderLayout.onlineTextView[0].setTranslationX(0);
-                profileHeaderLayout.onlineTextView[0].setTranslationY((float) Math.floor(avY) + dp(24));
-                profileHeaderLayout.nameTextView[0].setScaleX(1.0f);
-                profileHeaderLayout.nameTextView[0].setScaleY(1.0f);
-
-                profileHeaderLayout.nameTextView[1].setPivotY(profileHeaderLayout.nameTextView[1].getMeasuredHeight());
-                profileHeaderLayout.nameTextView[1].setScaleX(1.67f);
-                profileHeaderLayout.nameTextView[1].setScaleY(1.67f);
-
-                profileHeaderLayout.avatarScale = lerp(1.0f, (42f + 42f + 18f) / 42f, profileHeaderLayout.getAvatarAnimationProgress());
-                if (storyView != null) {
-                    storyView.setExpandProgress(1f);
-                }
-                if (giftsView != null) {
-                    giftsView.setExpandProgress(1f);
-                }
-
-                avatarImage.setRoundRadius((int) lerp(getSmallAvatarRoundRadius(), 0f,profileHeaderLayout.getAvatarAnimationProgress()));
-                profileHeaderLayout.innerAvatarContainer.setTranslationX(lerp(avX, 0,profileHeaderLayout.getAvatarAnimationProgress()));
-                profileHeaderLayout.innerAvatarContainer.setTranslationY(lerp((float) Math.ceil(avY), 0f,profileHeaderLayout.getAvatarAnimationProgress()));
-                float extra = (profileHeaderLayout.innerAvatarContainer.getMeasuredWidth() - dp(42)) * profileHeaderLayout.avatarScale;
-                timeItem.setTranslationX(profileHeaderLayout.innerAvatarContainer.getX() + dp(16) + extra);
-                timeItem.setTranslationY(profileHeaderLayout.innerAvatarContainer.getY() + dp(15) + extra);
-                starBgItem.setTranslationX(profileHeaderLayout.innerAvatarContainer.getX() + dp(28) + extra);
-                starBgItem.setTranslationY(profileHeaderLayout.innerAvatarContainer.getY() + dp(24) + extra);
-                starFgItem.setTranslationX(profileHeaderLayout.innerAvatarContainer.getX() + dp(28) + extra);
-                starFgItem.setTranslationY(profileHeaderLayout.innerAvatarContainer.getY() + dp(24) + extra);
-                profileHeaderLayout.innerAvatarContainer.setScaleX(profileHeaderLayout.avatarScale);
-                profileHeaderLayout.innerAvatarContainer.setScaleY(profileHeaderLayout.avatarScale);
-
-                overlaysView.setAlphaValue(profileHeaderLayout.getAvatarAnimationProgress(), false);
-                actionBar.setItemsColor(ColorUtils.blendARGB(peerColor != null ? Color.WHITE : getThemedColor(Theme.key_actionBarDefaultIcon), Color.WHITE,profileHeaderLayout.getAvatarAnimationProgress()), false);
-
-                if (scamDrawable != null) {
-                    scamDrawable.setColor(ColorUtils.blendARGB(getThemedColor(Theme.key_avatar_subtitleInProfileBlue), Color.argb(179, 255, 255, 255),profileHeaderLayout.getAvatarAnimationProgress()));
-                }
-                if (lockIconDrawable != null) {
-                    lockIconDrawable.setColorFilter(ColorUtils.blendARGB(getThemedColor(Theme.key_chat_lockIcon), Color.WHITE,profileHeaderLayout.getAvatarAnimationProgress()), PorterDuff.Mode.MULTIPLY);
-                }
-                if (verifiedCrossfadeDrawable[1] != null) {
-                    verifiedCrossfadeDrawable[1].setProgress(profileHeaderLayout.getAvatarAnimationProgress());
-                    profileHeaderLayout.nameTextView[1].invalidate();
-                }
-                if (premiumCrossfadeDrawable[1] != null) {
-                    premiumCrossfadeDrawable[1].setProgress(profileHeaderLayout.getAvatarAnimationProgress());
-                    profileHeaderLayout.nameTextView[1].invalidate();
-                }
-                updateEmojiStatusDrawableColor(profileHeaderLayout.getAvatarAnimationProgress());
-
-                final FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) profileHeaderLayout.innerAvatarContainer.getLayoutParams();
-                params.width = params.height = (int) lerp(AndroidUtilities.dpf2(42f), (profileHeaderLayout.extraHeight + newTop) / profileHeaderLayout.avatarScale,profileHeaderLayout.getAvatarAnimationProgress());
-                params.leftMargin = (int) lerp(AndroidUtilities.dpf2(64f), 0f,profileHeaderLayout.getAvatarAnimationProgress());
-                profileHeaderLayout.innerAvatarContainer.requestLayout();
-
-                updateCollectibleHint();
-            } else if (profileHeaderLayout.extraHeight <= dp(88f)) {
-                profileHeaderLayout.avatarScale = (42 + 18 * diff) / 42.0f;
-                if (storyView != null) {
-                    storyView.invalidate();
-                }
-                if (giftsView != null) {
-                    giftsView.invalidate();
-                }
-                float nameScale = 1.0f + 0.12f * diff;
-                if (expandAnimator == null || !expandAnimator.isRunning()) {
-                    profileHeaderLayout.innerAvatarContainer.setScaleX(profileHeaderLayout.avatarScale);
-                    profileHeaderLayout.innerAvatarContainer.setScaleY(profileHeaderLayout.avatarScale);
-                    profileHeaderLayout.innerAvatarContainer.setTranslationX(profileHeaderLayout.avatarX);
-                    profileHeaderLayout.innerAvatarContainer.setTranslationY((float) Math.ceil(profileHeaderLayout.avatarY));
-                    float extra = dp(42) * profileHeaderLayout.avatarScale - dp(42);
-                    timeItem.setTranslationX(profileHeaderLayout.innerAvatarContainer.getX() + dp(16) + extra);
-                    timeItem.setTranslationY(profileHeaderLayout.innerAvatarContainer.getY() + dp(15) + extra);
-                    starBgItem.setTranslationX(profileHeaderLayout.innerAvatarContainer.getX() + dp(28) + extra);
-                    starBgItem.setTranslationY(profileHeaderLayout.innerAvatarContainer.getY() + dp(24) + extra);
-                    starFgItem.setTranslationX(profileHeaderLayout.innerAvatarContainer.getX() + dp(28) + extra);
-                    starFgItem.setTranslationY(profileHeaderLayout.innerAvatarContainer.getY() + dp(24) + extra);
-                }
-                profileHeaderLayout.nameX = -21 * AndroidUtilities.density * diff;
-                profileHeaderLayout.nameY = (float) Math.floor(profileHeaderLayout.avatarY) + dp(1.3f) + dp(7) * diff + titleAnimationsYDiff * (1f -profileHeaderLayout.getAvatarAnimationProgress());
-                profileHeaderLayout.onlineX = -21 * AndroidUtilities.density * diff;
-                profileHeaderLayout.onlineY = (float) Math.floor(profileHeaderLayout.avatarY) + dp(24) + (float) Math.floor(11 * AndroidUtilities.density) * diff;
-                if (showStatusButton != null) {
-                    showStatusButton.setAlpha((int) (0xFF * diff));
-                }
-                for (int a = 0; a < profileHeaderLayout.nameTextView.length; a++) {
-                    if (profileHeaderLayout.nameTextView[a] == null) {
-                        continue;
-                    }
-                    if (expandAnimator == null || !expandAnimator.isRunning()) {
-                        profileHeaderLayout.nameTextView[a].setTranslationX(profileHeaderLayout.nameX);
-                        profileHeaderLayout.nameTextView[a].setTranslationY(profileHeaderLayout.nameY);
-
-                        profileHeaderLayout.onlineTextView[a].setTranslationX(profileHeaderLayout.onlineX + customPhotoOffset);
-                        profileHeaderLayout.onlineTextView[a].setTranslationY(profileHeaderLayout.onlineY);
-                        if (a == 1) {
-                            mediaCounterTextView.setTranslationX(profileHeaderLayout.onlineX);
-                            mediaCounterTextView.setTranslationY(profileHeaderLayout.onlineY);
-                        }
-                    }
-                    profileHeaderLayout.nameTextView[a].setScaleX(nameScale);
-                    profileHeaderLayout.nameTextView[a].setScaleY(nameScale);
-                }
-                updateCollectibleHint();
-            }
-
-            if (!openAnimationInProgress && (expandAnimator == null || !expandAnimator.isRunning())) {
-                profileHeaderLayout.needLayoutText(diff);
-            }
         }
 
-        if (isPulledDown || (overlaysView != null && overlaysView.animator != null && overlaysView.animator.isRunning())) {
+        if (profileHeaderLayout.isPulledDown() || (overlaysView != null && overlaysView.animator != null && overlaysView.animator.isRunning())) {
             final ViewGroup.LayoutParams overlaysLp = overlaysView.getLayoutParams();
             overlaysLp.width = listView.getMeasuredWidth();
             overlaysLp.height = (int) (profileHeaderLayout.extraHeight + newTop);
@@ -7258,29 +6773,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }
     }
 
-    private void setForegroundImage(boolean secondParent) {
-        Drawable drawable = avatarImage.getImageReceiver().getDrawable();
-        if (drawable instanceof VectorAvatarThumbDrawable) {
-            avatarImage.setForegroundImage(null, null, drawable);
-        } else if (drawable instanceof AnimatedFileDrawable) {
-            AnimatedFileDrawable fileDrawable = (AnimatedFileDrawable) drawable;
-            avatarImage.setForegroundImage(null, null, fileDrawable);
-            if (secondParent) {
-                fileDrawable.addSecondParentView(avatarImage);
-            }
-        } else {
-            ImageLocation location = avatarsViewPager.getImageLocation(0);
-            String filter;
-            if (location != null && location.imageType == FileLoader.IMAGE_TYPE_ANIMATION) {
-                filter = "avatar";
-            } else {
-                filter = null;
-            }
-            avatarImage.setForegroundImage(location, filter, drawable);
-        }
-    }
-
-
 
     public RecyclerListView getListView() {
         return listView;
@@ -7310,7 +6802,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             sharedMediaLayout.onConfigurationChanged(newConfig);
         }
         invalidateIsInLandscapeMode();
-        if (isInLandscapeMode && isPulledDown) {
+        if (isInLandscapeMode && profileHeaderLayout.isPulledDown()) {
             final View view = layoutManager.findViewByPosition(0);
             if (view != null) {
                 listView.scrollBy(0, view.getTop() - AndroidUtilities.dp(88));
@@ -7521,7 +7013,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         updateSelectedMediaTabText();
                         if (sharedMediaPreloader == null || sharedMediaPreloader.isMediaWasLoaded()) {
                             resumeDelayedFragmentAnimation();
-                            needLayout(true);
+                            //TODO: needLayout(true);
                         }
                     }
                 }
@@ -7872,6 +7364,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             needStarImage = type != 0;
             if (preferences.getBoolean("view_animations", true)) {
                 playProfileAnimation = type;
+                profileHeaderLayout.playProfileAnimation = type;
             } else if (type == 2) {
                 expandPhoto = true;
             }
@@ -7891,8 +7384,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     public void onTransitionAnimationStart(boolean isOpen, boolean backward) {
         super.onTransitionAnimationStart(isOpen, backward);
         isFragmentOpened = isOpen;
-        if ((!isOpen && backward || isOpen && !backward) && playProfileAnimation != 0 && allowProfileAnimation && !isPulledDown) {
+        if ((!isOpen && backward || isOpen && !backward) && playProfileAnimation != 0 && allowProfileAnimation && !profileHeaderLayout.isPulledDown()) {
             openAnimationInProgress = true;
+            profileHeaderLayout.openAnimationInProgress = true;
         }
         if (isOpen) {
             if (imageUpdater != null) {
@@ -7917,6 +7411,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         profileHeaderLayout.currentExpandAnimatorValue = 0f;
                     }
                     openAnimationInProgress = false;
+                    profileHeaderLayout.openAnimationInProgress = false;
                     checkListViewScroll();
                     if (recreateMenuAfterAnimation) {
                         createActionBarMenu(true);
@@ -8037,7 +7532,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
     @Override
     public AnimatorSet onCustomTransitionAnimation(final boolean isOpen, final Runnable callback) {
-        if (playProfileAnimation != 0 && allowProfileAnimation && !isPulledDown && !disableProfileAnimation) {
+        if (playProfileAnimation != 0 && allowProfileAnimation && !profileHeaderLayout.isPulledDown() && !disableProfileAnimation) {
             if (timeItem != null) {
                 timeItem.setAlpha(1.0f);
             }
@@ -9307,7 +8802,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 if (profileHeaderLayout.onlineTextView[1] != null && !mediaHeaderVisible) {
                     int key = isOnline[0] && peerColor == null ? Theme.key_profile_status : Theme.key_avatar_subtitleInProfileBlue;
                     profileHeaderLayout.onlineTextView[1].setTag(key);
-                    if (!isPulledDown) {
+                    if (!profileHeaderLayout.isPulledDown()) {
                         profileHeaderLayout.onlineTextView[1].setTextColor(applyPeerColor(getThemedColor(key), true, isOnline[0]));
                     }
                 }
@@ -9799,7 +9294,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             }
 
             boolean initied = avatarsViewPager.initIfEmpty(null, imageLocation, thumbLocation, reload);
-            if ((imageLocation == null || initied) && isPulledDown) {
+            if ((imageLocation == null || initied) && profileHeaderLayout.isPulledDown()) {
                 final View view = layoutManager.findViewByPosition(0);
                 if (view != null) {
                     listView.smoothScrollBy(0, view.getTop() - AndroidUtilities.dp(88), CubicBezierInterpolator.EASE_OUT_QUINT);
@@ -10142,7 +9637,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (selfUser && !myProfile) {
             otherItem.addSubItem(logout, R.drawable.msg_leave, LocaleController.getString(R.string.LogOut));
         }
-        if (!isPulledDown) {
+        if (!profileHeaderLayout.isPulledDown()) {
             otherItem.hideSubItem(gallery_menu_save);
             otherItem.hideSubItem(set_as_main);
             otherItem.showSubItem(add_photo);
@@ -12882,7 +12377,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     }
                 }
             }
-            if (!isPulledDown) {
+            if (!profileHeaderLayout.isPulledDown()) {
                 if (profileHeaderLayout.onlineTextView[1] != null) {
                     final Object onlineTextViewTag = profileHeaderLayout.onlineTextView[1].getTag();
                     for (int i = 0; i < 2; i++) {
@@ -13373,7 +12868,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     @Override
     public boolean isLightStatusBar() {
         int color;
-        if (isPulledDown) {
+        if (profileHeaderLayout.isPulledDown()) {
             return false;
         }
         if (actionBar.isActionModeShowed()) {
