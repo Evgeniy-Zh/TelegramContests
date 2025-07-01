@@ -12,13 +12,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.PorterDuff;
-import android.graphics.Rect;
-import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.GradientDrawable;
-import android.os.Build;
-import android.os.SystemClock;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -29,11 +23,11 @@ import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 
+import androidx.annotation.NonNull;
 import androidx.core.graphics.ColorUtils;
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 
 import org.telegram.messenger.AndroidUtilities;
-import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.ImageReceiver;
@@ -57,11 +51,8 @@ import org.telegram.ui.Components.ProfileGalleryView;
 import org.telegram.ui.Components.RLottieImageView;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.VectorAvatarThumbDrawable;
-import org.telegram.ui.ProfileActivity;
 import org.telegram.ui.Stars.ProfileGiftsView;
 import org.telegram.ui.Stories.ProfileStoriesView;
-
-import java.util.Arrays;
 
 public class ProfileHeaderLayout {
     private Context context;
@@ -113,18 +104,21 @@ public class ProfileHeaderLayout {
 
     public ProfileGalleryView avatarsViewPager;
 
-    private float smallAvatarRadius;
+    private int smallAvatarSize;
+    private int smallAvatarRadius;
+
+    private float expandThreshold;
 
     private ActionBar actionBar;
 
-    public float avatarX;
+    private float avatarX;
     public float avatarY;
 
     public float[] expandAnimatorValues = new float[]{0f, 1f};
 
     private float titleAnimationsYDiff;
 
-    public float avatarScale;
+    private float avatarScale;
     public float nameX;
     public float nameY;
     public float onlineX;
@@ -153,7 +147,25 @@ public class ProfileHeaderLayout {
         this.parentFragment = parentFragment;
         this.context = context;
 
-        innerAvatarContainer = new FrameLayout(context);
+        smallAvatarSize = 70;
+        smallAvatarRadius = AndroidUtilities.dp(smallAvatarSize / 2f);
+
+        expandThreshold = 88f;
+
+        Paint paint = new Paint();
+        paint.setColor(Color.RED);
+        innerAvatarContainer = new FrameLayout(context) {
+            @Override
+            protected void dispatchDraw(@NonNull Canvas canvas) {
+                super.dispatchDraw(canvas);
+                paint.setColor(Color.GREEN);
+                canvas.drawLine(canvas.getWidth()/2f, 0f, canvas.getWidth() / 2f, canvas.getHeight(), paint);
+                canvas.drawCircle(getPivotX(), getPivotY(), 5f, paint);
+
+//                paint.setAlpha(99);
+//                canvas.drawRect(new Rect(0, 0, canvas.getWidth(), canvas.getHeight()), paint);
+            }
+        };
         avatarContainer = new FrameLayout(context) {
 
             CanvasButton canvasButton;
@@ -161,6 +173,8 @@ public class ProfileHeaderLayout {
             @Override
             protected void dispatchDraw(Canvas canvas) {
                 super.dispatchDraw(canvas);
+                paint.setColor(Color.RED);
+                canvas.drawLine(canvas.getWidth()/2f, 0f, canvas.getWidth() / 2f, canvas.getHeight(), paint);
                 if (transitionOnlineText != null) {
                     canvas.save();
                     canvas.translate(onlineTextView[0].getX(), onlineTextView[0].getY());
@@ -242,25 +256,34 @@ public class ProfileHeaderLayout {
 
         actionBar = parentFragment.getActionBar();
 
-        final float diff = Math.min(1f, extraHeight / dp(88f));
+        final float diff = Math.min(1f, extraHeight / dp(expandThreshold));
 
-        avatarX = -AndroidUtilities.dpf2(47f) * diff;
+        avatarX = 0f;
         avatarY = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2.0f * (1.0f + diff) - 21 * AndroidUtilities.density + 27 * AndroidUtilities.density * diff + actionBar.getTranslationY();
 
     }
 
     public void setUpView(){
 
-        avatarContainer.addView(writeButton, LayoutHelper.createFrame(60, 60, Gravity.RIGHT | Gravity.TOP, 0, 0, 16, 0));
+        avatarContainer.addView(innerAvatarContainer, LayoutHelper.createFrameMarginPx(smallAvatarSize, smallAvatarSize, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 0, 0, 0));
 
-        innerAvatarContainer.setPivotX(0);
-        innerAvatarContainer.setPivotY(0);
-        avatarContainer.addView(innerAvatarContainer, LayoutHelper.createFrame(42, 42, Gravity.TOP | Gravity.LEFT, 64, 0, 0, 0));
+
+        avatarImage.setRoundRadius(smallAvatarRadius);
         innerAvatarContainer.addView(avatarImage, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-        
+
+        float point = AndroidUtilities.dp(smallAvatarSize) / 2f;
+        innerAvatarContainer.setPivotX(point);
+        innerAvatarContainer.setPivotY(point);
+
         avatarContainer.addView(giftsView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         avatarContainer.addView(mediaCounterTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 118.33f, -2, 8, 0));
+
+        avatarContainer.addView(avatarsViewPager);
+        avatarContainer.addView(overlaysView);
+        avatarImage.setAvatarsViewPager(avatarsViewPager);
+
+        avatarContainer.addView(writeButton, LayoutHelper.createFrame(60, 60, Gravity.RIGHT | Gravity.TOP, 0, 0, 16, 0));
 
         setUpOnlineText();
 
@@ -461,8 +484,7 @@ public class ProfileHeaderLayout {
         // TODO: checkPhotoDescriptionAlpha();
         innerAvatarContainer.setScaleX(avatarScale);
         innerAvatarContainer.setScaleY(avatarScale);
-        innerAvatarContainer.setTranslationX(AndroidUtilities.lerp(avatarX, 0f, value));
-        innerAvatarContainer.setTranslationY(AndroidUtilities.lerp((float) Math.ceil(avatarY), 0f, value));
+        innerAvatarContainer.setTranslationY(AndroidUtilities.lerp((float) Math.ceil(avatarY), avatarY * 2.1f, value)); //TODO: end value
         avatarImage.setRoundRadius((int) AndroidUtilities.lerp(smallAvatarRadius, 0f, value));
         if (storyView != null) {
             storyView.setExpandProgress(value);
@@ -473,7 +495,7 @@ public class ProfileHeaderLayout {
 
         //TODO: searchItem
 
-        if (extraHeight > AndroidUtilities.dp(88f) && expandProgress < 0.33f) {
+        if (extraHeight > AndroidUtilities.dp(expandThreshold) && expandProgress < 0.33f) {
             refreshNameAndOnlineXY();
         }
 
@@ -535,7 +557,7 @@ public class ProfileHeaderLayout {
         }
         int color = statusColor;
         onlineTextView[1].setTextColor(ColorUtils.blendARGB(color, 0xB3FFFFFF, value));
-        if (extraHeight > AndroidUtilities.dp(88f)) {
+        if (extraHeight > AndroidUtilities.dp(expandThreshold)) {
             nameTextView[1].setPivotY(AndroidUtilities.lerp(0, nameTextView[1].getMeasuredHeight(), value));
             nameTextView[1].setScaleX(AndroidUtilities.lerp(1.12f, 1.67f, value));
             nameTextView[1].setScaleY(AndroidUtilities.lerp(1.12f, 1.67f, value));
@@ -545,7 +567,7 @@ public class ProfileHeaderLayout {
 //            showStatusButton.setBackgroundColor(ColorUtils.blendARGB(Theme.multAlpha(Theme.adaptHSV(actionBarBackgroundColor, +0.18f, -0.1f), 0.5f), 0x23ffffff, currentExpandAnimatorValue));
 //        }
 
-        needLayoutText(Math.min(1f, extraHeight / AndroidUtilities.dp(88f)));
+        needLayoutText(Math.min(1f, extraHeight / AndroidUtilities.dp(expandThreshold)));
 
 //        nameTextView[1].setTextColor(ColorUtils.blendARGB(peerColor != null ? Color.WHITE : parentFragment.getThemedColor(Theme.key_profile_title), Color.WHITE, currentExpandAnimatorValue));
 //        actionBar.setItemsColor(ColorUtils.blendARGB(peerColor != null ? Color.WHITE : parentFragment.getThemedColor(Theme.key_actionBarDefaultIcon), Color.WHITE, value), false);
@@ -554,21 +576,32 @@ public class ProfileHeaderLayout {
         avatarImage.setForegroundAlpha(value);
 
         final FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) innerAvatarContainer.getLayoutParams();
-        params.width = (int) AndroidUtilities.lerp(AndroidUtilities.dpf2(42f), avatarContainer.getMeasuredWidth() / avatarScale, value);
-        params.height = (int) AndroidUtilities.lerp(AndroidUtilities.dpf2(42f), (extraHeight + newTop) / avatarScale, value);
-        params.leftMargin = (int) AndroidUtilities.lerp(AndroidUtilities.dpf2(64f), 0f, value);
+        params.width = (int) AndroidUtilities.lerp(AndroidUtilities.dpf2(smallAvatarSize), avatarContainer.getMeasuredWidth() / avatarScale, value);
+        params.height = (int) AndroidUtilities.lerp(AndroidUtilities.dpf2(smallAvatarSize), (extraHeight + newTop) / avatarScale, value);
+
+        innerAvatarContainer.setPivotX(params.width / 2f);
+        innerAvatarContainer.setPivotY(params.height / 2f);
+
+
+        avatarContainer.requestLayout();
+
         innerAvatarContainer.requestLayout();
 
         updateCollectibleHint();
     }
     
-    public void needLayout(boolean animated, int newTop, boolean openingAvatar, float initialAnimationExtraHeight){
+    public void needLayout(boolean animated, int newTop, boolean openingAvatar, float initialAnimationExtraHeight) {
         if (innerAvatarContainer != null) {
-            final float diff = Math.min(1f, extraHeight / dp(88f));
+
+            final float diff = Math.min(1f, extraHeight / dp(expandThreshold));
+
+//            avatarX = 0f;
+//            avatarY = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2.0f * (1.0f + diff) - 21 * AndroidUtilities.density + 27 * AndroidUtilities.density * diff + actionBar.getTranslationY();
+
 
             listView.setTopGlowOffset((int) extraHeight);
 
-            listView.setOverScrollMode(extraHeight > dp(88f) && extraHeight < listView.getMeasuredWidth() - newTop ? View.OVER_SCROLL_NEVER : View.OVER_SCROLL_ALWAYS);
+            listView.setOverScrollMode(extraHeight > dp(expandThreshold) && extraHeight < listView.getMeasuredWidth() - newTop ? View.OVER_SCROLL_NEVER : View.OVER_SCROLL_ALWAYS);
 
             if (writeButton != null) {
                 float searchTransitionOffset = 0f; //TODO: searchTransitionOffset
@@ -637,9 +670,9 @@ public class ProfileHeaderLayout {
             }
 
             float h = openAnimationInProgress ? initialAnimationExtraHeight : extraHeight;
-            if (h > dp(88f) || isPulledDown) {
-                expandProgress = Math.max(0f, Math.min(1f, (h - dp(88f)) / (listView.getMeasuredWidth() - newTop - dp(88f))));
-                avatarScale = lerp((42f + 18f) / 42f, (42f + 42f + 18f) / 42f, Math.min(1f, expandProgress * 3f));
+            if (h > dp(expandThreshold) || isPulledDown) {
+                expandProgress = Math.max(0f, Math.min(1f, (h - dp(expandThreshold)) / (listView.getMeasuredWidth() - newTop - dp(expandThreshold))));
+                avatarScale = lerp((smallAvatarSize + 18f) / smallAvatarSize, (smallAvatarSize + smallAvatarSize + 18f) / smallAvatarSize, Math.min(1f, expandProgress * 3f));
                 if (storyView != null) {
                     storyView.invalidate();
                 }
@@ -797,6 +830,7 @@ public class ProfileHeaderLayout {
             if (openAnimationInProgress && playProfileAnimation == 2) {
                 float avX = 0;
                 float avY = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2.0f - 21 * AndroidUtilities.density + actionBar.getTranslationY();
+//                avatarY = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2.0f * (1.0f + diff) - 21 * AndroidUtilities.density + 27 * AndroidUtilities.density * diff + actionBar.getTranslationY();
 
                 nameTextView[0].setTranslationX(0);
                 nameTextView[0].setTranslationY((float) Math.floor(avY) + dp(1.3f));
@@ -809,7 +843,7 @@ public class ProfileHeaderLayout {
                 nameTextView[1].setScaleX(1.67f);
                 nameTextView[1].setScaleY(1.67f);
 
-                avatarScale = lerp(1.0f, (42f + 42f + 18f) / 42f, getAvatarAnimationProgress());
+                avatarScale = lerp(1.0f, (smallAvatarSize + smallAvatarSize + 18f) / smallAvatarSize, getAvatarAnimationProgress());
                 if (storyView != null) {
                     storyView.setExpandProgress(1f);
                 }
@@ -817,9 +851,8 @@ public class ProfileHeaderLayout {
                     giftsView.setExpandProgress(1f);
                 }
 
-                avatarImage.setRoundRadius((int) lerp(smallAvatarRadius, 0f,getAvatarAnimationProgress()));
-                innerAvatarContainer.setTranslationX(lerp(avX, 0,getAvatarAnimationProgress()));
-                innerAvatarContainer.setTranslationY(lerp((float) Math.ceil(avY), 0f,getAvatarAnimationProgress()));
+                avatarImage.setRoundRadius((int) lerp(smallAvatarRadius, 0f, getAvatarAnimationProgress()));
+                innerAvatarContainer.setTranslationY(lerp((float) Math.ceil(avatarY), 0f, getAvatarAnimationProgress()));
                 float extra = (innerAvatarContainer.getMeasuredWidth() - dp(42)) * avatarScale;
 
                 //TODO
@@ -853,13 +886,10 @@ public class ProfileHeaderLayout {
 
                 //TODO: updateEmojiStatusDrawableColor(getAvatarAnimationProgress());
 
-                final FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) innerAvatarContainer.getLayoutParams();
-                params.width = params.height = (int) lerp(AndroidUtilities.dpf2(42f), (extraHeight + newTop) / avatarScale,getAvatarAnimationProgress());
-                params.leftMargin = (int) lerp(AndroidUtilities.dpf2(64f), 0f,getAvatarAnimationProgress());
                 innerAvatarContainer.requestLayout();
 
                 updateCollectibleHint();
-            } else if (extraHeight <= dp(88f)) {
+            } else if (extraHeight <= dp(expandThreshold)) {
                 avatarScale = (42 + 18 * diff) / 42.0f;
                 if (storyView != null) {
                     storyView.invalidate();
@@ -871,7 +901,6 @@ public class ProfileHeaderLayout {
                 if (expandAnimator == null || !expandAnimator.isRunning()) {
                     innerAvatarContainer.setScaleX(avatarScale);
                     innerAvatarContainer.setScaleY(avatarScale);
-                    innerAvatarContainer.setTranslationX(avatarX);
                     innerAvatarContainer.setTranslationY((float) Math.ceil(avatarY));
                     float extra = dp(42) * avatarScale - dp(42);
                     //TODO:
@@ -925,9 +954,9 @@ public class ProfileHeaderLayout {
     public void needLayoutText(float diff) {
         FrameLayout.LayoutParams layoutParams;
         float scale = nameTextView[1].getScaleX();
-        float maxScale = extraHeight > AndroidUtilities.dp(88f) ? 1.67f : 1.12f;
+        float maxScale = extraHeight > AndroidUtilities.dp(expandThreshold) ? 1.67f : 1.12f;
 
-        if (extraHeight > AndroidUtilities.dp(88f) && scale != maxScale) {
+        if (extraHeight > AndroidUtilities.dp(expandThreshold) && scale != maxScale) {
             return;
         }
 
@@ -970,12 +999,6 @@ public class ProfileHeaderLayout {
             onlineTextView[1].requestLayout();
             mediaCounterTextView.requestLayout();
         }
-    }
-
-
-
-    public void setSmallAvatarRadius(float smallAvatarRadius) {
-        this.smallAvatarRadius = smallAvatarRadius;
     }
 
     public void setListView(RecyclerListView listView) {
