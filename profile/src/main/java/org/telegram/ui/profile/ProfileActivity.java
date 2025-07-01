@@ -4862,7 +4862,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         expandAnimator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationStart(Animator animation) {
-
             }
 
             @Override

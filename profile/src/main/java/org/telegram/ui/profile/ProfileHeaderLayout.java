@@ -271,9 +271,9 @@ public class ProfileHeaderLayout {
         avatarImage.setRoundRadius(smallAvatarRadius);
         innerAvatarContainer.addView(avatarImage, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
-        float point = AndroidUtilities.dp(smallAvatarSize) / 2f;
-        innerAvatarContainer.setPivotX(point);
-        innerAvatarContainer.setPivotY(point);
+        float pointX = AndroidUtilities.dp(smallAvatarSize) / 2f;
+        innerAvatarContainer.setPivotX(pointX);
+        innerAvatarContainer.setPivotY(0);
 
         avatarContainer.addView(giftsView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
@@ -484,7 +484,7 @@ public class ProfileHeaderLayout {
         // TODO: checkPhotoDescriptionAlpha();
         innerAvatarContainer.setScaleX(avatarScale);
         innerAvatarContainer.setScaleY(avatarScale);
-        innerAvatarContainer.setTranslationY(AndroidUtilities.lerp((float) Math.ceil(avatarY), avatarY * 2.1f, value)); //TODO: end value
+        innerAvatarContainer.setTranslationY(AndroidUtilities.lerp(avatarY, 0, value)); //TODO: end value
         avatarImage.setRoundRadius((int) AndroidUtilities.lerp(smallAvatarRadius, 0f, value));
         if (storyView != null) {
             storyView.setExpandProgress(value);
@@ -580,7 +580,7 @@ public class ProfileHeaderLayout {
         params.height = (int) AndroidUtilities.lerp(AndroidUtilities.dpf2(smallAvatarSize), (extraHeight + newTop) / avatarScale, value);
 
         innerAvatarContainer.setPivotX(params.width / 2f);
-        innerAvatarContainer.setPivotY(params.height / 2f);
+        innerAvatarContainer.setPivotY(0);
 
 
         avatarContainer.requestLayout();
@@ -670,9 +670,9 @@ public class ProfileHeaderLayout {
             }
 
             float h = openAnimationInProgress ? initialAnimationExtraHeight : extraHeight;
-            if (h > dp(expandThreshold) || isPulledDown) {
+            if (h > dp(expandThreshold) || isPulledDown) { //when pulling down
                 expandProgress = Math.max(0f, Math.min(1f, (h - dp(expandThreshold)) / (listView.getMeasuredWidth() - newTop - dp(expandThreshold))));
-                avatarScale = lerp((smallAvatarSize + 18f) / smallAvatarSize, (smallAvatarSize + smallAvatarSize + 18f) / smallAvatarSize, Math.min(1f, expandProgress * 3f));
+                avatarScale = lerp(1f, 1.2f, Math.min(1f, expandProgress * 3f));
                 if (storyView != null) {
                     storyView.invalidate();
                 }
@@ -827,7 +827,7 @@ public class ProfileHeaderLayout {
                 }
             }
 
-            if (openAnimationInProgress && playProfileAnimation == 2) {
+            if (openAnimationInProgress && playProfileAnimation == 2) { //when animator is running
                 float avX = 0;
                 float avY = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2.0f - 21 * AndroidUtilities.density + actionBar.getTranslationY();
 //                avatarY = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2.0f * (1.0f + diff) - 21 * AndroidUtilities.density + 27 * AndroidUtilities.density * diff + actionBar.getTranslationY();
@@ -889,8 +889,8 @@ public class ProfileHeaderLayout {
                 innerAvatarContainer.requestLayout();
 
                 updateCollectibleHint();
-            } else if (extraHeight <= dp(expandThreshold)) {
-                avatarScale = (42 + 18 * diff) / 42.0f;
+            } else if (extraHeight <= dp(expandThreshold)) { //while scrolling header
+                avatarScale = 1f;
                 if (storyView != null) {
                     storyView.invalidate();
                 }
