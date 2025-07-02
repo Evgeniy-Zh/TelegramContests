@@ -111,7 +111,6 @@ public class ProfileHeaderLayout {
 
     private ActionBar actionBar;
 
-    private float avatarX;
     public float avatarY;
 
     public float[] expandAnimatorValues = new float[]{0f, 1f};
@@ -258,7 +257,6 @@ public class ProfileHeaderLayout {
 
         final float diff = Math.min(1f, extraHeight / dp(expandThreshold));
 
-        avatarX = 0f;
         avatarY = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2.0f * (1.0f + diff) - 21 * AndroidUtilities.density + 27 * AndroidUtilities.density * diff + actionBar.getTranslationY();
 
     }
@@ -399,7 +397,7 @@ public class ProfileHeaderLayout {
             onlineTextView[a].setGravity(Gravity.LEFT);
             onlineTextView[a].setAlpha(a == 0 ? 0.0f : 1.0f);
             if (a == 1 || a == 2 || a == 3) {
-                onlineTextView[a].setPadding(dp(4), dp(2), dp(4), dp(2));
+                onlineTextView[a].setPadding(dp(0), dp(2), dp(0), dp(2));
             }
             if (a > 0) {
                 onlineTextView[a].setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -483,9 +481,10 @@ public class ProfileHeaderLayout {
     // transition between rounded avatar and rectangular avatar
     // transition between views' positions
     public void setAvatarExpandProgress(float animatedFracture) {
-        Log.d("AvatarHeader", "avatarScale = " + avatarScale);
         final int newTop = ActionBar.getCurrentActionBarHeight() + (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0);
-        final float value = currentExpandAnimatorValue = AndroidUtilities.lerp(expandAnimatorValues, currentExpanAnimatorFracture = animatedFracture);
+        final float value = AndroidUtilities.lerp(expandAnimatorValues, currentExpanAnimatorFracture = animatedFracture);
+        currentExpandAnimatorValue = value;
+
         // TODO: checkPhotoDescriptionAlpha();
         innerAvatarContainer.setScaleX(avatarScale);
         innerAvatarContainer.setScaleY(avatarScale);
@@ -529,12 +528,19 @@ public class ProfileHeaderLayout {
 
         //TODO: updateEmojiStatusDrawableColor(value);
 
-        float y = avatarY + 150 * avatarScale;
+
+
+        float y1 =  avatarY + 200 * avatarScale;
+        float y = lerp(y1, y1 * 1.3f, expandProgress);
+
         nameY = lerp(y, extraHeight, value);
+
         textContainer.setTranslationY(nameY);
 
         nameX = lerp(0f, -avatarContainer.getMeasuredWidth() / 2f + nameTextView[1].getWidth() / 2f + 32f, value);
         textContainer.setTranslationX(nameX);
+
+        onlineTextView[1].setTranslationX(lerp(0, -(onlineTextView[1].getLeft() - nameTextView[1].getLeft()), value));
 
         //TODO:
 //        mediaCounterTextView.setTranslationX(onlineTextViewX);
@@ -552,14 +558,15 @@ public class ProfileHeaderLayout {
         int color = statusColor;
         onlineTextView[1].setTextColor(ColorUtils.blendARGB(color, 0xB3FFFFFF, value));
 
+        //TODO:
 //        if (showStatusButton != null) {
 //            showStatusButton.setBackgroundColor(ColorUtils.blendARGB(Theme.multAlpha(Theme.adaptHSV(actionBarBackgroundColor, +0.18f, -0.1f), 0.5f), 0x23ffffff, currentExpandAnimatorValue));
 //        }
 
 //        needLayoutText(Math.min(1f, extraHeight / AndroidUtilities.dp(expandThreshold)));
 
-//        nameTextView[1].setTextColor(ColorUtils.blendARGB(peerColor != null ? Color.WHITE : parentFragment.getThemedColor(Theme.key_profile_title), Color.WHITE, currentExpandAnimatorValue));
-//        actionBar.setItemsColor(ColorUtils.blendARGB(peerColor != null ? Color.WHITE : parentFragment.getThemedColor(Theme.key_actionBarDefaultIcon), Color.WHITE, value), false);
+        nameTextView[1].setTextColor(ColorUtils.blendARGB(peerColor != null ? Color.WHITE : parentFragment.getThemedColor(Theme.key_profile_title), Color.WHITE, currentExpandAnimatorValue));
+        actionBar.setItemsColor(ColorUtils.blendARGB(peerColor != null ? Color.WHITE : parentFragment.getThemedColor(Theme.key_actionBarDefaultIcon), Color.WHITE, value), false);
         actionBar.setMenuOffsetSuppressed(true);
 
         avatarImage.setForegroundAlpha(value);
@@ -578,6 +585,8 @@ public class ProfileHeaderLayout {
 
         updateCollectibleHint();
     }
+
+    float textYAfterAnimation = 0;
     
     public void needLayout(boolean animated, int newTop, boolean openingAvatar, float initialAnimationExtraHeight) {
         if (innerAvatarContainer != null) {
@@ -659,9 +668,14 @@ public class ProfileHeaderLayout {
             }
 
             float h = openAnimationInProgress ? initialAnimationExtraHeight : extraHeight;
-            if (h > dp(expandThreshold) || isPulledDown) {                                   //     ✅  when pulling down
+            if (h > dp(expandThreshold) || isPulledDown) {                                   //     ✅  when pulling up or down
                 expandProgress = Math.max(0f, Math.min(1f, (h - dp(expandThreshold)) / (listView.getMeasuredWidth() - newTop - dp(expandThreshold))));
                 avatarScale = lerp(1f, 1.2f, Math.min(1f, expandProgress * 3f));
+
+                float y =  avatarY + 200 * avatarScale;
+                nameY = lerp(y, y * 1.3f, expandProgress);
+
+
                 if (storyView != null) {
                     storyView.invalidate();
                 }
@@ -737,7 +751,6 @@ public class ProfileHeaderLayout {
                             additionalTranslationY = -(1.0f -getAvatarAnimationProgress()) * dp(50);
                         }
 
-//                        nameY = avatarY + 150 * avatarScale;
                         nameY = extraHeight;
                         textContainer.setTranslationY(nameY);
 
@@ -779,6 +792,15 @@ public class ProfileHeaderLayout {
                         } else {
                             expandAnimator.setDuration(0);
                         }
+
+                        expandAnimator.addListener(new AnimatorListenerAdapter() {
+                            @Override
+                            public void onAnimationEnd(Animator animation) {
+                                textYAfterAnimation = textContainer.getTranslationY();
+                                expandAnimator.removeListener(this);
+                            }
+                        });
+
                         topView.setBackgroundColor(parentFragment.getThemedColor(Theme.key_avatar_backgroundActionBarBlue));
 
                         boolean doNotSetForeground = false; //TODO: check foreground
@@ -804,7 +826,6 @@ public class ProfileHeaderLayout {
                     innerAvatarContainer.setScaleY(avatarScale);
 
                     if (expandAnimator == null || !expandAnimator.isRunning()) {
-//                        nameY = avatarY + 150 * avatarScale;
                         textContainer.setTranslationY(nameY);
                         //TODO:
 //                        mediaCounterTextView.setTranslationX(onlineX);
@@ -815,19 +836,10 @@ public class ProfileHeaderLayout {
             }
 
             if (openAnimationInProgress && playProfileAnimation == 2) {     //      ✅   when animator is running
-                float avX = 0;
-                float avY = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2.0f - 21 * AndroidUtilities.density + actionBar.getTranslationY();
-//                avatarY = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2.0f * (1.0f + diff) - 21 * AndroidUtilities.density + 27 * AndroidUtilities.density * diff + actionBar.getTranslationY();
-
-//                nameY = avatarY + 150 * avatarScale;
                 textContainer.setTranslationY(nameY);
 
                 nameTextView[0].setScaleX(1.0f);
                 nameTextView[0].setScaleY(1.0f);
-
-//                nameTextView[1].setPivotY(nameTextView[1].getMeasuredHeight());
-//                nameTextView[1].setScaleX(1.67f);
-//                nameTextView[1].setScaleY(1.67f);
 
                 avatarScale = lerp(1.0f, (smallAvatarSize + smallAvatarSize + 18f) / smallAvatarSize, getAvatarAnimationProgress());
                 if (storyView != null) {
@@ -898,8 +910,7 @@ public class ProfileHeaderLayout {
 //                    starFgItem.setTranslationY(innerAvatarContainer.getY() + dp(24) + extra);
                 }
                 nameX = 0f;
-                nameY = avatarY + 150 * avatarScale;
-
+                nameY = avatarY + 200 * avatarScale;
                 //TODO: showStatus button
 //                if (showStatusButton != null) {
 //                    showStatusButton.setAlpha((int) (0xFF * diff));
@@ -909,7 +920,6 @@ public class ProfileHeaderLayout {
                         continue;
                     }
                     if (expandAnimator == null || !expandAnimator.isRunning()) {
-//                        nameY = avatarY + 150 * avatarScale;
                         textContainer.setTranslationY(nameY);
 
                         if (a == 1) {
