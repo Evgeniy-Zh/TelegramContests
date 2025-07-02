@@ -814,7 +814,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private boolean fragmentOpened;
     private NestedFrameLayout contentView;
     private float customAvatarProgress;
-    private float customPhotoOffset;
     private boolean hasCustomPhoto;
     private boolean loadingBoostsStats;
     private boolean waitCanSendStoryRequest;
@@ -6338,7 +6337,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             updateEmojiStatusDrawableColor();
 
             if (avatarsViewPagerIndicatorView.getSecondaryMenuItem() != null && (videoCallItemVisible || editItemVisible || callItemVisible)) {
-                profileHeaderLayout.needLayoutText(Math.min(1f, profileHeaderLayout.extraHeight / AndroidUtilities.dp(88f)));
+//                profileHeaderLayout.needLayoutText(Math.min(1f, profileHeaderLayout.extraHeight / AndroidUtilities.dp(88f)));
             }
         }
 
@@ -12894,13 +12893,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 //        }
         if (userId == UserConfig.getInstance(currentAccount).clientUserId) {
             if (profileHeaderLayout.hasFallbackPhoto()) {
-                customPhotoOffset = AndroidUtilities.dp(28) * photoDescriptionProgress;
+                float customPhotoOffset = AndroidUtilities.dp(28) * photoDescriptionProgress;
                 profileHeaderLayout.setCustomPhotoOffset(customPhotoOffset);
                 if (profileHeaderLayout.onlineTextView[2] != null) {
                     profileHeaderLayout.onlineTextView[2].setAlpha(profileHeaderLayout.currentExpandAnimatorValue);
                     profileHeaderLayout.onlineTextView[3].setAlpha(1f - profileHeaderLayout.currentExpandAnimatorValue);
-                    //  profileHeaderLayout.onlineTextView[1].setAlpha(1f - profileHeaderLayout.expandProgress);
-                    profileHeaderLayout.onlineTextView[1].setTranslationX(profileHeaderLayout.onlineX + customPhotoOffset);
                     profileHeaderLayout.avatarContainer.invalidate();
                     if (showStatusButton != null) {
                         showStatusButton.setAlpha2(1f - profileHeaderLayout.currentExpandAnimatorValue);
