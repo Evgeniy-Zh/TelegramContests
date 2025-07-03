@@ -107,7 +107,7 @@ public class ProfileHeaderLayout {
     private int smallAvatarSize;
     private int smallAvatarRadius;
 
-    private float expandThreshold;
+    public final float headerHeight;
 
     private ActionBar actionBar;
 
@@ -149,7 +149,7 @@ public class ProfileHeaderLayout {
         smallAvatarSize = 90;
         smallAvatarRadius = AndroidUtilities.dp(smallAvatarSize / 2f);
 
-        expandThreshold = 88f;
+        headerHeight = 170f;
 
         Paint paint = new Paint();
         paint.setColor(Color.RED);
@@ -255,7 +255,7 @@ public class ProfileHeaderLayout {
 
         actionBar = parentFragment.getActionBar();
 
-        final float diff = Math.min(1f, extraHeight / dp(expandThreshold));
+        final float diff = Math.min(1f, extraHeight / dp(headerHeight));
 
         avatarY = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2.0f * (1.0f + diff) - 21 * AndroidUtilities.density + 27 * AndroidUtilities.density * diff + actionBar.getTranslationY();
 
@@ -411,7 +411,7 @@ public class ProfileHeaderLayout {
                             LayoutHelper.WRAP_CONTENT,
                              Gravity.TOP | Gravity.CENTER_HORIZONTAL,
                             0,
-                            36,
+                            32,
                             0,
                             0
                     )
@@ -478,6 +478,10 @@ public class ProfileHeaderLayout {
         this.customPhotoOffset = customPhotoOffset;
     }
 
+    private float calculateBaseTextContainerPosition(){
+        return avatarY + dp(92) * avatarScale;
+    }
+
     // transition between rounded avatar and rectangular avatar
     // transition between views' positions
     public void setAvatarExpandProgress(float animatedFracture) {
@@ -499,7 +503,7 @@ public class ProfileHeaderLayout {
 
         //TODO: searchItem
 
-        if (extraHeight > AndroidUtilities.dp(expandThreshold) && expandProgress < 0.33f) {
+        if (extraHeight > AndroidUtilities.dp(headerHeight) && expandProgress < 0.33f) {
 //            refreshNameAndOnlineXY();
         }
 
@@ -530,7 +534,7 @@ public class ProfileHeaderLayout {
 
 
 
-        float y1 =  avatarY + 200 * avatarScale;
+        float y1 =  calculateBaseTextContainerPosition();
         float y = lerp(y1, y1 * 1.3f, expandProgress);
 
         nameY = lerp(y, extraHeight, value);
@@ -591,7 +595,7 @@ public class ProfileHeaderLayout {
     public void needLayout(boolean animated, int newTop, boolean openingAvatar, float initialAnimationExtraHeight) {
         if (innerAvatarContainer != null) {
 
-            final float diff = Math.min(1f, extraHeight / dp(expandThreshold));
+            final float diff = Math.min(1f, extraHeight / dp(headerHeight));
 
 //            avatarX = 0f;
 //            avatarY = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2.0f * (1.0f + diff) - 21 * AndroidUtilities.density + 27 * AndroidUtilities.density * diff + actionBar.getTranslationY();
@@ -599,7 +603,7 @@ public class ProfileHeaderLayout {
 
             listView.setTopGlowOffset((int) extraHeight);
 
-            listView.setOverScrollMode(extraHeight > dp(expandThreshold) && extraHeight < listView.getMeasuredWidth() - newTop ? View.OVER_SCROLL_NEVER : View.OVER_SCROLL_ALWAYS);
+            listView.setOverScrollMode(extraHeight > dp(headerHeight) && extraHeight < listView.getMeasuredWidth() - newTop ? View.OVER_SCROLL_NEVER : View.OVER_SCROLL_ALWAYS);
 
             if (writeButton != null) {
                 float searchTransitionOffset = 0f; //TODO: searchTransitionOffset
@@ -668,11 +672,11 @@ public class ProfileHeaderLayout {
             }
 
             float h = openAnimationInProgress ? initialAnimationExtraHeight : extraHeight;
-            if (h > dp(expandThreshold) || isPulledDown) {                                   //     ✅  when pulling up or down
-                expandProgress = Math.max(0f, Math.min(1f, (h - dp(expandThreshold)) / (listView.getMeasuredWidth() - newTop - dp(expandThreshold))));
+            if (h > dp(headerHeight) || isPulledDown) {                                   //     ✅  when pulling up or down
+                expandProgress = Math.max(0f, Math.min(1f, (h - dp(headerHeight)) / (listView.getMeasuredWidth() - newTop - dp(headerHeight))));
                 avatarScale = lerp(1f, 1.2f, Math.min(1f, expandProgress * 3f));
 
-                float y =  avatarY + 200 * avatarScale;
+                float y =  calculateBaseTextContainerPosition();
                 nameY = lerp(y, y * 1.3f, expandProgress);
 
 
@@ -887,7 +891,7 @@ public class ProfileHeaderLayout {
                 innerAvatarContainer.requestLayout();
 
                 updateCollectibleHint();
-            } else if (extraHeight <= dp(expandThreshold)) { // ✅while scrolling collapsed header
+            } else if (extraHeight <= dp(headerHeight)) { // ✅while scrolling collapsed header
                 avatarScale = 1f;
                 if (storyView != null) {
                     storyView.invalidate();
@@ -910,7 +914,7 @@ public class ProfileHeaderLayout {
 //                    starFgItem.setTranslationY(innerAvatarContainer.getY() + dp(24) + extra);
                 }
                 nameX = 0f;
-                nameY = avatarY + 200 * avatarScale;
+                nameY = calculateBaseTextContainerPosition();
                 //TODO: showStatus button
 //                if (showStatusButton != null) {
 //                    showStatusButton.setAlpha((int) (0xFF * diff));
@@ -948,9 +952,9 @@ public class ProfileHeaderLayout {
     public void needLayoutText(float diff) {
         FrameLayout.LayoutParams layoutParams;
         float scale = nameTextView[1].getScaleX();
-        float maxScale = extraHeight > AndroidUtilities.dp(expandThreshold) ? 1.67f : 1.12f;
+        float maxScale = extraHeight > AndroidUtilities.dp(headerHeight) ? 1.67f : 1.12f;
 
-        if (extraHeight > AndroidUtilities.dp(expandThreshold) && scale != maxScale) {
+        if (extraHeight > AndroidUtilities.dp(headerHeight) && scale != maxScale) {
             return;
         }
 
