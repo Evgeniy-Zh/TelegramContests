@@ -138,6 +138,8 @@ public class ProfileHeaderLayout {
 
     private FrameLayout textContainer;
 
+    private ProfileButtonsView profileButtonsView;
+
     //TODO: Initialize
     public ValueAnimator expandAnimator;
     public boolean isInLandscapeMode;
@@ -150,7 +152,7 @@ public class ProfileHeaderLayout {
         smallAvatarSize = 90;
         smallAvatarRadius = AndroidUtilities.dp(smallAvatarSize / 2f);
 
-        headerHeight = 170f;
+        headerHeight = 180f;
         expandedHeaderHeight = 450f;
 
         Paint paint = new Paint();
@@ -255,6 +257,8 @@ public class ProfileHeaderLayout {
         fallbackImage = new ImageReceiver(avatarContainer);
         writeButton = new RLottieImageView(context);
 
+        profileButtonsView = new ProfileButtonsView(context);
+
         actionBar = parentFragment.getActionBar();
 
         final float diff = Math.min(1f, extraHeight / dp(headerHeight));
@@ -289,6 +293,8 @@ public class ProfileHeaderLayout {
         avatarContainer.addView(textContainer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         avatarContainer.addView(storyView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+
+        avatarContainer.addView(profileButtonsView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 60, Gravity.CENTER_HORIZONTAL, 4, 20, 4, 0));
 
         setUpOnlineText();
 
@@ -507,10 +513,6 @@ public class ProfileHeaderLayout {
 
         //TODO: searchItem
 
-        if (extraHeight > AndroidUtilities.dp(headerHeight) && expandProgress < 0.33f) {
-//            refreshNameAndOnlineXY();
-        }
-
         //TODO: update animated drawables
 //        if (scamDrawable != null) {
 //            scamDrawable.setColor(ColorUtils.blendARGB(parentFragment.getThemedColor(Theme.key_avatar_subtitleInProfileBlue), Color.argb(179, 255, 255, 255), value));
@@ -541,7 +543,7 @@ public class ProfileHeaderLayout {
         float y1 =  calculateBaseTextContainerPosition();
         float y = lerp(y1, y1 * 1.3f, expandProgress);
 
-        nameY = lerp(y, extraHeight, value);
+        nameY = lerp(y, extraHeight - profileButtonsView.getMeasuredHeight(), value);
 
         textContainer.setTranslationY(nameY);
 
@@ -597,6 +599,9 @@ public class ProfileHeaderLayout {
     float textYAfterAnimation = 0;
     
     public void needLayout(boolean animated, int newTop, boolean openingAvatar, float initialAnimationExtraHeight) {
+
+        profileButtonsView.setTranslationY(extraHeight);
+
         if (innerAvatarContainer != null) {
 
             final float diff = Math.min(1f, extraHeight / dp(headerHeight));
@@ -754,12 +759,7 @@ public class ProfileHeaderLayout {
                     params.height = (int) (h + newTop);
                     avatarsViewPager.requestLayout();
                     if (!expandAnimator.isRunning()) {
-                        float additionalTranslationY = 0;
-                        if (openAnimationInProgress && playProfileAnimation == 2) {
-                            additionalTranslationY = -(1.0f -getAvatarAnimationProgress()) * dp(50);
-                        }
-
-                        nameY = extraHeight;
+                        nameY = extraHeight - profileButtonsView.getMeasuredHeight();
                         textContainer.setTranslationY(nameY);
 
                         mediaCounterTextView.setTranslationX(textContainer.getTranslationX());

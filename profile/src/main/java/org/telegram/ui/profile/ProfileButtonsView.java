@@ -1,0 +1,90 @@
+package org.telegram.ui.profile;
+
+
+import static org.telegram.messenger.AndroidUtilities.dp;
+
+import android.annotation.SuppressLint;
+import android.content.Context;
+import android.graphics.Color;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.profile.R;
+import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Components.LayoutHelper;
+
+public class ProfileButtonsView extends LinearLayout {
+
+    public final View messageButton;
+    public final View muteButton;
+    public final View callButton;
+    public final View videoButton;
+
+
+    public ProfileButtonsView(Context context) {
+        super(context);
+        int verticalMargin = dp(3);
+        messageButton = new ProfileButton(context, R.drawable.profile_message, R.string.Message);
+        muteButton = new ProfileButton(context, R.drawable.profile_mute, R.string.Mute);
+        callButton = new ProfileButton(context, R.drawable.profile_call, R.string.Call);
+        videoButton = new ProfileButton(context, R.drawable.profile_video_call, R.string.VideoCall);
+
+        messageButton.setOnClickListener(v -> {});
+
+        LayoutParams layoutParams = LayoutHelper.createLinear(0, LayoutHelper.MATCH_PARENT, 1f);
+        layoutParams.setMargins(verticalMargin, 0, verticalMargin, 0);
+
+        addView(messageButton, layoutParams);
+        addView(muteButton, layoutParams);
+        addView(callButton, layoutParams);
+        addView(videoButton, layoutParams);
+
+    }
+
+
+    @SuppressLint("ViewConstructor")
+    public static class ProfileButton extends LinearLayout {
+
+        public ProfileButton(Context context, int iconRes, int stringRes) {
+            super(context);
+
+            int contentColor = Color.WHITE; // TODO: get theme color
+
+            setOrientation(VERTICAL);
+            setGravity(Gravity.CENTER);
+            float horizontalPadding = 0f;
+            float verticalPadding = 0f;
+            setPadding(dp(horizontalPadding), dp(verticalPadding), dp(horizontalPadding), dp(verticalPadding));
+
+            ImageView iconView = new ImageView(context);
+            iconView.setImageResource(iconRes);
+
+            TextView textView = new TextView(context);
+            textView.setGravity(Gravity.CENTER);
+
+            textView.setTextColor(contentColor);
+            textView.setText(LocaleController.getString(stringRes));
+
+            addView(iconView, LayoutHelper.createLinear(30, 30));
+            addView(textView);
+
+            setBackground(Theme.AdaptiveRipple.filledRect(Color.parseColor("#44313131"), 8));
+
+        }
+
+        private int getThemedColor(int key) {
+            //TODO: maybe get active theme
+            return Theme.getColor(key);
+        }
+    }
+
+    private int getThemedColor(int key) {
+        //TODO: maybe get active theme
+        return Theme.getColor(key);
+    }
+
+}
