@@ -2715,7 +2715,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         paddingTop = dp(profileHeaderLayout.headerHeight);
                         paddingBottom = 0;
                     } else {
-                        paddingTop = listView.getMeasuredWidth();
+                        paddingTop = dp(profileHeaderLayout.expandedHeaderHeight);
                         paddingBottom = Math.max(0, getMeasuredHeight() - (listContentHeight + dp(profileHeaderLayout.headerHeight) + actionBarHeight));
                     }
                     if (banFromGroup != 0) {
@@ -3448,7 +3448,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         if (view != null) {
                             if (profileHeaderLayout.isPulledDown()) {
                                 final int actionBarHeight = ActionBar.getCurrentActionBarHeight() + (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0);
-                                listView.smoothScrollBy(0, view.getTop() - listView.getMeasuredWidth() + actionBarHeight, CubicBezierInterpolator.EASE_OUT_QUINT);
+                                listView.smoothScrollBy(0, view.getTop() - dp(profileHeaderLayout.expandedHeaderHeight) + actionBarHeight, CubicBezierInterpolator.EASE_OUT_QUINT);
                             } else {
                                 listView.smoothScrollBy(0, view.getTop() - dp(profileHeaderLayout.headerHeight), CubicBezierInterpolator.EASE_OUT_QUINT);
                             }

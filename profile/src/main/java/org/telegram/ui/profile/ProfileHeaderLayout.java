@@ -108,6 +108,7 @@ public class ProfileHeaderLayout {
     private int smallAvatarRadius;
 
     public final float headerHeight;
+    public final float expandedHeaderHeight;
 
     private ActionBar actionBar;
 
@@ -150,6 +151,7 @@ public class ProfileHeaderLayout {
         smallAvatarRadius = AndroidUtilities.dp(smallAvatarSize / 2f);
 
         headerHeight = 170f;
+        expandedHeaderHeight = 450f;
 
         Paint paint = new Paint();
         paint.setColor(Color.RED);
@@ -285,6 +287,8 @@ public class ProfileHeaderLayout {
 
         textContainer = new FrameLayout(context);
         avatarContainer.addView(textContainer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+
+        avatarContainer.addView(storyView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         setUpOnlineText();
 
