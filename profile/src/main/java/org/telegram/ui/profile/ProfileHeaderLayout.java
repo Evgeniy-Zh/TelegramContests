@@ -64,7 +64,7 @@ public class ProfileHeaderLayout {
 
     public org.telegram.ui.ProfileActivity.AvatarImageView avatarImage;
 
-    public RLottieImageView writeButton;
+    public View messageButton;
 
     public ProfileStoriesView storyView;
 
@@ -83,8 +83,6 @@ public class ProfileHeaderLayout {
     public org.telegram.ui.profile.ProfileActivity.PagerIndicatorView avatarsViewPagerIndicatorView; //TODO: make private
     public View topView;
 
-
-    private AnimatorSet writeButtonAnimation;
 
     private float avatarAnimationProgress;
 
@@ -255,9 +253,10 @@ public class ProfileHeaderLayout {
 
         // TODO: move back to ProfileActivity
         fallbackImage = new ImageReceiver(avatarContainer);
-        writeButton = new RLottieImageView(context);
 
         profileButtonsView = new ProfileButtonsView(context);
+
+        messageButton = profileButtonsView.messageButton;
 
         actionBar = parentFragment.getActionBar();
 
@@ -286,8 +285,6 @@ public class ProfileHeaderLayout {
         avatarContainer.addView(avatarsViewPager);
         avatarContainer.addView(overlaysView);
         avatarImage.setAvatarsViewPager(avatarsViewPager);
-
-        avatarContainer.addView(writeButton, LayoutHelper.createFrame(60, 60, Gravity.RIGHT | Gravity.TOP, 0, 0, 16, 0));
 
         textContainer = new FrameLayout(context);
         avatarContainer.addView(textContainer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
@@ -614,9 +611,8 @@ public class ProfileHeaderLayout {
 
             listView.setOverScrollMode(extraHeight > dp(headerHeight) && extraHeight < listView.getMeasuredWidth() - newTop ? View.OVER_SCROLL_NEVER : View.OVER_SCROLL_ALWAYS);
 
-            if (writeButton != null) {
+            if (messageButton != null) {
                 float searchTransitionOffset = 0f; //TODO: searchTransitionOffset
-                writeButton.setTranslationY((actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() + extraHeight + searchTransitionOffset - dp(29.5f));
 
                 boolean writeButtonVisible = true;
                 // TODO: check visibility
@@ -625,49 +621,12 @@ public class ProfileHeaderLayout {
 //                    writeButtonVisible = ChatObject.isChannel(currentChat) && !currentChat.megagroup && chatInfo != null && chatInfo.linked_chat_id != 0 && infoHeaderRow != -1;
 //                }
                 if (!openAnimationInProgress) {
-                    boolean currentVisible = writeButton.getTag() == null;
+                    boolean currentVisible = messageButton.getTag() == null;
                     if (writeButtonVisible != currentVisible) {
                         if (writeButtonVisible) {
-                            writeButton.setTag(null);
+                            messageButton.setTag(null);
                         } else {
-                            writeButton.setTag(0);
-                        }
-                        if (writeButtonAnimation != null) {
-                            AnimatorSet old = writeButtonAnimation;
-                            writeButtonAnimation = null;
-                            old.cancel();
-                        }
-                        if (animated) {
-                            writeButtonAnimation = new AnimatorSet();
-                            if (writeButtonVisible) {
-                                writeButtonAnimation.setInterpolator(new DecelerateInterpolator());
-                                writeButtonAnimation.playTogether(
-                                        ObjectAnimator.ofFloat(writeButton, View.SCALE_X, 1.0f),
-                                        ObjectAnimator.ofFloat(writeButton, View.SCALE_Y, 1.0f),
-                                        ObjectAnimator.ofFloat(writeButton, View.ALPHA, 1.0f)
-                                );
-                            } else {
-                                writeButtonAnimation.setInterpolator(new AccelerateInterpolator());
-                                writeButtonAnimation.playTogether(
-                                        ObjectAnimator.ofFloat(writeButton, View.SCALE_X, 0.2f),
-                                        ObjectAnimator.ofFloat(writeButton, View.SCALE_Y, 0.2f),
-                                        ObjectAnimator.ofFloat(writeButton, View.ALPHA, 0.0f)
-                                );
-                            }
-                            writeButtonAnimation.setDuration(150);
-                            writeButtonAnimation.addListener(new AnimatorListenerAdapter() {
-                                @Override
-                                public void onAnimationEnd(Animator animation) {
-                                    if (writeButtonAnimation != null && writeButtonAnimation.equals(animation)) {
-                                        writeButtonAnimation = null;
-                                    }
-                                }
-                            });
-                            writeButtonAnimation.start();
-                        } else {
-                            writeButton.setScaleX(writeButtonVisible ? 1.0f : 0.2f);
-                            writeButton.setScaleY(writeButtonVisible ? 1.0f : 0.2f);
-                            writeButton.setAlpha(writeButtonVisible ? 1.0f : 0.0f);
+                            messageButton.setTag(0);
                         }
                     }
                 }

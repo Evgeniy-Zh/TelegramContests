@@ -2950,7 +2950,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
             @Override
             protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
-                if (pinchToZoomHelper.isInOverlayMode() && (child == profileHeaderLayout.avatarContainer || child == actionBar || child == profileHeaderLayout.writeButton)) {
+                if (pinchToZoomHelper.isInOverlayMode() && (child == profileHeaderLayout.avatarContainer || child == actionBar || child == profileHeaderLayout.messageButton)) {
                     return true;
                 }
                 if (child == blurredView) {
@@ -3344,20 +3344,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         otherItem.setContentDescription(getString(R.string.AccDescrMoreOptions));
 
         int scrollTo;
-        int scrollToPosition = 0;
-        Object writeButtonTag = null;
-        if (listView != null && imageUpdater != null) {
-            scrollTo = layoutManager.findFirstVisibleItemPosition();
-            View topView = layoutManager.findViewByPosition(scrollTo);
-            if (topView != null) {
-                scrollToPosition = topView.getTop() - listView.getPaddingTop();
-            } else {
-                scrollTo = -1;
-            }
-            writeButtonTag = profileHeaderLayout.writeButton.getTag();
-        } else {
-            scrollTo = -1;
-        }
 
         createActionBarMenu(false);
 
@@ -4777,27 +4763,18 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
         updateProfileData(true);
 
-        writeButtonSetBackground();
         if (userId != 0) {
             if (imageUpdater != null) {
-                cameraDrawable = new RLottieDrawable(R.raw.camera_outline, String.valueOf(R.raw.camera_outline), dp(56), dp(56), false, null);
-                cellCameraDrawable = new RLottieDrawable(R.raw.camera_outline, R.raw.camera_outline + "_cell", dp(42), dp(42), false, null);
-
-                profileHeaderLayout.writeButton.setAnimation(cameraDrawable);
-                profileHeaderLayout.writeButton.setContentDescription(getString(R.string.AccDescrChangeProfilePicture));
-                profileHeaderLayout.writeButton.setPadding(dp(2), 0, 0, dp(2));
+               //TODO: Change profile picture action
             } else {
-                profileHeaderLayout.writeButton.setImageResource(R.drawable.profile_newmsg);
-                profileHeaderLayout.writeButton.setContentDescription(getString(R.string.AccDescrOpenChat));
+                profileHeaderLayout.messageButton.setContentDescription(getString(R.string.AccDescrOpenChat));
             }
         } else {
-            profileHeaderLayout.writeButton.setImageResource(R.drawable.profile_discuss);
-            profileHeaderLayout.writeButton.setContentDescription(getString(R.string.ViewDiscussion));
+            profileHeaderLayout.messageButton.setContentDescription(getString(R.string.ViewDiscussion));
         }
-        profileHeaderLayout.writeButton.setScaleType(ImageView.ScaleType.CENTER);
 
-        profileHeaderLayout.writeButton.setOnClickListener(v -> {
-            if (profileHeaderLayout.writeButton.getTag() != null) {
+        profileHeaderLayout.messageButton.setOnClickListener(v -> {
+            if (profileHeaderLayout.messageButton.getTag() != null) {
                 return;
             }
             onWriteButtonClick();
@@ -4805,15 +4782,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
 
         needLayout(false);
-
-        if (scrollTo != -1) {
-            if (writeButtonTag != null) {
-                profileHeaderLayout.writeButton.setTag(0);
-                profileHeaderLayout.writeButton.setScaleX(0.2f);
-                profileHeaderLayout.writeButton.setScaleY(0.2f);
-                profileHeaderLayout.writeButton.setAlpha(0.0f);
-            }
-        }
 
         listView.setOnScrollListener(new RecyclerView.OnScrollListener() {
 
@@ -4893,8 +4861,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 for (int i = 0; i < avatarsViewPager.getChildCount(); i++) {
                     avatarsViewPager.getChildAt(i).invalidate();
                 }
-                if (profileHeaderLayout.writeButton != null) {
-                    profileHeaderLayout.writeButton.invalidate();
+                if (profileHeaderLayout.messageButton != null) {
+                    profileHeaderLayout.messageButton.invalidate();
                 }
             }
 
@@ -4916,16 +4884,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     canvas.save();
                     canvas.translate(actionBar.getX(), actionBar.getY());
                     actionBar.draw(canvas);
-                    canvas.restore();
-
-                    if (profileHeaderLayout.writeButton != null && profileHeaderLayout.writeButton.getVisibility() == View.VISIBLE && profileHeaderLayout.writeButton.getAlpha() > 0) {
-                        canvas.save();
-                        float s = 0.5f + 0.5f * alpha;
-                        canvas.scale(s, s, profileHeaderLayout.writeButton.getX() + profileHeaderLayout.writeButton.getMeasuredWidth() / 2f, profileHeaderLayout.writeButton.getY() + profileHeaderLayout.writeButton.getMeasuredHeight() / 2f);
-                        canvas.translate(profileHeaderLayout.writeButton.getX(), profileHeaderLayout.writeButton.getY());
-                        profileHeaderLayout.writeButton.draw(canvas);
-                        canvas.restore();
-                    }
                     canvas.restore();
                 }
             }
@@ -5464,7 +5422,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     if (!imageUpdater.isUploadingImage()) {
                         cameraDrawable.setCustomEndFrame(86);
                         cellCameraDrawable.setCustomEndFrame(86);
-                        profileHeaderLayout.writeButton.playAnimation();
                         if (setAvatarCell != null) {
                             setAvatarCell.getImageView().playAnimation();
                         }
@@ -5477,7 +5434,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 cameraDrawable.setCustomEndFrame(43);
                 cellCameraDrawable.setCurrentFrame(0);
                 cellCameraDrawable.setCustomEndFrame(43);
-                profileHeaderLayout.writeButton.playAnimation();
                 if (setAvatarCell != null) {
                     setAvatarCell.getImageView().playAnimation();
                 }
@@ -7582,14 +7538,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 setAvatarAnimationProgress(0);
                 ArrayList<Animator> animators = new ArrayList<>();
                 animators.add(ObjectAnimator.ofFloat(this, "avatarAnimationProgress", 0.0f, 1.0f));
-                if (profileHeaderLayout.writeButton != null && profileHeaderLayout.writeButton.getTag() == null) {
-                    profileHeaderLayout.writeButton.setScaleX(0.2f);
-                    profileHeaderLayout.writeButton.setScaleY(0.2f);
-                    profileHeaderLayout.writeButton.setAlpha(0.0f);
-                    animators.add(ObjectAnimator.ofFloat(profileHeaderLayout.writeButton, View.SCALE_X, 1.0f));
-                    animators.add(ObjectAnimator.ofFloat(profileHeaderLayout.writeButton, View.SCALE_Y, 1.0f));
-                    animators.add(ObjectAnimator.ofFloat(profileHeaderLayout.writeButton, View.ALPHA, 1.0f));
-                }
+
                 if (playProfileAnimation == 2) {
                     avatarColor = getAverageColor(avatarImage.getImageReceiver());
                     profileHeaderLayout.nameTextView[1].setTextColor(Color.WHITE);
@@ -7687,11 +7636,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 initialAnimationExtraHeight = profileHeaderLayout.extraHeight;
                 ArrayList<Animator> animators = new ArrayList<>();
                 animators.add(ObjectAnimator.ofFloat(this, "avatarAnimationProgress", 1.0f, 0.0f));
-                if (profileHeaderLayout.writeButton != null) {
-                    animators.add(ObjectAnimator.ofFloat(profileHeaderLayout.writeButton, View.SCALE_X, 0.2f));
-                    animators.add(ObjectAnimator.ofFloat(profileHeaderLayout.writeButton, View.SCALE_Y, 0.2f));
-                    animators.add(ObjectAnimator.ofFloat(profileHeaderLayout.writeButton, View.ALPHA, 0.0f));
-                }
+
                 for (int a = 0; a < 2; a++) {
                     animators.add(ObjectAnimator.ofFloat(profileHeaderLayout.nameTextView[a], View.ALPHA, a == 0 ? 1.0f : 0.0f));
                 }
@@ -9361,7 +9306,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (sharedMediaLayout != null && sharedMediaLayout.giftsContainer != null) {
             sharedMediaLayout.giftsContainer.updateColors();
         }
-        writeButtonSetBackground();
         updateEmojiStatusDrawableColor();
         if (storyView != null) {
             storyView.update();
@@ -12415,10 +12359,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         arrayList.add(new ThemeDescription(avatarImage, 0, null, null, Theme.avatarDrawables, null, Theme.key_avatar_text));
         arrayList.add(new ThemeDescription(avatarImage, 0, null, null, new Drawable[]{avatarDrawable}, null, Theme.key_avatar_backgroundInProfileBlue));
 
-        arrayList.add(new ThemeDescription(profileHeaderLayout.writeButton, ThemeDescription.FLAG_IMAGECOLOR, null, null, null, null, Theme.key_profile_actionIcon));
-        arrayList.add(new ThemeDescription(profileHeaderLayout.writeButton, ThemeDescription.FLAG_BACKGROUNDFILTER, null, null, null, null, Theme.key_profile_actionBackground));
-        arrayList.add(new ThemeDescription(profileHeaderLayout.writeButton, ThemeDescription.FLAG_BACKGROUNDFILTER | ThemeDescription.FLAG_DRAWABLESELECTEDSTATE, null, null, null, null, Theme.key_profile_actionPressedBackground));
-
         arrayList.add(new ThemeDescription(listView, ThemeDescription.FLAG_CHECKTAG, new Class[]{TextCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
         arrayList.add(new ThemeDescription(listView, ThemeDescription.FLAG_CHECKTAG, new Class[]{TextCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteGreenText2));
         arrayList.add(new ThemeDescription(listView, ThemeDescription.FLAG_CHECKTAG, new Class[]{TextCell.class}, new String[]{"textView"}, null, null, null, Theme.key_text_RedRegular));
@@ -12616,31 +12556,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     @Override
     public void onBecomeFullyVisible() {
         super.onBecomeFullyVisible();
-        writeButtonSetBackground();
         fullyVisible = true;
         createBirthdayEffect();
-    }
-
-    private void writeButtonSetBackground() {
-        if (profileHeaderLayout.writeButton == null) return;
-        try {
-            Drawable shadowDrawable = fragmentView.getContext().getResources().getDrawable(R.drawable.floating_shadow_profile).mutate();
-            shadowDrawable.setColorFilter(new PorterDuffColorFilter(Color.BLACK, PorterDuff.Mode.MULTIPLY));
-            int color1 = getThemedColor(Theme.key_profile_actionBackground);
-            int color2 = getThemedColor(Theme.key_profile_actionPressedBackground);
-            int iconColor = getThemedColor(Theme.key_profile_actionIcon);
-            if (peerColor != null && Theme.hasHue(color1)) {
-                color1 = Theme.adaptHSV(peerColor.getBgColor1(false), +.05f, -.04f);
-                color2 = applyPeerColor2(color2);
-                iconColor = Color.WHITE;
-            }
-            CombinedDrawable combinedDrawable = new CombinedDrawable(shadowDrawable,
-                    Theme.createSimpleSelectorCircleDrawable(AndroidUtilities.dp(56), color1, color2),
-                    0, 0);
-            combinedDrawable.setIconSize(AndroidUtilities.dp(56), AndroidUtilities.dp(56));
-            profileHeaderLayout.writeButton.setBackground(combinedDrawable);
-            profileHeaderLayout.writeButton.setColorFilter(new PorterDuffColorFilter(iconColor, PorterDuff.Mode.MULTIPLY));
-        } catch (Exception e) {}
     }
 
     @SuppressLint("NotifyDataSetChanged")
