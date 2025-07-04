@@ -28,6 +28,7 @@ import androidx.core.graphics.ColorUtils;
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.BuildConfig;
 import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.ImageReceiver;
@@ -138,6 +139,7 @@ public class ProfileHeaderLayout {
 
     private ProfileButtonsView profileButtonsView;
 
+    private Animator profileButtonAnimator;
     //TODO: Initialize
     public ValueAnimator expandAnimator;
     public boolean isInLandscapeMode;
@@ -180,6 +182,10 @@ public class ProfileHeaderLayout {
                 super.dispatchDraw(canvas);
                 paint.setColor(Color.RED);
                 canvas.drawLine(canvas.getWidth()/2f, 0f, canvas.getWidth() / 2f, canvas.getHeight(), paint);
+                 paint.setColor(Color.GREEN);
+                canvas.drawLine(0, extraHeight, canvas.getWidth(), extraHeight, paint);
+
+
                 if (transitionOnlineText != null) {
                     canvas.save();
                     canvas.translate(onlineTextView[0].getX(), onlineTextView[0].getY());
@@ -618,31 +624,51 @@ public class ProfileHeaderLayout {
 
             listView.setOverScrollMode(extraHeight > dp(headerHeight) && extraHeight < listView.getMeasuredWidth() - newTop ? View.OVER_SCROLL_NEVER : View.OVER_SCROLL_ALWAYS);
 
-            if (messageButton != null) {
+            if (profileButtonsView != null) {
                 float searchTransitionOffset = 0f; //TODO: searchTransitionOffset
 
-                boolean writeButtonVisible = true;
                 // TODO: check visibility
-//                boolean writeButtonVisible = diff > 0.2f && !searchMode && (imageUpdater == null || setAvatarRow == -1);
+                float aBar =  (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight();
+                boolean showProfileButtons = profileButtonsView.getY() + profileButtonsView.getHeight() / 2f > aBar; // TODO:  && !searchMode && (imageUpdater == null || setAvatarRow == -1);
+                boolean hideProfileButtons = diff < 0.8f;
+                //TODO in ProfileButtonsView
 //                if (writeButtonVisible && chatId != 0) {
 //                    writeButtonVisible = ChatObject.isChannel(currentChat) && !currentChat.megagroup && chatInfo != null && chatInfo.linked_chat_id != 0 && infoHeaderRow != -1;
 //                }
+
                 if (!openAnimationInProgress) {
-                    boolean currentVisible = messageButton.getTag() == null;
-                    if (writeButtonVisible != currentVisible) {
-                        if (writeButtonVisible) {
-                            messageButton.setTag(null);
-                        } else {
-                            messageButton.setTag(0);
-                        }
+                    if (profileButtonAnimator != null) {
+                        Animator old = profileButtonAnimator;
+                        profileButtonAnimator = null;
+                        old.cancel();
                     }
+                    if (showProfileButtons) {
+                        profileButtonAnimator = profileButtonsView.getAnimator(1f);
+                        profileButtonAnimator.setInterpolator(new DecelerateInterpolator());
+                    } else {
+                        profileButtonAnimator = profileButtonsView.getAnimator(0f);
+                        profileButtonAnimator.setInterpolator(new DecelerateInterpolator());
+                    }
+                    profileButtonAnimator.setDuration(150);
+                    profileButtonAnimator.addListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+                            profileButtonAnimator = null;
+                        }
+                    });
+
+                    if (animated)
+                        profileButtonAnimator.start();
+                    else
+                        profileButtonAnimator.end();
+
                 }
 
                 if (storyView != null) {
-                    storyView.setExpandCoords(avatarContainer.getMeasuredWidth() - dp(40), writeButtonVisible, (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() + extraHeight + searchTransitionOffset);
+                    storyView.setExpandCoords(avatarContainer.getMeasuredWidth() - dp(40), false, (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() + extraHeight + searchTransitionOffset);
                 }
                 if (giftsView != null) {
-                    giftsView.setExpandCoords(avatarContainer.getMeasuredWidth() - dp(40), writeButtonVisible, (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() + extraHeight + searchTransitionOffset);
+                    giftsView.setExpandCoords(avatarContainer.getMeasuredWidth() - dp(40), false, (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() + extraHeight + searchTransitionOffset);
                 }
             }
 
@@ -917,6 +943,8 @@ public class ProfileHeaderLayout {
             }
         }
 
+        //TODO: remove
+        if(BuildConfig.DEBUG) avatarContainer.requestLayout();
     }
 
     public void needLayoutText(float diff) {
