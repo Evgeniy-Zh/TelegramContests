@@ -878,7 +878,7 @@ public class PollVotesAlert extends BottomSheet {
                     args.putLong("chat_id", userCell.currentChat.id);
                 }
                 dismiss();
-                ProfileActivity fragment = new ProfileActivity(args);
+                org.telegram.ui.ProfileBaseActivity fragment = org.telegram.ui.ProfileActivityFactory.newInstance(args, null);
                 if (userCell.currentUser != null) {
                     TLRPC.User currentUser = parentFragment.getCurrentUser();
                     fragment.setPlayProfileAnimation(currentUser != null && currentUser.id == userCell.currentUser.id ? 1 : 0);

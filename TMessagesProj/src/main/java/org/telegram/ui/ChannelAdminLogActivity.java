@@ -2997,7 +2997,7 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
                         Bundle args = new Bundle();
                         args.putLong("user_id", user.id);
                         addCanBanUser(args, user.id);
-                        ProfileActivity fragment = new ProfileActivity(args);
+                        org.telegram.ui.ProfileBaseActivity fragment = org.telegram.ui.ProfileActivityFactory.newInstance(args, null);
                         fragment.setPlayProfileAnimation(0);
                         presentFragment(fragment);
                     }
@@ -3296,7 +3296,7 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
                             Bundle args = new Bundle();
                             args.putLong("user_id", uid);
                             addCanBanUser(args, uid);
-                            ProfileActivity fragment = new ProfileActivity(args);
+                            org.telegram.ui.ProfileBaseActivity fragment = org.telegram.ui.ProfileActivityFactory.newInstance(args, null);
                             fragment.setPlayProfileAnimation(0);
                             presentFragment(fragment);
                         }

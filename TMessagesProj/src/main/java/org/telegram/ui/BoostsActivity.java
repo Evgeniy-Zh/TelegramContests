@@ -838,7 +838,7 @@ public class BoostsActivity extends GradientHeaderActivity implements Notificati
                     layout.textView.setMaxLines(2);
                     Bulletin.make(this, layout, Bulletin.DURATION_LONG).show();
                 } else if (!boost.gift && !boost.giveaway) {
-                    presentFragment(ProfileActivity.of(cell.getDialogId()));
+                    presentFragment(ProfileActivityFactory.of(cell.getDialogId()));
                 }
             }
             if (view instanceof TextCell) {

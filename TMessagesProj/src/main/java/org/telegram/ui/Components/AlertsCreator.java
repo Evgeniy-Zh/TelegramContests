@@ -1542,7 +1542,7 @@ public class AlertsCreator {
             Bundle args = new Bundle();
             args.putLong("user_id", user.id);
             if (fragment.getMessagesController().checkCanOpenChat(args, fragment)) {
-                fragment.presentFragment(new ProfileActivity(args));
+                fragment.presentFragment(org.telegram.ui.ProfileActivityFactory.newInstance(args, null));
             }
 
             builder.getDismissRunnable().run();
@@ -1663,7 +1663,7 @@ public class AlertsCreator {
             Bundle args = new Bundle();
             args.putLong("user_id", user.id);
             if (fragment.getMessagesController().checkCanOpenChat(args, fragment)) {
-                fragment.presentFragment(new ProfileActivity(args));
+                fragment.presentFragment(org.telegram.ui.ProfileActivityFactory.newInstance(args, null));
             }
 
             builder.getDismissRunnable().run();

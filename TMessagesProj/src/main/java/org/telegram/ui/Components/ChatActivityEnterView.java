@@ -174,6 +174,8 @@ import org.telegram.ui.MultiContactsSelectorBottomSheet;
 import org.telegram.ui.PhotoViewer;
 import org.telegram.ui.PremiumPreviewFragment;
 import org.telegram.ui.ProfileActivity;
+import org.telegram.ui.ProfileActivityFactory;
+import org.telegram.ui.ProfileBaseActivity;
 import org.telegram.ui.Stars.StarsIntroActivity;
 import org.telegram.ui.StickersActivity;
 import org.telegram.ui.Stories.recorder.CaptionContainerView;
@@ -10239,7 +10241,7 @@ public class ChatActivityEnterView extends BlurredFrameLayout implements Notific
             if (MessagesController.getInstance(currentAccount).getUser(button.user_id) != null) {
                 Bundle args = new Bundle();
                 args.putLong("user_id", button.user_id);
-                ProfileActivity fragment = new ProfileActivity(args);
+                ProfileBaseActivity fragment = ProfileActivityFactory.newInstance(args, null);
                 parentFragment.presentFragment(fragment);
             }
         } else if (button instanceof TLRPC.TL_keyboardButtonRequestPeer) {

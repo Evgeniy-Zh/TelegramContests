@@ -65,6 +65,8 @@ import org.telegram.ui.Components.SharedMediaLayout;
 import org.telegram.ui.LaunchActivity;
 import org.telegram.ui.PaymentFormActivity;
 import org.telegram.ui.ProfileActivity;
+import org.telegram.ui.ProfileActivityFactory;
+import org.telegram.ui.ProfileBaseActivity;
 import org.telegram.ui.bots.BotWebViewSheet;
 
 import java.util.ArrayList;
@@ -2487,7 +2489,7 @@ public class StarsController {
 //                        final Bundle args = new Bundle();
 //                        args.putLong("chat_id", -dialogId);
 //                        args.putBoolean("open_gifts", true);
-//                        final ProfileActivity profileActivity = new ProfileActivity(args);
+//                        final org.telegram.ui.ProfileBaseActivity profileActivity = org.telegram.ui.ProfileActivityFactory.newInstance(args);
 //                        profileActivity.whenFullyVisible(() -> {
 //                            AndroidUtilities.runOnUIThread(() -> {
 //                                if (profileActivity.sharedMediaLayout != null) {
@@ -2653,13 +2655,10 @@ public class StarsController {
                         final Bundle args = new Bundle();
                         args.putLong("chat_id", -dialogId);
                         args.putBoolean("open_gifts", true);
-                        final ProfileActivity profileActivity = new ProfileActivity(args);
+                        final ProfileBaseActivity profileActivity = ProfileActivityFactory.newInstance(args, null);
                         profileActivity.whenFullyVisible(() -> {
                             AndroidUtilities.runOnUIThread(() -> {
-                                if (profileActivity.sharedMediaLayout != null) {
-                                    profileActivity.sharedMediaLayout.scrollToPage(SharedMediaLayout.TAB_GIFTS);
-                                    profileActivity.scrollToSharedMedia();
-                                }
+                               profileActivity.scrollToGifts();
                             }, 200);
                             BulletinFactory.of(profileActivity).createEmojiBulletin(gift.sticker, getString(R.string.StarsGiftCompleted), AndroidUtilities.replaceTags(formatPluralString("StarsGiftCompletedChannelText", (int) stars, name))).show(false);
                         });

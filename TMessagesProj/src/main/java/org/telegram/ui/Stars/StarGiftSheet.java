@@ -43,7 +43,6 @@ import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.text.style.ClickableSpan;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
@@ -2991,7 +2990,7 @@ public class StarGiftSheet extends BottomSheetWithRecyclerListView implements No
                 args.putLong("chat_id", -did);
             }
             args.putBoolean("open_gifts", true);
-            lastFragment.presentFragment(new ProfileActivity(args));
+            lastFragment.presentFragment(org.telegram.ui.ProfileActivityFactory.newInstance(args, null));
         }
     }
 
@@ -3201,7 +3200,7 @@ public class StarGiftSheet extends BottomSheetWithRecyclerListView implements No
                                 }
                                 args.putBoolean("my_profile", true);
                                 args.putBoolean("open_gifts", true);
-                                final ProfileActivity profileActivity = new ProfileActivity(args);
+                                final org.telegram.ui.ProfileBaseActivity profileActivity = org.telegram.ui.ProfileActivityFactory.newInstance(args, null);
                                 lastFragment.presentFragment(profileActivity);
                             })
                         )

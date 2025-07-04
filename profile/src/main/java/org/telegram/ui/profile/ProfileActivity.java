@@ -305,6 +305,7 @@ import org.telegram.ui.PrivacyControlActivity;
 import org.telegram.ui.PrivacySettingsActivity;
 import org.telegram.ui.PrivacyUsersActivity;
 import org.telegram.ui.ProfileActivityFactory;
+import org.telegram.ui.ProfileBaseActivity;
 import org.telegram.ui.ProfileBirthdayEffect;
 import org.telegram.ui.ProfileNotificationsActivity;
 import org.telegram.ui.ProxyListActivity;
@@ -373,7 +374,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 @Keep
-public class ProfileActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate, DialogsActivity.DialogsActivityDelegate, SharedMediaLayout.SharedMediaPreloaderDelegate, ImageUpdater.ImageUpdaterDelegate, SharedMediaLayout.Delegate {
+public class ProfileActivity extends ProfileBaseActivity implements NotificationCenter.NotificationCenterDelegate, DialogsActivity.DialogsActivityDelegate, SharedMediaLayout.SharedMediaPreloaderDelegate, ImageUpdater.ImageUpdaterDelegate, SharedMediaLayout.Delegate {
 
     static {
         ProfileActivityFactory.factory = ProfileActivity::new;
@@ -484,7 +485,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private long userId;
     private long chatId;
     private long topicId;
-    public boolean saved;
     private long dialogId;
     private boolean creatingChat;
     private boolean userBlocked;
@@ -819,16 +819,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private ButtonWithCounterView[] bottomButton;
     private Runnable applyBulletin;
 
-    public static ProfileActivity of(long dialogId) {
-        Bundle bundle = new Bundle();
-        if (dialogId >= 0) {
-            bundle.putLong("user_id", dialogId);
-        } else {
-            bundle.putLong("chat_id", -dialogId);
-        }
-        return new ProfileActivity(bundle);
-    }
-
+    @Override
     public long getTopicId() {
         return topicId;
     }
@@ -1689,6 +1680,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     public ProfileActivity(Bundle args, SharedMediaLayout.SharedMediaPreloader preloader) {
         super(args);
         sharedMediaPreloader = preloader;
+        profileHeaderLayout = new ProfileHeaderLayout(this);
     }
 
     @Override
@@ -2059,7 +2051,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             resourcesProvider = lastFragment.getResourceProvider();
         }
 
-        profileHeaderLayout = new ProfileHeaderLayout(context, this);
+        profileHeaderLayout.createView(context);
 
         searchTransitionOffset = 0;
         searchTransitionProgress = 1f;
@@ -5185,6 +5177,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         AndroidUtilities.updateViewVisibilityAnimated(ttlIconView, visible, 0.8f, fragmentOpened);
     }
 
+    @Override
     public long getDialogId() {
         if (dialogId != 0) {
             return dialogId;
@@ -5570,7 +5563,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             Bundle args = new Bundle();
             args.putLong("user_id", participant.user_id);
             args.putBoolean("preload_messages", true);
-            presentFragment(new ProfileActivity(args));
+            presentFragment(org.telegram.ui.ProfileActivityFactory.newInstance(args, null));
         }
         return true;
     }
@@ -7268,6 +7261,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         return super.canBeginSlide();
     }
 
+    @Override
     public UndoView getUndoView() {
         return undoView;
     }
@@ -7277,10 +7271,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             return false;
         }
         return actionBar.isEnabled() && (sharedMediaRow == -1 || sharedMediaLayout == null || !sharedMediaLayout.closeActionMode());
-    }
-
-    public boolean isSettings() {
-        return imageUpdater != null && !myProfile;
     }
 
     @Override
@@ -7932,6 +7922,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }
     }
 
+    @Override
     public boolean isChat() {
         return chatId != 0;
     }
@@ -8596,10 +8587,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private MessagesController.PeerColor peerColor;
 
     private void updateProfileData(boolean reload) {
-        profileHeaderLayout.updateData();
-        if (profileHeaderLayout.innerAvatarContainer == null || profileHeaderLayout.nameTextView == null || getParentActivity() == null) {
+        if (profileHeaderLayout.avatarContainer == null || profileHeaderLayout.nameTextView == null || getParentActivity() == null) {
             return;
         }
+        profileHeaderLayout.updateData();
         String onlineTextOverride;
         int currentConnectionState = getConnectionsManager().getConnectionState();
         if (currentConnectionState == ConnectionsManager.ConnectionStateWaitingForNetwork) {
@@ -8672,18 +8663,20 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     vectorAvatarThumbDrawable = new VectorAvatarThumbDrawable(vectorAvatar, user.premium, VectorAvatarThumbDrawable.TYPE_PROFILE);
                 }
             }
-            final ImageLocation videoLocation = avatarsViewPager.getCurrentVideoLocation(thumbLocation, imageLocation);
-            if (avatar == null) {
-                avatarsViewPager.initIfEmpty(vectorAvatarThumbDrawable, imageLocation, thumbLocation, reload);
-            }
-            if (avatarBig == null) {
-                if (vectorAvatar != null) {
-                    avatarImage.setImageDrawable(vectorAvatarThumbDrawable);
-                } else if (videoThumbLocation != null && !user.photo.personal) {
-                    avatarImage.getImageReceiver().setVideoThumbIsSame(true);
-                    avatarImage.setImage(videoThumbLocation, "avatar", thumbLocation, "50_50", avatarDrawable, user);
-                } else {
-                    avatarImage.setImage(videoLocation, ImageLoader.AUTOPLAY_FILTER, thumbLocation, "50_50", avatarDrawable, user);
+            if (avatarsViewPager != null) {
+                final ImageLocation videoLocation = avatarsViewPager.getCurrentVideoLocation(thumbLocation, imageLocation);
+                if (avatar == null) {
+                    avatarsViewPager.initIfEmpty(vectorAvatarThumbDrawable, imageLocation, thumbLocation, reload);
+                }
+                if (avatarBig == null) {
+                    if (vectorAvatar != null) {
+                        avatarImage.setImageDrawable(vectorAvatarThumbDrawable);
+                    } else if (videoThumbLocation != null && !user.photo.personal) {
+                        avatarImage.getImageReceiver().setVideoThumbIsSame(true);
+                        avatarImage.setImage(videoThumbLocation, "avatar", thumbLocation, "50_50", avatarDrawable, user);
+                    } else {
+                        avatarImage.setImage(videoLocation, ImageLoader.AUTOPLAY_FILTER, thumbLocation, "50_50", avatarDrawable, user);
+                    }
                 }
             }
 
@@ -12558,6 +12551,14 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         super.onBecomeFullyVisible();
         fullyVisible = true;
         createBirthdayEffect();
+    }
+
+    @Override
+    public void scrollToGifts() {
+        if (sharedMediaLayout != null) {
+            sharedMediaLayout.scrollToPage(SharedMediaLayout.TAB_GIFTS);
+            scrollToSharedMedia();
+        }
     }
 
     @SuppressLint("NotifyDataSetChanged")

@@ -602,7 +602,7 @@ public class ManageLinksActivity extends BaseFragment implements NotificationCen
                     Bundle bundle = new Bundle();
                     bundle.putLong("user_id", user.id);
                     MessagesController.getInstance(UserConfig.selectedAccount).putUser(user, false);
-                    ProfileActivity profileActivity = new ProfileActivity(bundle);
+                    org.telegram.ui.ProfileBaseActivity profileActivity = org.telegram.ui.ProfileActivityFactory.newInstance(bundle, null);
                     presentFragment(profileActivity);
                 }
             } else if (position == createNewLinkRow) {

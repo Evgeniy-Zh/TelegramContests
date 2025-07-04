@@ -48,13 +48,11 @@ import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
-import android.provider.CallLog;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
 import android.text.TextWatcher;
-import android.util.Pair;
 import android.util.Property;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -189,7 +187,6 @@ import org.telegram.ui.Components.voip.PrivateVideoPreviewDialog;
 import org.telegram.ui.Components.voip.RTMPStreamPipOverlay;
 import org.telegram.ui.Components.voip.VoIPTextureView;
 import org.telegram.ui.Components.voip.VoIPToggleButton;
-import org.telegram.ui.Stories.DarkThemeResourceProvider;
 import org.telegram.ui.Stories.recorder.DominantColors;
 import org.webrtc.voiceengine.WebRtcAudioTrack;
 
@@ -3673,7 +3670,7 @@ public class GroupCallActivity extends BottomSheet implements NotificationCenter
                 if (cell.hasAvatarSet()) {
                     args.putBoolean("expandPhoto", true);
                 }
-                parentActivity.presentFragment(new ProfileActivity(args));
+                parentActivity.presentFragment(org.telegram.ui.ProfileActivityFactory.newInstance(args, null));
                 dismiss();
             } else if (position == listAdapter.addMemberRow) {
                 if (ChatObject.isChannel(currentChat) && currentChat != null && !currentChat.megagroup && ChatObject.isPublic(currentChat)) {

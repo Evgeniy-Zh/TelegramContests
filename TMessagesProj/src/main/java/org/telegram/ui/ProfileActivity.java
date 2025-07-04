@@ -64,7 +64,6 @@ import android.media.MediaCodecList;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Looper;
 import android.os.SystemClock;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
@@ -315,7 +314,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-public class ProfileActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate, DialogsActivity.DialogsActivityDelegate, SharedMediaLayout.SharedMediaPreloaderDelegate, ImageUpdater.ImageUpdaterDelegate, SharedMediaLayout.Delegate {
+public class ProfileActivity extends ProfileBaseActivity implements NotificationCenter.NotificationCenterDelegate, DialogsActivity.DialogsActivityDelegate, SharedMediaLayout.SharedMediaPreloaderDelegate, ImageUpdater.ImageUpdaterDelegate, SharedMediaLayout.Delegate {
     private final static int PHONE_OPTION_CALL = 0,
         PHONE_OPTION_COPY = 1,
         PHONE_OPTION_TELEGRAM_CALL = 2,
@@ -788,7 +787,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         } else {
             bundle.putLong("chat_id", -dialogId);
         }
-        return new ProfileActivity(bundle);
+        return new ProfileActivity(bundle, null);
     }
 
     public long getTopicId() {
@@ -1848,10 +1847,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 return null;
             }
         }
-    }
-
-    public ProfileActivity(Bundle args) {
-        this(args, null);
     }
 
     public ProfileActivity(Bundle args, SharedMediaLayout.SharedMediaPreloader preloader) {
@@ -6185,7 +6180,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             Bundle args = new Bundle();
             args.putLong("user_id", participant.user_id);
             args.putBoolean("preload_messages", true);
-            presentFragment(new ProfileActivity(args));
+            presentFragment(org.telegram.ui.ProfileActivityFactory.newInstance(args, null));
         }
         return true;
     }
@@ -8321,6 +8316,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
     public boolean isSettings() {
         return imageUpdater != null && !myProfile;
+    }
+
+    @Override
+    public void scrollToGifts() {
+        // TODO
     }
 
     @Override

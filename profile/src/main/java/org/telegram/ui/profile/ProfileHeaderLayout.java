@@ -143,15 +143,19 @@ public class ProfileHeaderLayout {
     public boolean isInLandscapeMode;
 
 
-    public ProfileHeaderLayout(Context context, BaseFragment parentFragment) {
+    public ProfileHeaderLayout(BaseFragment parentFragment) {
         this.parentFragment = parentFragment;
-        this.context = context;
 
         smallAvatarSize = 90;
         smallAvatarRadius = AndroidUtilities.dp(smallAvatarSize / 2f);
 
         headerHeight = 180f;
         expandedHeaderHeight = 450f;
+
+    }
+
+    public void createView(Context context){
+        this.context = context;
 
         Paint paint = new Paint();
         paint.setColor(Color.RED);
@@ -268,8 +272,9 @@ public class ProfileHeaderLayout {
 
     public void setUpView(){
 
-        avatarContainer.addView(innerAvatarContainer, LayoutHelper.createFrameMarginPx(smallAvatarSize, smallAvatarSize, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 0, 0, 0));
+        // Add Views
 
+        avatarContainer.addView(innerAvatarContainer, LayoutHelper.createFrameMarginPx(smallAvatarSize, smallAvatarSize, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 0, 0, 0));
 
         avatarImage.setRoundRadius(smallAvatarRadius);
         innerAvatarContainer.addView(avatarImage, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
@@ -453,8 +458,10 @@ public class ProfileHeaderLayout {
 
 
     public void updateData() {
+        if(avatarContainer == null) return;
+        if(userInfo == null) return;
         hasFallbackPhoto = false;
-        if (userInfo.id == parentFragment. getUserConfig().getClientUserId()) {
+        if (userInfo.id == parentFragment.getUserConfig().getClientUserId()) {
             if (UserObject.hasFallbackPhoto(userInfo)) {
                 hasFallbackPhoto = true;
                 TLRPC.PhotoSize smallSize = FileLoader.getClosestPhotoSizeWithSize(userInfo.fallback_photo.sizes, 1000);

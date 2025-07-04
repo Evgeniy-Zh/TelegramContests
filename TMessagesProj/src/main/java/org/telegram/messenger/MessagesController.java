@@ -21000,7 +21000,7 @@ public class MessagesController extends BaseController implements NotificationCe
                 args.putLong("user_id", user.id);
             }
             if (type == 0) {
-                fragment.presentFragment(new ProfileActivity(args));
+                fragment.presentFragment(org.telegram.ui.ProfileActivityFactory.newInstance(args, null));
             } else if (type == 2) {
                 if (ChatObject.isForum(chat)) {
                     fragment.presentFragment(TopicsFragment.getTopicsOrChat(fragment, args), !doNotCloseLast, true);

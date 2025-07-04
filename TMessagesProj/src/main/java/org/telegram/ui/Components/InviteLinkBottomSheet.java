@@ -66,6 +66,7 @@ import org.telegram.ui.LaunchActivity;
 import org.telegram.ui.LinkEditActivity;
 import org.telegram.ui.ManageLinksActivity;
 import org.telegram.ui.ProfileActivity;
+import org.telegram.ui.ProfileActivityFactory;
 import org.telegram.ui.Stars.StarsController;
 import org.telegram.ui.Stars.StarsIntroActivity;
 import org.telegram.ui.Stories.recorder.ButtonWithCounterView;
@@ -361,7 +362,7 @@ public class InviteLinkBottomSheet extends BottomSheet {
 //                                    AndroidUtilities.runOnUIThread(() -> {
 //                                        Bundle bundle = new Bundle();
 //                                        bundle.putLong("user_id", user.id);
-//                                        ProfileActivity profileActivity = new ProfileActivity(bundle);
+//                                        org.telegram.ui.ProfileBaseActivity profileActivity = org.telegram.ui.ProfileActivityFactory.newInstance(bundle);
 //                                        fragment.presentFragment(profileActivity);
 //                                        isNeedReopen = true;
 //                                    }, 100);
@@ -375,7 +376,7 @@ public class InviteLinkBottomSheet extends BottomSheet {
                         AndroidUtilities.runOnUIThread(() -> {
                             Bundle bundle = new Bundle();
                             bundle.putLong("user_id", user.id);
-                            ProfileActivity profileActivity = new ProfileActivity(bundle);
+                            org.telegram.ui.ProfileBaseActivity profileActivity = org.telegram.ui.ProfileActivityFactory.newInstance(bundle, null);
                             fragment.presentFragment(profileActivity);
                             isNeedReopen = true;
                         }, 100);
@@ -1382,7 +1383,7 @@ public class InviteLinkBottomSheet extends BottomSheet {
                 sheet[0].dismiss();
                 BaseFragment lastFragment = LaunchActivity.getSafeLastFragment();
                 if (lastFragment != null) {
-                    lastFragment.presentFragment(ProfileActivity.of(importer.user_id));
+                    lastFragment.presentFragment(ProfileActivityFactory.of(importer.user_id));
                 }
             }
 

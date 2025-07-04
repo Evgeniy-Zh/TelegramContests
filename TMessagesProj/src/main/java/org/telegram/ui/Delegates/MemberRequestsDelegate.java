@@ -249,7 +249,7 @@ public class MemberRequestsDelegate implements MemberRequestCell.OnClickListener
                     isNeedRestoreList = true;
                     fragment.dismissCurrentDialog();
                     Bundle args = new Bundle();
-                    ProfileActivity profileActivity = new ProfileActivity(args);
+                    org.telegram.ui.ProfileBaseActivity profileActivity = org.telegram.ui.ProfileActivityFactory.newInstance(args, null);
                     args.putLong("user_id", user.id);
                     args.putBoolean("removeFragmentOnChatOpen", false);
                     fragment.presentFragment(profileActivity);

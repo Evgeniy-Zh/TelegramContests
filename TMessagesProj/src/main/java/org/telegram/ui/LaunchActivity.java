@@ -688,7 +688,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                     Bundle args = new Bundle();
                     args.putLong("user_id", UserConfig.getInstance(currentAccount).getClientUserId());
                     args.putBoolean("my_profile", true);
-                    presentFragment(new ProfileActivity(args, null));
+                    presentFragment(org.telegram.ui.ProfileActivityFactory.newInstance(args, null));
                 } else if (id == 17) {
                     drawerLayoutContainer.closeDrawer(true);
                     Bundle args = new Bundle();
@@ -879,7 +879,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                                 break;
                             case "settings": {
                                 args.putLong("user_id", UserConfig.getInstance(currentAccount).clientUserId);
-                                ProfileActivity settings = new ProfileActivity(args);
+                                ProfileActivity settings = new ProfileActivity(args, null);
                                 actionBarLayout.addFragmentToStack(settings);
                                 settings.restoreSelfArgs(savedInstanceState);
                                 break;
@@ -902,7 +902,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                                 break;
                             case "chat_profile":
                                 if (args != null) {
-                                    ProfileActivity profile = new ProfileActivity(args);
+                                    org.telegram.ui.ProfileBaseActivity profile = org.telegram.ui.ProfileActivityFactory.newInstance(args, null);
                                     if (actionBarLayout.addFragmentToStack(profile)) {
                                         profile.restoreSelfArgs(savedInstanceState);
                                     }
@@ -1390,10 +1390,11 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     private void openSettings(boolean expanded) {
         Bundle args = new Bundle();
         args.putLong("user_id", UserConfig.getInstance(currentAccount).clientUserId);
+        args.putBoolean("open_settings", true);
         if (expanded) {
             args.putBoolean("expandPhoto", true);
         }
-        ProfileActivity fragment = new ProfileActivity(args);
+        org.telegram.ui.ProfileBaseActivity fragment = org.telegram.ui.ProfileActivityFactory.newInstance(args, null);
         presentFragment(fragment);
         drawerLayoutContainer.closeDrawer(false);
     }
@@ -3258,7 +3259,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                 if (open_settings == 1) {
                     Bundle args = new Bundle();
                     args.putLong("user_id", UserConfig.getInstance(currentAccount).clientUserId);
-                    fragment = new ProfileActivity(args);
+                    fragment = org.telegram.ui.ProfileActivityFactory.newInstance(args, null);
                 } else if (open_settings == 2) {
                     fragment = new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC);
                 } else if (open_settings == 3) {
@@ -4654,7 +4655,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                                         } else {
                                             profile_args.putLong("user_id", peerId);
                                         }
-                                        getActionBarLayout().presentFragment(new ProfileActivity(profile_args));
+                                        getActionBarLayout().presentFragment(org.telegram.ui.ProfileActivityFactory.newInstance(profile_args, null));
                                     } else if (chat != null && chat.forum) {
                                         Long topicId = threadId;
                                         if (topicId == null && messageId != null) {
@@ -7013,7 +7014,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         } else if (id == NotificationCenter.reloadInterface) {
             boolean last = mainFragmentsStack.size() > 1 && mainFragmentsStack.get(mainFragmentsStack.size() - 1) instanceof ProfileActivity;
             if (last) {
-                ProfileActivity profileActivity = (ProfileActivity) mainFragmentsStack.get(mainFragmentsStack.size() - 1);
+                ProfileBaseActivity profileActivity = (ProfileBaseActivity) mainFragmentsStack.get(mainFragmentsStack.size() - 1);
                 if (!profileActivity.isSettings()) {
                     last = false;
                 }
@@ -7510,7 +7511,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
             DialogsActivity dialogsActivity = (DialogsActivity) fragment;
             undoView = dialogsActivity.getUndoView();
         } else if (fragment instanceof ProfileActivity) {
-            ProfileActivity profileActivity = (ProfileActivity) fragment;
+            ProfileBaseActivity profileActivity = (ProfileBaseActivity) fragment;
             undoView = profileActivity.getUndoView();
         }
         if (undoView != null) {
@@ -7956,7 +7957,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                 } else if (lastFragment instanceof WallpapersListActivity) {
                     outState.putString("fragment", "wallpapers");
                 } else if (lastFragment instanceof ProfileActivity) {
-                    ProfileActivity profileActivity = (ProfileActivity) lastFragment;
+                    ProfileBaseActivity profileActivity = (ProfileBaseActivity) lastFragment;
                     if (profileActivity.isSettings()) {
                         outState.putString("fragment", "settings");
                     } else if (profileActivity.isChat() && args != null) {

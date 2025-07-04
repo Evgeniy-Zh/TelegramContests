@@ -101,7 +101,7 @@ public class PhotoUtilities {
                             CharSequence subtitle = AndroidUtilities.replaceSingleTag(LocaleController.getString(R.string.ApplyAvatarHint), () -> {
                                 Bundle args = new Bundle();
                                 args.putLong("user_id", UserConfig.getInstance(currentAccount).clientUserId);
-                                layout.getLastFragment().presentFragment(new ProfileActivity(args));
+                                layout.getLastFragment().presentFragment(org.telegram.ui.ProfileActivityFactory.newInstance(args, null));
                             });
                             BulletinFactory.of(layout.getLastFragment()).createUsersBulletin(Collections.singletonList(user), title, subtitle, null).show();
                         }
@@ -222,7 +222,7 @@ public class PhotoUtilities {
                         CharSequence subtitle = AndroidUtilities.replaceSingleTag(LocaleController.getString(R.string.ApplyAvatarHint), () -> {
                             Bundle args = new Bundle();
                             args.putLong("user_id", userId);
-                            chatActivity.presentFragment(new ProfileActivity(args));
+                            chatActivity.presentFragment(org.telegram.ui.ProfileActivityFactory.newInstance(args, null));
                         });
                         BulletinFactory.of(chatActivity).createUsersBulletin(Collections.singletonList(user), title, subtitle, null).show();
                     }

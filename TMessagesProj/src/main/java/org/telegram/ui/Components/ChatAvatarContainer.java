@@ -60,6 +60,7 @@ import org.telegram.ui.ChatActivity;
 import org.telegram.ui.Components.Forum.ForumUtilities;
 import org.telegram.ui.ProfileActivity;
 import org.telegram.ui.ProfileActivityFactory;
+import org.telegram.ui.ProfileBaseActivity;
 import org.telegram.ui.Stories.StoriesUtilities;
 import org.telegram.ui.TopicsFragment;
 
@@ -536,7 +537,7 @@ public class ChatAvatarContainer extends FrameLayout implements NotificationCent
 
         if (parentFragment.isComments) {
             if (chat == null) return;
-            parentFragment.presentFragment(ProfileActivity.of(-chat.id), removeLast);
+            parentFragment.presentFragment(ProfileActivityFactory.of(-chat.id), removeLast);
             return;
         }
 
@@ -573,13 +574,13 @@ public class ChatAvatarContainer extends FrameLayout implements NotificationCent
                 }
                 args.putBoolean("reportSpam", parentFragment.hasReportSpam());
                 args.putInt("actionBarColor", getThemedColor(Theme.key_actionBarDefault));
-                BaseFragment fragment = ProfileActivityFactory._new(args, sharedMediaPreloader);
-//                if (!monoforum) {
-//                    fragment.setUserInfo(parentFragment.getCurrentUserInfo(), parentFragment.profileChannelMessageFetcher, parentFragment.birthdayAssetsFetcher);
-//                }
-//                if (fromChatAnimation) {
-//                    fragment.setPlayProfileAnimation(byAvatar ? 2 : 1);
-//                }
+                ProfileBaseActivity fragment = ProfileActivityFactory.newInstance(args, sharedMediaPreloader);
+                if (!monoforum) {
+                    fragment.setUserInfo(parentFragment.getCurrentUserInfo(), parentFragment.profileChannelMessageFetcher, parentFragment.birthdayAssetsFetcher);
+                }
+                if (fromChatAnimation) {
+                    fragment.setPlayProfileAnimation(1); //TODO: byAvatar ? 2 : 1
+                }
                 parentFragment.presentFragment(fragment, removeLast);
             }
         } else if (chat != null) {
@@ -590,7 +591,7 @@ public class ChatAvatarContainer extends FrameLayout implements NotificationCent
             } else if (parentFragment.isTopic) {
                 args.putLong("topic_id", parentFragment.getThreadMessage().getId());
             }
-            ProfileActivity fragment = new ProfileActivity(args, sharedMediaPreloader);
+            ProfileBaseActivity fragment = ProfileActivityFactory.newInstance(args, sharedMediaPreloader);
             if (!monoforum) {
                 fragment.setChatInfo(parentFragment.getCurrentChatInfo());
             }

@@ -64,7 +64,6 @@ import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.CheckBox2;
 import org.telegram.ui.Components.CombinedDrawable;
 import org.telegram.ui.Components.CubicBezierInterpolator;
-import org.telegram.ui.Components.HideViewAfterAnimation;
 import org.telegram.ui.Components.ItemOptions;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.Premium.boosts.adapters.SelectorAdapter;
@@ -1047,8 +1046,8 @@ public class UserSelectorBottomSheet extends BottomSheetWithRecyclerListView imp
 //                    bottomSheetParams.allowNestedScroll = false;
                     Bundle args = new Bundle();
                     args.putLong("user_id", user.id);
-//                    fragment.showAsSheet(new ProfileActivity(args), bottomSheetParams);
-                    fragment.presentFragment(new ProfileActivity(args));
+//                    fragment.showAsSheet(org.telegram.ui.ProfileActivityFactory.newInstance(args), bottomSheetParams);
+                    fragment.presentFragment(org.telegram.ui.ProfileActivityFactory.newInstance(args, null));
                 })
                 .show();
         };
