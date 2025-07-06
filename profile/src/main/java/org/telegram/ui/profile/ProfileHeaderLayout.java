@@ -2,6 +2,7 @@ package org.telegram.ui.profile;
 
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.AndroidUtilities.lerp;
+import static org.telegram.messenger.AndroidUtilities.statusBarHeight;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -11,7 +12,10 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.util.Log;
@@ -20,19 +24,15 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
 import androidx.core.graphics.ColorUtils;
-import androidx.dynamicanimation.animation.FloatValueHolder;
-import androidx.dynamicanimation.animation.SpringAnimation;
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.AndroidUtilities;
-import org.telegram.messenger.BuildConfig;
 import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.ImageReceiver;
@@ -42,20 +42,28 @@ import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
+import org.telegram.ui.ActionBar.ActionBarMenu;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.SimpleTextView;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Components.AnimatedColor;
+import org.telegram.ui.Components.AnimatedEmojiDrawable;
 import org.telegram.ui.Components.AnimatedFileDrawable;
+import org.telegram.ui.Components.AnimatedFloat;
 import org.telegram.ui.Components.AudioPlayerAlert;
 import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.CanvasButton;
+import org.telegram.ui.Components.ChatActivityInterface;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.LinkSpanDrawable;
 import org.telegram.ui.Components.ProfileGalleryView;
-import org.telegram.ui.Components.RLottieImageView;
 import org.telegram.ui.Components.RecyclerListView;
+import org.telegram.ui.Components.SizeNotifierFrameLayout;
 import org.telegram.ui.Components.VectorAvatarThumbDrawable;
+import org.telegram.ui.DialogsActivity;
+import org.telegram.ui.PeerColorActivity;
+import org.telegram.ui.Stars.StarGiftPatterns;
 import org.telegram.ui.Stories.ProfileStoriesView;
 
 public class ProfileHeaderLayout {
@@ -85,7 +93,7 @@ public class ProfileHeaderLayout {
 
     public org.telegram.ui.profile.ProfileActivity.OverlaysView overlaysView; //TODO: make private
     public org.telegram.ui.profile.ProfileActivity.PagerIndicatorView avatarsViewPagerIndicatorView; //TODO: make private
-    public View topView;
+    public TopView topView;
 
 
     private float avatarAnimationProgress;
@@ -96,7 +104,7 @@ public class ProfileHeaderLayout {
 
     private boolean hasFallbackPhoto;
 
-    private BaseFragment parentFragment;
+    private BaseFragment currentFragment;
 
     public float photoDescriptionProgress = -1;
 
@@ -146,19 +154,30 @@ public class ProfileHeaderLayout {
     public Animator avatarAnimator;
     public ValueAnimator expandAnimator;
 
+    public int actionBarBackgroundColor;
+
+    public int searchTransitionOffset;
+
+    public ChatActivityInterface previousTransitionFragment;
+    public BaseFragment previousTransitionMainFragment;
+
+    public float headerShadowAlpha = 1.0f;
+
+
     //TODO: Initialize
     public boolean isInLandscapeMode;
-    private String TAG = "ProfileHeaderLayout";
+    private final String TAG = "ProfileHeaderLayout";
 
 
-    public ProfileHeaderLayout(BaseFragment parentFragment) {
-        this.parentFragment = parentFragment;
+    public ProfileHeaderLayout(BaseFragment currentFragment) {
+        this.currentFragment = currentFragment;
 
         smallAvatarSize = 90;
         smallAvatarRadius = AndroidUtilities.dp(smallAvatarSize / 2f);
 
-        headerHeight = 180f;
+        headerHeight = 200f;
         expandedHeaderHeight = 450f;
+        searchTransitionOffset = 0;
 
     }
 
@@ -189,6 +208,13 @@ public class ProfileHeaderLayout {
 //                canvas.drawLine(canvas.getWidth()/2f, 0f, canvas.getWidth() / 2f, canvas.getHeight(), paint);
 //                 paint.setColor(Color.GREEN);
 //                canvas.drawLine(0, extraHeight, canvas.getWidth(), extraHeight, paint);
+
+//                paint.setColor(Color.CYAN);
+//                canvas.drawLine(0, dp(headerHeight) + statusBarHeight + ActionBar.getCurrentActionBarHeight(), canvas.getWidth(), dp(headerHeight)  + statusBarHeight + ActionBar.getCurrentActionBarHeight(), paint);
+
+
+                paint.setColor(Color.BLUE);
+                canvas.drawLine(0, dp(expandedHeaderHeight), canvas.getWidth(), dp(expandedHeaderHeight), paint);
 
 
                 if (transitionOnlineText != null) {
@@ -273,7 +299,9 @@ public class ProfileHeaderLayout {
 
         messageButton = profileButtonsView.messageButton;
 
-        actionBar = parentFragment.getActionBar();
+        actionBar = currentFragment.getActionBar();
+
+        topView = new ProfileHeaderLayout.TopView(context);
 
         final float diff = Math.min(1f, extraHeight / dp(headerHeight));
 
@@ -342,9 +370,17 @@ public class ProfileHeaderLayout {
 
         AnimatorSet set = new AnimatorSet();
 
+        ValueAnimator topViewAnimator = ValueAnimator.ofFloat(0f, 1f);
+
+        topViewAnimator.setInterpolator(CubicBezierInterpolator.EASE_IN);
+
+        topViewAnimator.addUpdateListener(animation -> {
+            topView.setAnimationFracture(animation.getAnimatedFraction());
+        });
 
         set.playTogether(
                 giftsView.getAnimator(false),
+                topViewAnimator,
                 ObjectAnimator.ofFloat(innerAvatarContainer, View.SCALE_Y, avatarScale),
                 ObjectAnimator.ofFloat(innerAvatarContainer, View.SCALE_X, avatarScale),
                 ObjectAnimator.ofFloat(innerAvatarContainer, View.TRANSLATION_Y, avatarY, 0f)
@@ -361,7 +397,7 @@ public class ProfileHeaderLayout {
         animator.setDuration(duration);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            ((AnimatorSet)animator).setCurrentPlayTime((long) (Math.max(duration - extraHeight, 0)));
+            ((AnimatorSet)animator).setCurrentPlayTime(0);
         }
 
         avatarContainer.invalidate();
@@ -370,6 +406,7 @@ public class ProfileHeaderLayout {
 
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                Log.d(TAG, "isPulledDown = " + isPulledDown);
                 if(avatarAnimationIsRunning) return;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     ((AnimatorSet)animator).setCurrentPlayTime((long) (Math.max(duration - extraHeight, 0)));
@@ -407,9 +444,9 @@ public class ProfileHeaderLayout {
                 }
             };
             if (a == 1) {
-                nameTextView[a].setTextColor(parentFragment.getThemedColor(Theme.key_profile_title));
+                nameTextView[a].setTextColor(currentFragment.getThemedColor(Theme.key_profile_title));
             } else {
-                nameTextView[a].setTextColor(parentFragment.getThemedColor(Theme.key_actionBarDefaultTitle));
+                nameTextView[a].setTextColor(currentFragment.getThemedColor(Theme.key_actionBarDefaultTitle));
             }
             nameTextView[a].setPadding(0, dp(6), 0, dp(a == 0 ? 12 : 4));
             nameTextView[a].setTextSize(18);
@@ -476,7 +513,7 @@ public class ProfileHeaderLayout {
             }
 
             onlineTextView[a].setEllipsizeByGradient(true);
-            onlineTextView[a].setTextColor(  parentFragment.getThemedColor(Theme.key_avatar_subtitleInProfileBlue)); //TODO: applyPeerColor
+            onlineTextView[a].setTextColor(  currentFragment.getThemedColor(Theme.key_avatar_subtitleInProfileBlue)); //TODO: applyPeerColor
             onlineTextView[a].setTextSize(14);
             onlineTextView[a].setGravity(Gravity.LEFT);
             onlineTextView[a].setAlpha(a == 0 ? 0.0f : 1.0f);
@@ -533,12 +570,12 @@ public class ProfileHeaderLayout {
         if(avatarContainer == null) return;
         if(userInfo == null) return;
         hasFallbackPhoto = false;
-        if (userInfo.id == parentFragment.getUserConfig().getClientUserId()) {
+        if (userInfo.id == currentFragment.getUserConfig().getClientUserId()) {
             if (UserObject.hasFallbackPhoto(userInfo)) {
                 hasFallbackPhoto = true;
                 TLRPC.PhotoSize smallSize = FileLoader.getClosestPhotoSizeWithSize(userInfo.fallback_photo.sizes, 1000);
                 if (smallSize != null) {
-                    fallbackImage.setImage(ImageLocation.getForPhoto(smallSize, userInfo.fallback_photo), "50_50", (Drawable) null, 0, null, UserConfig.getInstance(parentFragment.getCurrentAccount()).getCurrentUser(), 0);
+                    fallbackImage.setImage(ImageLocation.getForPhoto(smallSize, userInfo.fallback_photo), "50_50", (Drawable) null, 0, null, UserConfig.getInstance(currentFragment.getCurrentAccount()).getCurrentUser(), 0);
                 }
             }
         }
@@ -642,10 +679,10 @@ public class ProfileHeaderLayout {
         int statusColor;
         boolean online = false;
         if (onlineTextViewTag instanceof Integer) {
-            statusColor = parentFragment.getThemedColor((Integer) onlineTextViewTag);
+            statusColor = currentFragment.getThemedColor((Integer) onlineTextViewTag);
             online = (Integer) onlineTextViewTag == Theme.key_profile_status;
         } else {
-            statusColor = parentFragment.getThemedColor(Theme.key_avatar_subtitleInProfileBlue);
+            statusColor = currentFragment.getThemedColor(Theme.key_avatar_subtitleInProfileBlue);
         }
         int color = statusColor;
         onlineTextView[1].setTextColor(ColorUtils.blendARGB(color, 0xB3FFFFFF, value));
@@ -657,8 +694,8 @@ public class ProfileHeaderLayout {
 
 //        needLayoutText(Math.min(1f, extraHeight / AndroidUtilities.dp(expandThreshold)));
 
-        nameTextView[1].setTextColor(ColorUtils.blendARGB(peerColor != null ? Color.WHITE : parentFragment.getThemedColor(Theme.key_profile_title), Color.WHITE, currentExpandAnimatorValue));
-        actionBar.setItemsColor(ColorUtils.blendARGB(peerColor != null ? Color.WHITE : parentFragment.getThemedColor(Theme.key_actionBarDefaultIcon), Color.WHITE, value), false);
+        nameTextView[1].setTextColor(ColorUtils.blendARGB(peerColor != null ? Color.WHITE : currentFragment.getThemedColor(Theme.key_profile_title), Color.WHITE, currentExpandAnimatorValue));
+        actionBar.setItemsColor(ColorUtils.blendARGB(peerColor != null ? Color.WHITE : currentFragment.getThemedColor(Theme.key_actionBarDefaultIcon), Color.WHITE, value), false);
         actionBar.setMenuOffsetSuppressed(true);
 
         avatarImage.setForegroundAlpha(value);
@@ -752,7 +789,9 @@ public class ProfileHeaderLayout {
 
     }
 
-    public void needLayout(boolean animated, int newTop, boolean openingAvatar, float initialAnimationExtraHeight) {
+    public void needLayout(boolean animated, boolean openingAvatar, float initialAnimationExtraHeight) {
+
+        final int topBarHeight = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight();
 
         profileButtonsView.setTranslationY(extraHeight);
 
@@ -766,14 +805,14 @@ public class ProfileHeaderLayout {
 
             listView.setTopGlowOffset((int) extraHeight);
 
-            listView.setOverScrollMode(extraHeight > dp(headerHeight) && extraHeight < listView.getMeasuredWidth() - newTop ? View.OVER_SCROLL_NEVER : View.OVER_SCROLL_ALWAYS);
+            listView.setOverScrollMode(extraHeight > dp(headerHeight) && extraHeight < dp(expandedHeaderHeight) - topBarHeight ? View.OVER_SCROLL_NEVER : View.OVER_SCROLL_ALWAYS);
 
             if (profileButtonsView != null) {
                 float searchTransitionOffset = 0f; //TODO: searchTransitionOffset
 
                 // TODO: check visibility
-                float aBar =  (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight();
-                boolean showProfileButtons = profileButtonsView.getY() + profileButtonsView.getHeight() / 2f > aBar; // TODO:  && !searchMode && (imageUpdater == null || setAvatarRow == -1);
+
+                boolean showProfileButtons = profileButtonsView.getY() + profileButtonsView.getHeight() / 2f > topBarHeight; // TODO:  && !searchMode && (imageUpdater == null || setAvatarRow == -1);
                 boolean hideProfileButtons = diff < 0.8f;
                 //TODO in ProfileButtonsView
 //                if (writeButtonVisible && chatId != 0) {
@@ -818,7 +857,7 @@ public class ProfileHeaderLayout {
 
 
             float h = openAnimationInProgress ? initialAnimationExtraHeight : extraHeight;
-            expandProgress = Math.max(0f, Math.min(1f, (h - dp(headerHeight)) / (listView.getMeasuredWidth() - newTop - dp(headerHeight))));
+            expandProgress = Math.max(0f, Math.min(1f, (h - dp(headerHeight)) / (dp(expandedHeaderHeight) - topBarHeight - dp(headerHeight))));
 
             float collapseProgress = (dp(headerHeight) / h) - 1f;
 
@@ -896,7 +935,7 @@ public class ProfileHeaderLayout {
                     }
                     ViewGroup.LayoutParams params = avatarsViewPager.getLayoutParams();
                     params.width = listView.getMeasuredWidth();
-                    params.height = (int) (h + newTop);
+                    params.height = (int) (h + topBarHeight);
                     avatarsViewPager.requestLayout();
                     if (!expandAnimator.isRunning()) {
                         nameY = extraHeight - profileButtonsView.getMeasuredHeight();
@@ -948,7 +987,7 @@ public class ProfileHeaderLayout {
                             }
                         });
 
-                        topView.setBackgroundColor(parentFragment.getThemedColor(Theme.key_avatar_backgroundActionBarBlue));
+                        topView.setBackgroundColor(currentFragment.getThemedColor(Theme.key_avatar_backgroundActionBarBlue));
 
                         boolean doNotSetForeground = false; //TODO: check foreground
                         if (!doNotSetForeground) {
@@ -1011,7 +1050,7 @@ public class ProfileHeaderLayout {
 //                innerAvatarContainer.setScaleY(avatarScale);
 
                 overlaysView.setAlphaValue(getAvatarAnimationProgress(), false);
-                actionBar.setItemsColor(ColorUtils.blendARGB(peerColor != null ? Color.WHITE : parentFragment.getThemedColor(Theme.key_actionBarDefaultIcon), Color.WHITE,getAvatarAnimationProgress()), false);
+                actionBar.setItemsColor(ColorUtils.blendARGB(peerColor != null ? Color.WHITE : currentFragment.getThemedColor(Theme.key_actionBarDefaultIcon), Color.WHITE,getAvatarAnimationProgress()), false);
 
                 //TODO: Update drawables
 //                if (scamDrawable != null) {
@@ -1167,6 +1206,201 @@ public class ProfileHeaderLayout {
                 filter = null;
             }
             avatarImage.setForegroundImage(location, filter, drawable);
+        }
+    }
+
+    public class TopView extends FrameLayout {
+
+        private int currentColor;
+        private Paint paint = new Paint();
+
+        public TopView(Context context) {
+            super(context);
+            setWillNotDraw(false);
+        }
+
+        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.getSize(widthMeasureSpec) + AndroidUtilities.dp(3));
+        }
+
+        @Override
+        public void setBackgroundColor(int color) {
+            if (color != currentColor) {
+                currentColor = color;
+                paint.setColor(color);
+                invalidate();
+                if (!hasColorById) {
+                    actionBarBackgroundColor = currentColor;
+                }
+            }
+        }
+
+        private boolean hasColorById;
+        private final AnimatedFloat hasColorAnimated = new AnimatedFloat(this, 350, CubicBezierInterpolator.EASE_OUT_QUINT);
+        public int color1, color2;
+        private final AnimatedColor color1Animated = new AnimatedColor(this, 350, CubicBezierInterpolator.EASE_OUT_QUINT);
+        private final AnimatedColor color2Animated = new AnimatedColor(this, 350, CubicBezierInterpolator.EASE_OUT_QUINT);
+
+        private int backgroundGradientColor1, backgroundGradientColor2, backgroundGradientHeight;
+        private LinearGradient backgroundGradient;
+        private final Paint backgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        public void setBackgroundColorId(MessagesController.PeerColor peerColor, boolean animated) {
+            if (peerColor != null) {
+                hasColorById = true;
+                color1 = peerColor.getBgColor1(Theme.isCurrentThemeDark());
+                color2 = peerColor.getBgColor2(Theme.isCurrentThemeDark());
+                actionBarBackgroundColor = ColorUtils.blendARGB(color1, color2, 0.25f);
+                if (peerColor.patternColor != 0) {
+                    emojiColor = peerColor.patternColor;
+                } else {
+                    emojiColor = PeerColorActivity.adaptProfileEmojiColor(color1);
+                }
+            } else {
+                actionBarBackgroundColor = currentColor;
+                hasColorById = false;
+                if (AndroidUtilities.computePerceivedBrightness(currentFragment.getThemedColor(Theme.key_actionBarDefault)) > .8f) {
+                    emojiColor = currentFragment.getThemedColor(Theme.key_windowBackgroundWhiteBlueText);
+                } else if (AndroidUtilities.computePerceivedBrightness(currentFragment.getThemedColor(Theme.key_actionBarDefault)) < .2f) {
+                    emojiColor = Theme.multAlpha(currentFragment.getThemedColor(Theme.key_actionBarDefaultTitle), .5f);
+                } else {
+                    emojiColor = PeerColorActivity.adaptProfileEmojiColor(currentFragment.getThemedColor(Theme.key_actionBarDefault));
+                }
+            }
+            if (!animated) {
+                color1Animated.set(color1, true);
+                color2Animated.set(color2, true);
+            }
+            invalidate();
+        }
+
+        private int emojiColor;
+        private final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable emoji = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(this, false, dp(20), AnimatedEmojiDrawable.CACHE_TYPE_ALERT_PREVIEW_STATIC);
+
+        @Override
+        protected void onAttachedToWindow() {
+            super.onAttachedToWindow();
+            emoji.attach();
+        }
+
+        @Override
+        protected void onDetachedFromWindow() {
+            super.onDetachedFromWindow();
+            emoji.detach();
+        }
+
+        public final AnimatedFloat emojiLoadedT = new AnimatedFloat(this, 0, 440, CubicBezierInterpolator.EASE_OUT_QUINT);
+        public final AnimatedFloat emojiFullT = new AnimatedFloat(this, 0, 440, CubicBezierInterpolator.EASE_OUT_QUINT);
+
+        private boolean hasEmoji;
+        private boolean emojiIsCollectible;
+        public void setBackgroundEmojiId(long emojiId, boolean isCollectible, boolean animated) {
+            emoji.set(emojiId, animated);
+            emoji.setColor(emojiColor);
+            emojiIsCollectible = isCollectible;
+            if (!animated) {
+                emojiFullT.force(isCollectible);
+            }
+            hasEmoji = hasEmoji || emojiId != 0 && emojiId != -1;
+            invalidate();
+        }
+
+        private boolean emojiLoaded;
+        private boolean isEmojiLoaded() {
+            if (emojiLoaded) {
+                return true;
+            }
+            if (emoji != null && emoji.getDrawable() instanceof AnimatedEmojiDrawable) {
+                AnimatedEmojiDrawable drawable = (AnimatedEmojiDrawable) emoji.getDrawable();
+                if (drawable.getImageReceiver() != null && drawable.getImageReceiver().hasImageLoaded()) {
+                    return emojiLoaded = true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            final int height = ActionBar.getCurrentActionBarHeight() + (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0);
+            final float v = extraHeight + height + searchTransitionOffset;
+
+            float mediaHeaderAnimationProgress = 0f; //TODO: set progress
+            int y1 = (int) (v * (1.0f - mediaHeaderAnimationProgress));
+
+            if (y1 != 0) {
+                if (previousTransitionFragment != null && previousTransitionFragment.getContentView() != null) {
+                    blurBounds.set(0, 0, getMeasuredWidth(), y1);
+                    if (previousTransitionFragment.getActionBar() != null && !previousTransitionFragment.getContentView().blurWasDrawn() && previousTransitionFragment.getActionBar().getBackground() == null) {
+                        paint.setColor(Theme.getColor(Theme.key_actionBarDefault, previousTransitionFragment.getResourceProvider()));
+                        canvas.drawRect(blurBounds, paint);
+                    } else if (previousTransitionMainFragment != null && previousTransitionMainFragment instanceof DialogsActivity && previousTransitionMainFragment.getFragmentView() instanceof SizeNotifierFrameLayout) {
+                        previousTransitionMainFragment.getActionBar().blurScrimPaint.setColor(Theme.getColor(Theme.key_actionBarDefault, previousTransitionMainFragment.getResourceProvider()));
+                        ((SizeNotifierFrameLayout) previousTransitionMainFragment.getFragmentView()).drawBlurRect(canvas, getY(), blurBounds, previousTransitionMainFragment.getActionBar().blurScrimPaint, true);
+                    } else {
+                        previousTransitionFragment.getContentView().drawBlurRect(canvas, getY(), blurBounds, previousTransitionFragment.getActionBar().blurScrimPaint, true);
+                    }
+                }
+                paint.setColor(currentColor);
+                final int color1 = color1Animated.set(this.color1);
+                final int color2 = color2Animated.set(this.color2);
+                final int gradientHeight = AndroidUtilities.statusBarHeight + AndroidUtilities.dp(144);
+                if (backgroundGradient == null || backgroundGradientColor1 != color1 || backgroundGradientColor2 != color2 || backgroundGradientHeight != gradientHeight) {
+                    backgroundGradient = new LinearGradient(0, 0, 0, backgroundGradientHeight = gradientHeight, new int[] { backgroundGradientColor2 = color2, backgroundGradientColor1 = color1 }, new float[] { 0, 1 }, Shader.TileMode.CLAMP);
+                    backgroundPaint.setShader(backgroundGradient);
+                }
+                final float progressToGradient = (playProfileAnimation == 0 ? 1f : getAvatarAnimationProgress()) * hasColorAnimated.set(hasColorById);
+                if (progressToGradient < 1) {
+                    canvas.drawRect(0, 0, getMeasuredWidth(), y1, paint);
+                }
+                if (progressToGradient > 0) {
+                    backgroundPaint.setAlpha((int) (0xFF * progressToGradient));
+                    canvas.drawRect(0, 0, getMeasuredWidth(), y1, backgroundPaint);
+                }
+                if (hasEmoji) {
+                    final float loadedScale = emojiLoadedT.set(isEmojiLoaded());
+                    final float full = emojiFullT.set(emojiIsCollectible);
+                    if (loadedScale > 0) {
+                        canvas.save();
+                        canvas.clipRect(0, 0, getMeasuredWidth(), y1);
+                        float scale = 1 - animationFracture * animationFracture;
+
+                        canvas.scale(scale, scale, getWidth() / 2f, innerAvatarContainer.getY());
+                        StarGiftPatterns.drawProfilePattern(canvas, emoji, getMeasuredWidth(), ((actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + dp(144)) - (1f - extraHeight / dp(headerHeight)) * dp(50), Math.min(1f, extraHeight / dp(headerHeight)), 1f);
+                        canvas.restore();
+                    }
+                }
+                if (previousTransitionFragment != null) {
+                    ActionBar actionBar = previousTransitionFragment.getActionBar();
+                    ActionBarMenu menu = actionBar.menu;
+                    if (actionBar != null && menu != null) {
+                        int restoreCount = canvas.save();
+                        canvas.translate(actionBar.getX() + menu.getX(), actionBar.getY() + menu.getY());
+                        canvas.saveLayerAlpha(0, 0, menu.getMeasuredWidth(), menu.getMeasuredHeight(), (int) (255 * (1f - getAvatarAnimationProgress())), Canvas.ALL_SAVE_FLAG);
+                        menu.draw(canvas);
+                        canvas.restoreToCount(restoreCount);
+                    }
+                }
+            }
+            SizeNotifierFrameLayout contentView;
+            contentView = ((SizeNotifierFrameLayout) currentFragment.fragmentView);
+
+            if (y1 != v) {
+                int color = currentFragment.getThemedColor(Theme.key_windowBackgroundWhite);
+                paint.setColor(color);
+                blurBounds.set(0, y1, getMeasuredWidth(), (int) v);
+                contentView.drawBlurRect(canvas, getY(), blurBounds, paint, true);
+            }
+            if (currentFragment.getParentLayout() != null) {
+                currentFragment.getParentLayout().drawHeaderShadow(canvas, (int) (headerShadowAlpha * 255), (int) v);
+            }
+        }
+        private Rect blurBounds = new Rect();
+
+        private float animationFracture = 0f;
+        public void setAnimationFracture(float animatedFraction) {
+            this.animationFracture = animatedFraction;
+            invalidate();
         }
     }
 
