@@ -13,6 +13,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -25,7 +26,10 @@ import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
 import androidx.core.graphics.ColorUtils;
+import androidx.dynamicanimation.animation.FloatValueHolder;
+import androidx.dynamicanimation.animation.SpringAnimation;
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
+import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.BuildConfig;
@@ -52,7 +56,6 @@ import org.telegram.ui.Components.ProfileGalleryView;
 import org.telegram.ui.Components.RLottieImageView;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.VectorAvatarThumbDrawable;
-import org.telegram.ui.Stars.ProfileGiftsView;
 import org.telegram.ui.Stories.ProfileStoriesView;
 
 public class ProfileHeaderLayout {
@@ -120,7 +123,7 @@ public class ProfileHeaderLayout {
     private float avatarScale;
     public float nameX;
     public float nameY;
-    public float expandProgress;
+    private float expandProgress;
     public float currentExpandAnimatorValue;
     public float currentExpanAnimatorFracture;
 
@@ -140,9 +143,12 @@ public class ProfileHeaderLayout {
     private ProfileButtonsView profileButtonsView;
 
     private Animator profileButtonAnimator;
-    //TODO: Initialize
+    public Animator avatarAnimator;
     public ValueAnimator expandAnimator;
+
+    //TODO: Initialize
     public boolean isInLandscapeMode;
+    private String TAG = "ProfileHeaderLayout";
 
 
     public ProfileHeaderLayout(BaseFragment parentFragment) {
@@ -166,8 +172,7 @@ public class ProfileHeaderLayout {
             protected void dispatchDraw(@NonNull Canvas canvas) {
                 super.dispatchDraw(canvas);
                 paint.setColor(Color.GREEN);
-                canvas.drawLine(canvas.getWidth()/2f, 0f, canvas.getWidth() / 2f, canvas.getHeight(), paint);
-                canvas.drawCircle(getPivotX(), getPivotY(), 5f, paint);
+                canvas.drawCircle(getPivotX(), getPivotY(), 12f, paint);
 
 //                paint.setAlpha(99);
 //                canvas.drawRect(new Rect(0, 0, canvas.getWidth(), canvas.getHeight()), paint);
@@ -180,10 +185,10 @@ public class ProfileHeaderLayout {
             @Override
             protected void dispatchDraw(Canvas canvas) {
                 super.dispatchDraw(canvas);
-                paint.setColor(Color.RED);
-                canvas.drawLine(canvas.getWidth()/2f, 0f, canvas.getWidth() / 2f, canvas.getHeight(), paint);
-                 paint.setColor(Color.GREEN);
-                canvas.drawLine(0, extraHeight, canvas.getWidth(), extraHeight, paint);
+//                paint.setColor(Color.RED);
+//                canvas.drawLine(canvas.getWidth()/2f, 0f, canvas.getWidth() / 2f, canvas.getHeight(), paint);
+//                 paint.setColor(Color.GREEN);
+//                canvas.drawLine(0, extraHeight, canvas.getWidth(), extraHeight, paint);
 
 
                 if (transitionOnlineText != null) {
@@ -276,20 +281,23 @@ public class ProfileHeaderLayout {
 
     }
 
+    Animator animator;
+
     public void setUpView(){
 
         // Add Views
+
+        avatarContainer.addView(giftsView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         avatarContainer.addView(innerAvatarContainer, LayoutHelper.createFrameMarginPx(smallAvatarSize, smallAvatarSize, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 0, 0, 0));
 
         avatarImage.setRoundRadius(smallAvatarRadius);
         innerAvatarContainer.addView(avatarImage, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
-        float pointX = AndroidUtilities.dp(smallAvatarSize) / 2f;
+        float pointX = dp(smallAvatarSize) / 2f;
         innerAvatarContainer.setPivotX(pointX);
         innerAvatarContainer.setPivotY(0);
 
-        avatarContainer.addView(giftsView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         avatarContainer.addView(mediaCounterTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 118.33f, -2, 8, 0));
 
@@ -308,8 +316,66 @@ public class ProfileHeaderLayout {
 
         setUpNameText();
 
-        fallbackImage.setRoundRadius(AndroidUtilities.dp(11));
+        fallbackImage.setRoundRadius(dp(11));
 
+        profileButtonsView.muteButton.setOnClickListener(v -> {
+            Animator viewAnimator = giftsView.getAnimator(false);
+            viewAnimator.setDuration(1400);
+            viewAnimator.start();
+        });
+
+        profileButtonsView.callButton.setOnClickListener(v -> {
+            Animator viewAnimator = giftsView.getAnimator(true);
+            viewAnimator.setDuration(1400);
+            viewAnimator.start();
+        });
+
+        profileButtonsView.videoButton.setOnClickListener(v -> {
+            listView.smoothScrollBy(0, (int) extraHeight, CubicBezierInterpolator.EASE_IN);
+        });
+
+        extraHeight = dp(headerHeight);
+
+        long duration = 640;
+
+
+
+        AnimatorSet set = new AnimatorSet();
+
+
+        set.playTogether(
+                giftsView.getAnimator(false),
+                ObjectAnimator.ofFloat(innerAvatarContainer, View.SCALE_Y, avatarScale),
+                ObjectAnimator.ofFloat(innerAvatarContainer, View.SCALE_X, avatarScale),
+                ObjectAnimator.ofFloat(innerAvatarContainer, View.TRANSLATION_Y, avatarY, 0f)
+        );
+
+        set.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+            }
+        });
+
+
+        animator = set;
+        animator.setDuration(duration);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ((AnimatorSet)animator).setCurrentPlayTime((long) (Math.max(duration - extraHeight, 0)));
+        }
+
+        avatarContainer.invalidate();
+
+        listView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                if(avatarAnimationIsRunning) return;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    ((AnimatorSet)animator).setCurrentPlayTime((long) (Math.max(duration - extraHeight, 0)));
+                }
+            }
+        });
     }
     
     private void setUpNameText() {
@@ -505,14 +571,20 @@ public class ProfileHeaderLayout {
     // transition between rounded avatar and rectangular avatar
     // transition between views' positions
     public void setAvatarExpandProgress(float animatedFracture) {
+//        Log.d(TAG, "animationFracture = " + animatedFracture);
         final int newTop = ActionBar.getCurrentActionBarHeight() + (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0);
         final float value = AndroidUtilities.lerp(expandAnimatorValues, currentExpanAnimatorFracture = animatedFracture);
         currentExpandAnimatorValue = value;
 
         // TODO: checkPhotoDescriptionAlpha();
-        innerAvatarContainer.setScaleX(avatarScale);
-        innerAvatarContainer.setScaleY(avatarScale);
+//        innerAvatarContainer.setScaleX(avatarScale);
+//        innerAvatarContainer.setScaleY(avatarScale);
+
         innerAvatarContainer.setTranslationY(AndroidUtilities.lerp(avatarY, 0, value)); //TODO: end value
+
+//        avatarsViewPager.setTranslationY(innerAvatarContainer.getTranslationY());
+
+
         avatarImage.setRoundRadius((int) AndroidUtilities.lerp(smallAvatarRadius, 0f, value));
         if (storyView != null) {
             storyView.setExpandProgress(value);
@@ -596,7 +668,7 @@ public class ProfileHeaderLayout {
         params.height = (int) AndroidUtilities.lerp(AndroidUtilities.dpf2(smallAvatarSize), (extraHeight + newTop) / avatarScale, value);
 
         innerAvatarContainer.setPivotX(params.width / 2f);
-        innerAvatarContainer.setPivotY(0);
+//        innerAvatarContainer.setPivotY(0);
 
 
         avatarContainer.requestLayout();
@@ -606,8 +678,80 @@ public class ProfileHeaderLayout {
         updateCollectibleHint();
     }
 
-    float textYAfterAnimation = 0;
-    
+
+    boolean avatarAnimationIsRunning = false;
+    boolean avatarIsShown = false;
+    private void animateAvatar() {
+        if(innerAvatarContainer != null) {
+
+            float aBar =  AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight();
+            boolean showAvatar = extraHeight > aBar;
+            boolean hideAvatar = extraHeight < aBar;
+
+
+            if (!openAnimationInProgress && !avatarAnimationIsRunning) {
+//                if(avatarAnimator != null){
+//                    avatarAnimator.cancel();
+//                    avatarAnimator = null;
+//                }
+
+                AnimatorSet set = new AnimatorSet();
+                if(showAvatar && !avatarIsShown) {
+                    set.playTogether(
+                            giftsView.getAnimator(true),
+                            ObjectAnimator.ofFloat(innerAvatarContainer, View.SCALE_Y, avatarScale),
+                            ObjectAnimator.ofFloat(innerAvatarContainer, View.SCALE_X, avatarScale),
+                            ObjectAnimator.ofFloat(innerAvatarContainer, View.TRANSLATION_Y, avatarY)
+                    );
+                    set.addListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+                            avatarAnimationIsRunning = false;
+                            avatarIsShown = true;
+                            set.removeListener(this);
+                        }
+                    });
+                }
+                if(hideAvatar && avatarIsShown) {
+                    set.playTogether(
+                            giftsView.getAnimator(false),
+                            ObjectAnimator.ofFloat(innerAvatarContainer, View.SCALE_Y, 0f),
+                            ObjectAnimator.ofFloat(innerAvatarContainer, View.SCALE_X, 0f),
+                            ObjectAnimator.ofFloat(innerAvatarContainer, View.TRANSLATION_Y, -200f)
+                    );
+
+                    set.addListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+                            avatarAnimationIsRunning = false;
+                            avatarIsShown = false;
+                            set.removeListener(this);
+                        }
+                    });
+                }
+
+                avatarAnimator = set;
+
+                avatarAnimator.setDuration(550);
+
+
+                avatarAnimator.addListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        avatarAnimator = null;
+                    }
+                });
+
+                avatarAnimator.start();
+
+                avatarAnimationIsRunning = true;
+
+            }
+
+        }
+
+    }
+
     public void needLayout(boolean animated, int newTop, boolean openingAvatar, float initialAnimationExtraHeight) {
 
         profileButtonsView.setTranslationY(extraHeight);
@@ -672,10 +816,14 @@ public class ProfileHeaderLayout {
                 }
             }
 
+
             float h = openAnimationInProgress ? initialAnimationExtraHeight : extraHeight;
+            expandProgress = Math.max(0f, Math.min(1f, (h - dp(headerHeight)) / (listView.getMeasuredWidth() - newTop - dp(headerHeight))));
+
+            float collapseProgress = (dp(headerHeight) / h) - 1f;
+
             if (h > dp(headerHeight) || isPulledDown) {                                   //     ✅  when pulling up or down
-                expandProgress = Math.max(0f, Math.min(1f, (h - dp(headerHeight)) / (listView.getMeasuredWidth() - newTop - dp(headerHeight))));
-                avatarScale = lerp(1f, 1.2f, Math.min(1f, expandProgress * 3f));
+//                avatarScale = lerp(1f, 1.2f, Math.min(1f, expandProgress * 3f));
 
                 float y =  calculateBaseTextContainerPosition();
                 nameY = lerp(y, y * 1.3f, expandProgress);
@@ -796,7 +944,6 @@ public class ProfileHeaderLayout {
                         expandAnimator.addListener(new AnimatorListenerAdapter() {
                             @Override
                             public void onAnimationEnd(Animator animation) {
-                                textYAfterAnimation = textContainer.getTranslationY();
                                 expandAnimator.removeListener(this);
                             }
                         });
@@ -822,8 +969,8 @@ public class ProfileHeaderLayout {
                         expandAnimator.start();
                     }
 
-                    innerAvatarContainer.setScaleX(avatarScale);
-                    innerAvatarContainer.setScaleY(avatarScale);
+//                    innerAvatarContainer.setScaleX(avatarScale);
+//                    innerAvatarContainer.setScaleY(avatarScale);
 
                     if (expandAnimator == null || !expandAnimator.isRunning()) {
                         textContainer.setTranslationY(nameY);
@@ -850,7 +997,7 @@ public class ProfileHeaderLayout {
                 }
 
                 avatarImage.setRoundRadius((int) lerp(smallAvatarRadius, 0f, getAvatarAnimationProgress()));
-                innerAvatarContainer.setTranslationY(lerp((float) Math.ceil(avatarY), 0f, getAvatarAnimationProgress()));
+//                innerAvatarContainer.setTranslationY(lerp((float) Math.ceil(avatarY), 0f, getAvatarAnimationProgress()));
                 float extra = (innerAvatarContainer.getMeasuredWidth() - dp(42)) * avatarScale;
 
                 //TODO
@@ -860,8 +1007,8 @@ public class ProfileHeaderLayout {
 //                starBgItem.setTranslationY(innerAvatarContainer.getY() + dp(24) + extra);
 //                starFgItem.setTranslationX(innerAvatarContainer.getX() + dp(28) + extra);
 //                starFgItem.setTranslationY(innerAvatarContainer.getY() + dp(24) + extra);
-                innerAvatarContainer.setScaleX(avatarScale);
-                innerAvatarContainer.setScaleY(avatarScale);
+//                innerAvatarContainer.setScaleX(avatarScale);
+//                innerAvatarContainer.setScaleY(avatarScale);
 
                 overlaysView.setAlphaValue(getAvatarAnimationProgress(), false);
                 actionBar.setItemsColor(ColorUtils.blendARGB(peerColor != null ? Color.WHITE : parentFragment.getThemedColor(Theme.key_actionBarDefaultIcon), Color.WHITE,getAvatarAnimationProgress()), false);
@@ -897,9 +1044,11 @@ public class ProfileHeaderLayout {
                 }
                 float nameScale = 1.0f; //TODO
                 if (expandAnimator == null || !expandAnimator.isRunning()) {
-                    innerAvatarContainer.setScaleX(avatarScale);
-                    innerAvatarContainer.setScaleY(avatarScale);
-                    innerAvatarContainer.setTranslationY((float) Math.ceil(avatarY));
+                    if(avatarAnimator == null || !avatarAnimator.isRunning()) {
+//                        innerAvatarContainer.setScaleX(avatarScale);
+//                        innerAvatarContainer.setScaleY(avatarScale);
+//                        innerAvatarContainer.setTranslationY((float) Math.ceil(avatarY));
+                    }
                     float extra = dp(42) * avatarScale - dp(42);
                     //TODO:
 //                    timeItem.setTranslationX(innerAvatarContainer.getX() + dp(16) + extra);
@@ -943,8 +1092,6 @@ public class ProfileHeaderLayout {
             }
         }
 
-        //TODO: remove
-        if(BuildConfig.DEBUG) avatarContainer.requestLayout();
     }
 
     public void needLayoutText(float diff) {
