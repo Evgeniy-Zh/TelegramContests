@@ -43,7 +43,6 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
-import android.graphics.LinearGradient;
 import android.graphics.Outline;
 import android.graphics.Paint;
 import android.graphics.Path;
@@ -53,7 +52,6 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.Rect;
 import android.graphics.RectF;
-import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
@@ -218,10 +216,8 @@ import org.telegram.ui.ChatEditActivity;
 import org.telegram.ui.ChatRightsEditActivity;
 import org.telegram.ui.ChatUsersActivity;
 import org.telegram.ui.Components.AlertsCreator;
-import org.telegram.ui.Components.AnimatedColor;
 import org.telegram.ui.Components.AnimatedEmojiDrawable;
 import org.telegram.ui.Components.AnimatedEmojiSpan;
-import org.telegram.ui.Components.AnimatedFloat;
 import org.telegram.ui.Components.AnimatedTextView;
 import org.telegram.ui.Components.AnimationProperties;
 import org.telegram.ui.Components.AudioPlayerAlert;
@@ -318,7 +314,6 @@ import org.telegram.ui.SelectAnimatedEmojiDialog;
 import org.telegram.ui.SessionsActivity;
 import org.telegram.ui.Stars.BotStarsActivity;
 import org.telegram.ui.Stars.BotStarsController;
-import org.telegram.ui.Stars.StarGiftPatterns;
 import org.telegram.ui.Stars.StarGiftSheet;
 import org.telegram.ui.Stars.StarsController;
 import org.telegram.ui.Stars.StarsIntroActivity;
@@ -493,7 +488,6 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
     private boolean hasVoiceChatItem;
     private boolean isTopic;
     private boolean openSimilar;
-    public boolean myProfile;
     public boolean openGifts;
     private boolean openedGifts;
     public boolean openCommonChats;
@@ -1485,10 +1479,6 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                 return null;
             }
         }
-    }
-
-    public ProfileActivity(Bundle args) {
-        this(args, null);
     }
 
     public ProfileActivity(Bundle args, SharedMediaLayout.SharedMediaPreloader preloader) {
@@ -12795,6 +12785,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
         }
     }
 
+    @Override
     public void prepareBlurBitmap() {
         if (blurredView == null) {
             return;

@@ -11,6 +11,7 @@ import org.telegram.ui.Components.UndoView;
 public abstract class ProfileBaseActivity extends BaseFragment {
 
     public boolean saved;
+    public boolean myProfile;
 
     public ProfileBaseActivity(Bundle args) {
         super(args);
@@ -43,4 +44,6 @@ public abstract class ProfileBaseActivity extends BaseFragment {
     public abstract TLRPC.Chat getCurrentChat();
 
     public abstract TLRPC.UserFull getUserInfo();
+
+    public abstract void prepareBlurBitmap();
 }

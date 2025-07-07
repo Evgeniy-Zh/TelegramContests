@@ -2,12 +2,17 @@ package org.telegram.ui.Stars;
 
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.AndroidUtilities.dpf2;
+import static org.telegram.messenger.AndroidUtilities.lerp;
+
+import static java.lang.Math.abs;
+import static java.lang.Math.cos;
+import static java.lang.Math.max;
+import static java.lang.Math.sin;
 
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 
 import org.telegram.messenger.AndroidUtilities;
-import org.telegram.ui.ActionBar.Theme;
 
 public class StarGiftPatterns {
 
@@ -171,7 +176,7 @@ public class StarGiftPatterns {
 
             final float sl = 77.5f, sr = 173.33f;
             final float space = w / AndroidUtilities.density - sl - sr;
-            int count = Math.max(0, Math.round(space / 27.25f));
+            int count = max(0, Math.round(space / 27.25f));
             if (count % 2 == 0) {
                 count++;
             }
@@ -208,5 +213,72 @@ public class StarGiftPatterns {
             pattern.draw(canvas);
         }
     }
+
+
+    private static float calculateTimeFraction(float x, float c){
+        double exp = Math.pow(x, c);
+        float y  = (float) ( (2*exp) / (exp + Math.pow (1 - x, c)) );
+        return y;
+    }
+
+    public static void drawProfilePatternEllipse(Canvas canvas, Drawable pattern, float cx, float cy, float radius, float alpha, float animFracture) {
+        //TODO: cache calculated initial positions
+        float defSize = 24f;
+
+        for(int i = 0; i < 8; i++) {
+
+            float arg = (float) (i * (Math.PI / 4f));
+            float baseX = (float) (cx + cos(arg) * radius);
+            float baseY = (float) (cy + sin(arg) * radius * 0.66f);
+            float size = defSize;
+            float thisAlpha = 0.5f;
+
+            float c = 2.5f;
+
+            if(i == 0 || i >= 4) c = 6.9f;
+            float fr = calculateTimeFraction(animFracture, c);
+
+            float y = lerp(baseY, 0f, fr * fr);
+            float x = lerp(baseX, cx, fr);
+
+            pattern.setBounds(
+                    (int) (x - dpf2(size / 2f)),
+                    (int) (y - dpf2(size / 2f)),
+                    (int) (x + dpf2(size / 2f)),
+                    (int) (y + dpf2(size / 2f))
+            );
+
+            pattern.setAlpha((int) (0xFF * alpha * thisAlpha));
+            pattern.draw(canvas);
+
+        }
+
+        for(int i = 0; i < 10; i++) {
+
+            float arg = (float) (i * (Math.PI / 5f));
+            float baseX = (float) (cx + cos(arg) * radius * 1.5f);
+            float baseY = (float) (cy + sin(arg) * radius * 1.01f);
+            float size = defSize * 0.7f;
+            float thisAlpha = 0.35f;
+
+            float fr = calculateTimeFraction(animFracture, 5.5f);
+
+            float y = lerp(baseY, 0f, fr * fr);
+            float x = lerp(baseX, cx, fr);
+
+            pattern.setBounds(
+                    (int) (x - dpf2(size / 2f)),
+                    (int) (y - dpf2(size / 2f)),
+                    (int) (x + dpf2(size / 2f)),
+                    (int) (y + dpf2(size / 2f))
+            );
+
+            pattern.setAlpha((int) (0xFF * alpha * thisAlpha));
+            pattern.draw(canvas);
+
+        }
+
+    }
+
 
 }

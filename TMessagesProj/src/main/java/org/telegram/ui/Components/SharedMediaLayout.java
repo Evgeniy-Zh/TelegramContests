@@ -132,7 +132,6 @@ import org.telegram.ui.Gifts.ProfileGiftsContainer;
 import org.telegram.ui.LaunchActivity;
 import org.telegram.ui.PhotoViewer;
 import org.telegram.ui.PremiumPreviewFragment;
-import org.telegram.ui.ProfileActivity;
 import org.telegram.ui.ProfileBaseActivity;
 import org.telegram.ui.Stars.StarsController;
 import org.telegram.ui.Stories.StoriesController;
@@ -439,7 +438,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                 profileActivity.getContext(),
                 dialogCell.getDialogId(),
                 StoriesListPlaceProvider.of((RecyclerListView) dialogCell.getParent())
-                    .addBottomClip(profileActivity instanceof ProfileActivity && ((ProfileActivity) profileActivity).myProfile ? dp(68) : 0)
+                    .addBottomClip(profileActivity instanceof ProfileBaseActivity && ((ProfileBaseActivity) profileActivity).myProfile ? dp(68) : 0)
             );
         }
     }
@@ -762,7 +761,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                         }
                     });
                 }
-            } else if (fragment instanceof ProfileActivity) {
+            } else if (fragment instanceof ProfileBaseActivity) {
                 ProfileBaseActivity profileActivity = (ProfileBaseActivity) fragment;
                 if (profileActivity.saved) {
                     dialogId = profileActivity.getUserConfig().getClientUserId();
@@ -2440,7 +2439,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                     return startedTrackingX;
                 }
             };
-        } else if (profileActivity instanceof ProfileActivity) {
+        } else if (profileActivity instanceof ProfileBaseActivity) {
             saveItem = new TextView(context);
             saveItem.setText(getString(R.string.Save).toUpperCase());
             saveItem.setTypeface(AndroidUtilities.bold());
@@ -2459,7 +2458,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
             saveItem.setScaleX(0.4f);
             saveItem.setScaleY(0.4f);
 
-            giftsContainer = new ProfileGiftsContainer(profileActivity, context, profileActivity.getCurrentAccount(), ((ProfileActivity) profileActivity).getDialogId(), resourcesProvider) {
+            giftsContainer = new ProfileGiftsContainer(profileActivity, context, profileActivity.getCurrentAccount(), ((ProfileBaseActivity) profileActivity).getDialogId(), resourcesProvider) {
                 @Override
                 protected int processColor(int color) {
                     return SharedMediaLayout.this.processColor(color);
@@ -4672,8 +4671,8 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                     }
                     fragment1.finishFragment();
                     UndoView undoView = null;
-                    if (profileActivity instanceof ProfileActivity) {
-                        undoView = ((ProfileActivity) profileActivity).getUndoView();
+                    if (profileActivity instanceof ProfileBaseActivity) {
+                        undoView = ((ProfileBaseActivity) profileActivity).getUndoView();
                     }
                     if (undoView != null) {
                         if (dids.size() == 1) {
@@ -6034,6 +6033,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
         }
         boolean hasRecommendations = false;
         boolean hasSavedDialogs = false;
+
         boolean hasSavedMessages = savedMessagesContainer != null && sharedMediaPreloader != null && sharedMediaPreloader.hasSavedMessages;
         final TLRPC.User user = dialog_id <= 0 || profileActivity == null ? null : profileActivity.getMessagesController().getUser(dialog_id);
         boolean hasEditBotPreviews = user != null && user.bot && user.bot_has_main_app && user.bot_can_edit;
@@ -6852,7 +6852,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                     if (forward) {
                         storiesList.load(false, 30);
                     }
-                }).addBottomClip(profileActivity instanceof ProfileActivity && ((ProfileActivity) profileActivity).myProfile ? dp(68) : 0));
+                }).addBottomClip(profileActivity instanceof ProfileBaseActivity && ((ProfileBaseActivity) profileActivity).myProfile ? dp(68) : 0));
             }
         }
         updateForwardItem();
@@ -8697,8 +8697,8 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                 return;
             }
             final BaseFragment fragment = new ChatActivity(args);
-            if (profileActivity instanceof ProfileActivity) {
-                ((ProfileActivity) profileActivity).prepareBlurBitmap();
+            if (profileActivity instanceof ProfileBaseActivity) {
+                ((ProfileBaseActivity) profileActivity).prepareBlurBitmap();
             }
 
             ActionBarPopupWindow.ActionBarPopupWindowLayout previewMenu = new ActionBarPopupWindow.ActionBarPopupWindowLayout(getContext(), R.drawable.popup_fixed_alert, resourcesProvider, ActionBarPopupWindow.ActionBarPopupWindowLayout.FLAG_SHOWN_FROM_BOTTOM);

@@ -3,7 +3,6 @@ package org.telegram.ui;
 import android.os.Bundle;
 import android.util.Log;
 
-import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.Components.SharedMediaLayout;
 
 import kotlin.jvm.functions.Function2;
@@ -40,11 +39,23 @@ public class ProfileActivityFactory {
 
     public static ProfileBaseActivity of(long dialogId) {
         Bundle bundle = new Bundle();
+
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+
+        StackTraceElement caller = stackTrace[3];
+
+        Log.d(TAG, "Called from: " +
+                caller.getClassName() + "." +
+                caller.getMethodName() + "(): line " +
+                caller.getLineNumber());
+
         if (dialogId >= 0) {
             bundle.putLong("user_id", dialogId);
         } else {
             bundle.putLong("chat_id", -dialogId);
         }
-        return newInstance(bundle, null);
+
+        //TODO: create new ProfileActivity
+        return new ProfileActivity(bundle, null);
     }
 }

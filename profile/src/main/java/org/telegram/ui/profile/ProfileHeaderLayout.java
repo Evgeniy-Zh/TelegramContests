@@ -2,7 +2,6 @@ package org.telegram.ui.profile;
 
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.AndroidUtilities.lerp;
-import static org.telegram.messenger.AndroidUtilities.statusBarHeight;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -1145,7 +1144,7 @@ public class ProfileHeaderLayout {
         int viewWidth = AndroidUtilities.isTablet() ? AndroidUtilities.dp(490) : AndroidUtilities.displaySize.x;
         int extra = 0;
 
-        float mediaHeaderAnimationProgress = 0f; //TODO: animation progress
+        float mediaHeaderAnimationProgress = 1f; //TODO: animation progress
         int buttonsWidth = AndroidUtilities.dp(118 + 8 + (40 + extra * (1.0f - mediaHeaderAnimationProgress)));
         int minWidth = viewWidth - buttonsWidth;
 
@@ -1213,6 +1212,8 @@ public class ProfileHeaderLayout {
 
         private int currentColor;
         private Paint paint = new Paint();
+
+//        private float animationFracture = 1f;
 
         public TopView(Context context) {
             super(context);
@@ -1359,14 +1360,19 @@ public class ProfileHeaderLayout {
                 }
                 if (hasEmoji) {
                     final float loadedScale = emojiLoadedT.set(isEmojiLoaded());
-                    final float full = emojiFullT.set(emojiIsCollectible);
                     if (loadedScale > 0) {
                         canvas.save();
                         canvas.clipRect(0, 0, getMeasuredWidth(), y1);
-                        float scale = 1 - animationFracture * animationFracture;
 
-                        canvas.scale(scale, scale, getWidth() / 2f, innerAvatarContainer.getY());
-                        StarGiftPatterns.drawProfilePattern(canvas, emoji, getMeasuredWidth(), ((actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + dp(144)) - (1f - extraHeight / dp(headerHeight)) * dp(50), Math.min(1f, extraHeight / dp(headerHeight)), 1f);
+                        StarGiftPatterns.drawProfilePatternEllipse(canvas,
+                                emoji,
+                                innerAvatarContainer.getX() + innerAvatarContainer.getMeasuredWidth() / 2f,
+                                innerAvatarContainer.getTranslationY() + innerAvatarContainer.getMeasuredHeight() / 2f,
+                                dp(smallAvatarSize),
+                                Math.min(1f, extraHeight / dp(headerHeight)),
+                                animationFracture
+
+                        );
                         canvas.restore();
                     }
                 }
