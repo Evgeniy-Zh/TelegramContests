@@ -2334,7 +2334,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                             if (avatarUploadingRequest != 0) {
                                 getConnectionsManager().cancelRequest(avatarUploadingRequest, true);
                             }
-                            profileHeaderLayout.allowPullingDown = !AndroidUtilities.isTablet() && !isInLandscapeMode && avatarImage.getImageReceiver().hasNotThumb() && !AndroidUtilities.isAccessibilityScreenReaderEnabled();
+                            profileHeaderLayout.setAllowPullingDown(!AndroidUtilities.isTablet() && !isInLandscapeMode && avatarImage.getImageReceiver().hasNotThumb() && !AndroidUtilities.isAccessibilityScreenReaderEnabled());
                             avatar = null;
                             avatarBig = null;
                             avatarsViewPager.scrolledByUser = true;
@@ -2552,8 +2552,8 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     } else if (invalidateScroll || currentPaddingTop != paddingTop) {
                         if (savedScrollPosition >= 0) {
                             layoutManager.scrollToPositionWithOffset(savedScrollPosition, savedScrollOffset - paddingTop);
-                        } else if ((!changed || !profileHeaderLayout.allowPullingDown) && view != null) {
-                            if (pos == 0 && !profileHeaderLayout.allowPullingDown && top > dp(profileHeaderLayout.headerHeight)) {
+                        } else if ((!changed || !profileHeaderLayout.isAllowedPullingDown()) && view != null) {
+                            if (pos == 0 && !profileHeaderLayout.isAllowedPullingDown() && top > dp(profileHeaderLayout.headerHeight)) {
                                 top = dp(profileHeaderLayout.headerHeight);
                             }
                             layoutManager.scrollToPositionWithOffset(pos, top - paddingTop);
@@ -3224,7 +3224,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                 }
                 final boolean result = super.onTouchEvent(e);
                 if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
-                    if (profileHeaderLayout.allowPullingDown) {
+                    if (profileHeaderLayout.isAllowedPullingDown()) {
                         final View view = layoutManager.findViewByPosition(0);
                         if (view != null) {
                             if (profileHeaderLayout.isPulledDown()) {
@@ -3333,15 +3333,15 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                 final View view = layoutManager.findViewByPosition(0);
                 if (view != null && !openingAvatar) {
                     final int canScroll = view.getTop() - dp(profileHeaderLayout.headerHeight);
-                    if (!profileHeaderLayout.allowPullingDown && canScroll > dy) {
+                    if (!profileHeaderLayout.isAllowedPullingDown() && canScroll > dy) {
                         dy = canScroll;
                         if (avatarsViewPager.hasImages() && avatarImage.getImageReceiver().hasNotThumb() && !AndroidUtilities.isAccessibilityScreenReaderEnabled() && !isInLandscapeMode && !AndroidUtilities.isTablet()) {
-                            profileHeaderLayout.allowPullingDown = avatarBig == null;
+                            profileHeaderLayout.setAllowPullingDown(avatarBig == null);
                         }
-                    } else if (profileHeaderLayout.allowPullingDown) {
+                    } else if (profileHeaderLayout.isAllowedPullingDown()) {
                         if (dy >= canScroll) {
                             dy = canScroll;
-                            profileHeaderLayout.allowPullingDown = false;
+                            profileHeaderLayout.setAllowPullingDown(false);
                         } else if (listView.getScrollState() == RecyclerListView.SCROLL_STATE_DRAGGING) {
                             if (!profileHeaderLayout.isPulledDown()) {
                                 dy /= 2;
@@ -4879,7 +4879,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
     }
 
     private void collapseAvatarInstant() {
-        if (profileHeaderLayout.allowPullingDown && profileHeaderLayout.currentExpandAnimatorValue > 0) {
+        if (profileHeaderLayout.isAllowedPullingDown() && profileHeaderLayout.currentExpandAnimatorValue > 0) {
             layoutManager.scrollToPositionWithOffset(0, AndroidUtilities.dp(profileHeaderLayout.headerHeight) - listView.getPaddingTop());
             listView.post(() -> {
                 needLayout(true);
@@ -4944,7 +4944,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
     private boolean expandAvatar() {
         if (!AndroidUtilities.isTablet() && !isInLandscapeMode && avatarImage.getImageReceiver().hasNotThumb() && !AndroidUtilities.isAccessibilityScreenReaderEnabled()) {
             openingAvatar = true;
-            profileHeaderLayout.allowPullingDown = true;
+            profileHeaderLayout.setAllowPullingDown(true);
             View child = null;
             for (int i = 0; i < listView.getChildCount(); i++) {
                 if (listView.getChildAdapterPosition(listView.getChildAt(i)) == 0) {
@@ -7008,7 +7008,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     profileHeaderLayout.setAvatarExpandProgress(1f);
                     avatarsViewPager.setVisibility(View.GONE);
                     profileHeaderLayout.extraHeight = AndroidUtilities.dp(profileHeaderLayout.headerHeight);
-                    profileHeaderLayout.allowPullingDown = false;
+                    profileHeaderLayout.setAllowPullingDown(false);
                     layoutManager.scrollToPositionWithOffset(0, AndroidUtilities.dp(profileHeaderLayout.headerHeight) - listView.getPaddingTop());
                 }
             }
@@ -9860,7 +9860,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                         }
                     }
 
-                    profileHeaderLayout.allowPullingDown = !AndroidUtilities.isTablet() && !isInLandscapeMode && avatarImage.getImageReceiver().hasNotThumb() && !AndroidUtilities.isAccessibilityScreenReaderEnabled();
+                    profileHeaderLayout.setAllowPullingDown(!AndroidUtilities.isTablet() && !isInLandscapeMode && avatarImage.getImageReceiver().hasNotThumb() && !AndroidUtilities.isAccessibilityScreenReaderEnabled());
                     avatar = null;
                     avatarBig = null;
                     avatarsViewPager.scrolledByUser = true;
@@ -12306,7 +12306,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
             if (view != null) {
                 savedScrollPosition = position;
                 savedScrollOffset = view.getTop();
-                if (savedScrollPosition == 0 && !profileHeaderLayout.allowPullingDown && savedScrollOffset > AndroidUtilities.dp(profileHeaderLayout.headerHeight)) {
+                if (savedScrollPosition == 0 && !profileHeaderLayout.isAllowedPullingDown() && savedScrollOffset > AndroidUtilities.dp(profileHeaderLayout.headerHeight)) {
                     savedScrollOffset = AndroidUtilities.dp(profileHeaderLayout.headerHeight);
                 }
 

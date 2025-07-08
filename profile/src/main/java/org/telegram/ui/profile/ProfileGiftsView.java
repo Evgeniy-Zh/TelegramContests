@@ -382,7 +382,6 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
         canvas.save();
         canvas.clipRect(0, 0, getWidth(), expandY);
 
-        float expandY = this.expandY + dp(400);
 
         final float acx = ax + aw / 2.0f;
         final float cacx = Math.min(acx, dp(48));
@@ -390,7 +389,7 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
         final float ar = Math.min(aw, ah) / 2.0f + dp(6);
         final float cx = getWidth() / 2.0f;
 
-        final float closedAlpha = Utilities.clamp01((float) (expandY - (AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight())) / dp(50));
+        final float closedAlpha = 1f; //TODO: will it be used?
 
 
         for (int i = 0; i < gifts.size(); ++i) {
@@ -427,7 +426,7 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
                         y,
                         scale,
                         -65 + 90,
-                        alpha * (1.0f - 0), lerp(0.9f, 0.25f, actionBarProgress)
+                        alpha, lerp(0.9f, 0.25f, actionBarProgress)
                 );
             } else if (index == 1) {
 
@@ -441,7 +440,7 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
                         y,
                         scale,
                         -4.0f,
-                        alpha * alpha * (1.0f - 0) * (1.0f - actionBarProgress) * (closedAlpha),
+                        alpha * alpha ,
                         1.0f
                 );
             } else if (index == 2) {
@@ -455,7 +454,7 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
                         x,
                         y,
                         scale, 8.0f,
-                        alpha * (1.0f - 0) * (1.0f - actionBarProgress) * (closedAlpha),
+                        alpha,
                         1.0f
                 );
             } else if (index == 3) {
@@ -470,7 +469,7 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
                         y,
                         scale,
                         3.0f,
-                        alpha * (1.0f - 0) * (1.0f - actionBarProgress) * (closedAlpha),
+                        alpha,
                         1.0f
                 );
             } else if (index == 4) {
@@ -485,7 +484,7 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
                         y,
                         scale,
                         -3.0f,
-                        alpha * (1.0f - expandProgress) * (1.0f - actionBarProgress) * (closedAlpha),
+                        alpha,
                         1.0f
                 );
             } else if (index == 5) {
@@ -499,7 +498,7 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
                         y,
                         scale,
                         2.0f,
-                        alpha * (1.0f - expandProgress) * (1.0f - actionBarProgress) * (closedAlpha),
+                        alpha,
                         1.0f
                 );
             } else if (index == 6) {
@@ -513,7 +512,7 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
                         y,
                         scale,
                         0,
-                        alpha * (1.0f - expandProgress) * (1.0f - actionBarProgress) * (closedAlpha),
+                        alpha,
                         1.0f
                 );
             } else if (index == 7) {
@@ -527,7 +526,7 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
                         y,
                         scale,
                         -5.0f,
-                        alpha * (1.0f - expandProgress) * (1.0f - actionBarProgress) * (closedAlpha),
+                        alpha,
                         1.0f
                 );
             } else if (index == 8) {
@@ -541,7 +540,7 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
                         y,
                         scale,
                         5.0f,
-                        alpha * (1.0f - expandProgress) * (1.0f - actionBarProgress) * (closedAlpha),
+                        alpha,
                         1.0f
                 );
             }
