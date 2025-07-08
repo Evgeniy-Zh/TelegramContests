@@ -345,26 +345,8 @@ public class ProfileHeaderLayout {
 
         fallbackImage.setRoundRadius(dp(11));
 
-        profileButtonsView.muteButton.setOnClickListener(v -> {
-            Animator viewAnimator = giftsView.getAnimator(false);
-            viewAnimator.setDuration(1400);
-            viewAnimator.start();
-        });
-
-        profileButtonsView.callButton.setOnClickListener(v -> {
-            Animator viewAnimator = giftsView.getAnimator(true);
-            viewAnimator.setDuration(1400);
-            viewAnimator.start();
-        });
-
-        profileButtonsView.videoButton.setOnClickListener(v -> {
-            listView.smoothScrollBy(0, (int) extraHeight, CubicBezierInterpolator.EASE_IN);
-        });
 
         extraHeight = dp(headerHeight);
-
-        long duration = 640;
-
 
 
         AnimatorSet set = new AnimatorSet();
@@ -377,12 +359,32 @@ public class ProfileHeaderLayout {
             topView.setAnimationFracture(animation.getAnimatedFraction());
         });
 
+        Animator giftsAnimator = giftsView.getAnimator(false);
+
+        topViewAnimator.setStartDelay(200);
+        giftsAnimator.setStartDelay(200);
+
+        AnimatorSet avSet = new AnimatorSet();
+        avSet.playTogether(
+                ObjectAnimator.ofFloat(innerAvatarContainer, View.SCALE_Y, 1f, 0.4f),
+                ObjectAnimator.ofFloat(innerAvatarContainer, View.SCALE_X, 1f, 0.4f),
+                ObjectAnimator.ofFloat(innerAvatarContainer, View.TRANSLATION_Y, avatarY, -140f)
+        );
+
+        avSet.setInterpolator(CubicBezierInterpolator.EASE_IN);
+
+        avSet.setDuration(700);
+
+        giftsAnimator.setStartDelay(100);
+        giftsAnimator.setDuration(1200);
+
+        topViewAnimator.setStartDelay(90);
+        topViewAnimator.setDuration(800);
+
         set.playTogether(
-                giftsView.getAnimator(false),
+                giftsAnimator,
                 topViewAnimator,
-                ObjectAnimator.ofFloat(innerAvatarContainer, View.SCALE_Y, avatarScale),
-                ObjectAnimator.ofFloat(innerAvatarContainer, View.SCALE_X, avatarScale),
-                ObjectAnimator.ofFloat(innerAvatarContainer, View.TRANSLATION_Y, avatarY, 0f)
+                avSet
         );
 
         set.addListener(new AnimatorListenerAdapter() {
@@ -393,10 +395,9 @@ public class ProfileHeaderLayout {
 
 
         animator = set;
-        animator.setDuration(duration);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            ((AnimatorSet)animator).setCurrentPlayTime(0);
+//            ((AnimatorSet)animator).setCurrentPlayTime(0);
         }
 
         avatarContainer.invalidate();
@@ -408,10 +409,25 @@ public class ProfileHeaderLayout {
                 Log.d(TAG, "isPulledDown = " + isPulledDown);
                 if(avatarAnimationIsRunning) return;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    ((AnimatorSet)animator).setCurrentPlayTime((long) (Math.max(duration - extraHeight, 0)));
+//                    ((AnimatorSet)animator).setCurrentPlayTime((long) (Math.max(400 - extraHeight, 0)));
                 }
             }
         });
+
+        profileButtonsView.muteButton.setOnClickListener(v -> {
+            AnimatorSet viewAnimator = set;
+            viewAnimator.start();
+        });
+
+        profileButtonsView.callButton.setOnClickListener(v -> {
+            AnimatorSet viewAnimator = set;
+            viewAnimator.reverse();
+        });
+
+        profileButtonsView.videoButton.setOnClickListener(v -> {
+            listView.smoothScrollBy(0, (int) extraHeight, CubicBezierInterpolator.EASE_IN);
+        });
+
     }
     
     private void setUpNameText() {
@@ -1367,7 +1383,7 @@ public class ProfileHeaderLayout {
                                 canvas,
                                 emoji,
                                 innerAvatarContainer.getX() + innerAvatarContainer.getMeasuredWidth() / 2f,
-                                innerAvatarContainer.getTranslationY() + innerAvatarContainer.getMeasuredHeight() / 2f,
+                                avatarY + innerAvatarContainer.getMeasuredHeight() / 2f,
                                 dp(smallAvatarSize),
                                 Math.min(1f, extraHeight / dp(headerHeight)),
                                 animationFracture

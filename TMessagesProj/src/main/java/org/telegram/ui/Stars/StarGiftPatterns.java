@@ -230,16 +230,19 @@ public class StarGiftPatterns {
             float arg = (float) (i * (Math.PI / 4f));
             float baseX = (float) (cx + cos(arg) * radius);
             float baseY = (float) (cy + sin(arg) * radius * 0.66f);
-            float size = defSize;
-            float thisAlpha = 0.5f;
 
             float c = 2.5f;
 
-            if(i == 0 || i >= 4) c = 6.9f;
+            if(i == 0 || i == 4) c = 3.9f;
+            if(i >= 5) c = 0.7f;
             float fr = calculateTimeFraction(animFracture, c);
 
-            float y = lerp(baseY, 0f, fr * fr);
+            float y = lerp(baseY, -200f, fr * fr);
             float x = lerp(baseX, cx, fr);
+
+            float size = defSize * (1f - fr);
+            float thisAlpha = max(0.5f - fr/2f, 0f);
+
 
             pattern.setBounds(
                     (int) (x - dpf2(size / 2f)),
@@ -258,13 +261,14 @@ public class StarGiftPatterns {
             float arg = (float) (i * (Math.PI / 5f));
             float baseX = (float) (cx + cos(arg) * radius * 1.5f);
             float baseY = (float) (cy + sin(arg) * radius * 1.01f);
-            float size = defSize * 0.7f;
-            float thisAlpha = 0.35f;
 
             float fr = calculateTimeFraction(animFracture, 5.5f);
 
             float y = lerp(baseY, 0f, fr * fr);
             float x = lerp(baseX, cx, fr);
+
+            float size = defSize * (1f - fr / 2f) * 0.7f;
+            float thisAlpha = max(0.35f - fr/2f, 0f);
 
             pattern.setBounds(
                     (int) (x - dpf2(size / 2f)),

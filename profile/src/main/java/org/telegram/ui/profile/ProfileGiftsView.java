@@ -241,6 +241,7 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
     public int maxCount;
 
     public void update() {
+        avY = avatarContainer.getY();
         if (!MessagesController.getInstance(currentAccount).enableGiftsInProfile) {
             return;
         }
@@ -341,8 +342,10 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
 
     private float animationProgress;
 
+    private float avY = 0f;
     public Animator getAnimator(boolean reverse) {
 
+        avY = avatarContainer.getY();
 
         ValueAnimator valueAnimator = ObjectAnimator.ofFloat(0f, 1f);
 
@@ -372,7 +375,7 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
         if (gifts.isEmpty() || expandProgress >= 1.0f) return;
 
         final float ax = avatarContainer.getX();
-        final float ay = avatarContainer.getY();
+        final float ay = 180; //TODO
         final float aw = (avatarContainer.getWidth()) * avatarContainer.getScaleX();
         final float ah = (avatarContainer.getHeight()) * avatarContainer.getScaleY();
 
