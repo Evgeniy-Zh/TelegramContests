@@ -404,6 +404,15 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
 
             float animationProgress = calculateTimeFraction(this.animationProgress, index);
 
+
+            //TODO: animate gifts
+//            if(!gift.emojiDrawable.getImageReceiver().isAnimationRunning()) {
+//                gift.emojiDrawable.getImageReceiver().startAnimation(true);
+//            }
+//            gift.emojiDrawable.setTime(System.currentTimeMillis());
+//            gift.emojiDrawable.update(t++);
+
+
             if (index == 0) {
                 y = lerp(ay + dp(12), yDest, animationProgress * animationProgress);
                 x = lerp(cx + dp(55), cx, animationProgress);

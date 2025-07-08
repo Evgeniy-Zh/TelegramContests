@@ -1363,8 +1363,8 @@ public class ProfileHeaderLayout {
                     if (loadedScale > 0) {
                         canvas.save();
                         canvas.clipRect(0, 0, getMeasuredWidth(), y1);
-
-                        StarGiftPatterns.drawProfilePatternEllipse(canvas,
+                        StarGiftPatterns.drawProfilePatternEllipse(
+                                canvas,
                                 emoji,
                                 innerAvatarContainer.getX() + innerAvatarContainer.getMeasuredWidth() / 2f,
                                 innerAvatarContainer.getTranslationY() + innerAvatarContainer.getMeasuredHeight() / 2f,
