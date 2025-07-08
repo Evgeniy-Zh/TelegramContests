@@ -1,6 +1,7 @@
 package org.telegram.ui.profile;
 
 import static org.telegram.messenger.AndroidUtilities.dp;
+import static org.telegram.messenger.AndroidUtilities.dpf2;
 import static org.telegram.messenger.AndroidUtilities.lerp;
 
 import android.animation.Animator;
@@ -65,7 +66,13 @@ import org.telegram.ui.PeerColorActivity;
 import org.telegram.ui.Stars.StarGiftPatterns;
 import org.telegram.ui.Stories.ProfileStoriesView;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ProfileHeaderLayout {
+
+    private static final String TAG = "ProfileHeaderLayout";
+
     private Context context;
 
 
@@ -163,9 +170,9 @@ public class ProfileHeaderLayout {
     public float headerShadowAlpha = 1.0f;
 
 
-    //TODO: Initialize
     public boolean isInLandscapeMode;
-    private final String TAG = "ProfileHeaderLayout";
+    private float nameActionBarX;
+    private float nameActionBarY;
 
 
     public ProfileHeaderLayout(BaseFragment currentFragment) {
@@ -346,6 +353,12 @@ public class ProfileHeaderLayout {
 
         setUpNameText();
 
+        avatarContainer.post(() -> {
+            nameX = 0f;
+            nameY = calculateBaseTextContainerPosition();
+            textContainer.setTranslationY(nameY);
+        });
+
         fallbackImage.setRoundRadius(dp(11));
 
 
@@ -388,10 +401,26 @@ public class ProfileHeaderLayout {
         topViewAnimator.setStartDelay(90);
         topViewAnimator.setDuration(800);
 
+        AnimatorSet textAnimator = new AnimatorSet();
+        ValueAnimator textY = ValueAnimator.ofFloat(1f,0f );
+        ValueAnimator textX = ValueAnimator.ofFloat(nameX, 0f);
+
+        textY.addUpdateListener(animation -> {
+            float y  = lerp(calculateBaseTextContainerPosition(), AndroidUtilities.statusBarHeight, animation.getAnimatedFraction());
+            textContainer.setTranslationY(y);
+        });
+        textX.addUpdateListener(animation -> {});
+
+        textAnimator.playTogether(textX, textY);
+
+        textAnimator.setStartDelay(100);
+        textAnimator.setDuration(800);
+
         avatarCollapseAnimator.playTogether(
                 giftsAnimator,
                 topViewAnimator,
-                avSet
+                avSet,
+                textAnimator
         );
 
 
@@ -484,6 +513,9 @@ public class ProfileHeaderLayout {
             nameTextView[a].setEllipsizeByGradient(true);
             nameTextView[a].setRightDrawableOutside(a == 0);
             nameTextView[a].setWidthWrapContent(true);
+
+            //TODO: white text on a white image???
+//            nameTextView[a].getPaint().setShadowLayer(dpf2(0.66f), 0, 1, 0x72000000);
 
             textContainer.addView(nameTextView[a], LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 0, 0, 0));
         }
@@ -684,7 +716,7 @@ public class ProfileHeaderLayout {
 
         nameY = lerp(y, extraHeight - profileButtonsView.getHeight(), value);
 
-        textContainer.setTranslationY(nameY);
+        textContainer.setTranslationY(nameY); //animate expand
 
         nameX = lerp(0f, -avatarContainer.getMeasuredWidth() / 2f + nameTextView[1].getWidth() / 2f + 32f, value);
         textContainer.setTranslationX(nameX);
@@ -906,7 +938,7 @@ public class ProfileHeaderLayout {
                     avatarsViewPager.requestLayout();
                     if (!expandAnimator.isRunning()) {
                         nameY = extraHeight - profileButtonsView.getHeight();
-                        textContainer.setTranslationY(nameY);
+                        textContainer.setTranslationY(nameY);         //pulling expanded
 
                         mediaCounterTextView.setTranslationX(textContainer.getTranslationX());
                         mediaCounterTextView.setTranslationY(textContainer.getTranslationY());
@@ -978,8 +1010,8 @@ public class ProfileHeaderLayout {
                     innerAvatarContainer.setScaleX(avatarScale);
                     innerAvatarContainer.setScaleY(avatarScale);
 
+                    textContainer.setTranslationY(nameY); // pulling collapsed
                     if (expandAnimator == null || !expandAnimator.isRunning()) {
-                        textContainer.setTranslationY(nameY);
                         //TODO:
 //                        mediaCounterTextView.setTranslationX(onlineX);
 //                        mediaCounterTextView.setTranslationY(onlineY);
@@ -989,7 +1021,6 @@ public class ProfileHeaderLayout {
             }
 
             if (openAnimationInProgress && playProfileAnimation == 2) {     //      ✅   when animator is running
-                textContainer.setTranslationY(nameY);
 
                 nameTextView[0].setScaleX(1.0f);
                 nameTextView[0].setScaleY(1.0f);
@@ -1064,25 +1095,17 @@ public class ProfileHeaderLayout {
 //                    starFgItem.setTranslationX(innerAvatarContainer.getX() + dp(28) + extra);
 //                    starFgItem.setTranslationY(innerAvatarContainer.getY() + dp(24) + extra);
                 }
-                nameX = 0f;
-                nameY = calculateBaseTextContainerPosition();
+
                 //TODO: showStatus button
 //                if (showStatusButton != null) {
 //                    showStatusButton.setAlpha((int) (0xFF * diff));
 //                }
+
                 for (int a = 0; a < nameTextView.length; a++) {
                     if (nameTextView[a] == null) {
                         continue;
                     }
-                    if (expandAnimator == null || !expandAnimator.isRunning()) {
-                        textContainer.setTranslationY(nameY);
 
-                        if (a == 1) {
-                            //TODO:
-//                            mediaCounterTextView.setTranslationX(onlineX);
-//                            mediaCounterTextView.setTranslationY(onlineY);
-                        }
-                    }
                     nameTextView[a].setScaleX(nameScale);
                     nameTextView[a].setScaleY(nameScale);
                 }

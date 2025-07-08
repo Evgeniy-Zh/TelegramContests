@@ -6548,6 +6548,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
         final Display display = getParentActivity().getWindowManager().getDefaultDisplay();
         display.getSize(size);
         isInLandscapeMode = size.x > size.y;
+        profileHeaderLayout.isInLandscapeMode = this.isInLandscapeMode;
     }
 
     @SuppressWarnings("unchecked")
