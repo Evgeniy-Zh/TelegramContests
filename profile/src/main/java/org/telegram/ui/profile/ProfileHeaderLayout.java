@@ -25,6 +25,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.animation.DecelerateInterpolator;
+import android.view.animation.LinearInterpolator;
 import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
@@ -156,7 +157,6 @@ public class ProfileHeaderLayout {
 
     private ProfileButtonsView profileButtonsView;
 
-    private Animator profileButtonAnimator;
     public AnimatorSet avatarCollapseAnimator;
     public ValueAnimator expandAnimator;
 
@@ -347,7 +347,7 @@ public class ProfileHeaderLayout {
 
         avatarContainer.addView(storyView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
-        avatarContainer.addView(profileButtonsView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 60, Gravity.CENTER_HORIZONTAL, 4, 20, 4, 0));
+        avatarContainer.addView(profileButtonsView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 60, Gravity.CENTER_HORIZONTAL, 4, 0, 4, 0));
 
         setUpOnlineText();
 
@@ -371,6 +371,7 @@ public class ProfileHeaderLayout {
 
         topViewAnimator.addUpdateListener(animation -> {
             topView.setAnimationFracture(animation.getAnimatedFraction());
+
         });
 
         Animator giftsAnimator = giftsView.getAnimator(false);
@@ -416,11 +417,29 @@ public class ProfileHeaderLayout {
         textAnimator.setStartDelay(100);
         textAnimator.setDuration(800);
 
+        ValueAnimator buttonsTranslationAnim = ValueAnimator.ofFloat(1f, 0f);
+
+        profileButtonsView.setPivotY(0f);
+        buttonsTranslationAnim.addUpdateListener(animation -> {
+            profileButtonsView.setTranslationY(textContainer.getY() + profileButtonsView.getHeight());
+
+            if(profileButtonsView.getTranslationY() < dp(headerHeight) / 2f) {
+                profileButtonsView.animate().setDuration(300).scaleY(0f).setUpdateListener(a -> topView.invalidate()).start();
+            } else {
+                profileButtonsView.animate().setDuration(300).scaleY(1f).setUpdateListener(a -> topView.invalidate()).start();
+            }
+
+        });
+
+        buttonsTranslationAnim.setStartDelay(100);
+        buttonsTranslationAnim.setDuration(800);
+
         avatarCollapseAnimator.playTogether(
                 giftsAnimator,
                 topViewAnimator,
                 avSet,
-                textAnimator
+                textAnimator,
+                buttonsTranslationAnim
         );
 
 
@@ -657,6 +676,11 @@ public class ProfileHeaderLayout {
         return avatarY + dp(92) * avatarScale;
     }
 
+    private float calculateBaseProfileButtonsPosition() {
+        final int topBarHeight = ActionBar.getCurrentActionBarHeight() + (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0);
+        return  topBarHeight + dp(headerHeight) - profileButtonsView.getHeight();
+    }
+
     // transition between rounded avatar and rectangular avatar
     // transition between views' positions
     public void setAvatarExpandProgress(float animatedFracture) {
@@ -774,7 +798,8 @@ public class ProfileHeaderLayout {
 
         final int topBarHeight = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight();
 
-        profileButtonsView.setTranslationY(topBarHeight + extraHeight - profileButtonsView.getHeight());
+        if(!avatarCollapseAnimator.isRunning())
+            profileButtonsView.setTranslationY(textContainer.getY() + profileButtonsView.getHeight());
 
         if (innerAvatarContainer != null) {
 
@@ -792,41 +817,12 @@ public class ProfileHeaderLayout {
                 float searchTransitionOffset = 0f; //TODO: searchTransitionOffset
 
                 // TODO: check visibility
-                profileButtonsView.setVisibility(View.INVISIBLE); //TODO
-                boolean showProfileButtons = profileButtonsView.getY() + profileButtonsView.getHeight() / 2f > topBarHeight * 2f; // TODO:  && !searchMode && (imageUpdater == null || setAvatarRow == -1);
+                boolean showProfileButtons = true; // TODO:  && !searchMode && (imageUpdater == null || setAvatarRow == -1);
                 boolean hideProfileButtons = diff < 0.8f;
                 //TODO in ProfileButtonsView
 //                if (writeButtonVisible && chatId != 0) {
 //                    writeButtonVisible = ChatObject.isChannel(currentChat) && !currentChat.megagroup && chatInfo != null && chatInfo.linked_chat_id != 0 && infoHeaderRow != -1;
 //                }
-
-                if (!openAnimationInProgress) {
-                    if (profileButtonAnimator != null) {
-                        Animator old = profileButtonAnimator;
-                        profileButtonAnimator = null;
-                        old.cancel();
-                    }
-                    if (showProfileButtons) {
-                        profileButtonAnimator = profileButtonsView.getAnimator(1f);
-                        profileButtonAnimator.setInterpolator(new DecelerateInterpolator());
-                    } else {
-                        profileButtonAnimator = profileButtonsView.getAnimator(0f);
-                        profileButtonAnimator.setInterpolator(new DecelerateInterpolator());
-                    }
-                    profileButtonAnimator.setDuration(150);
-                    profileButtonAnimator.addListener(new AnimatorListenerAdapter() {
-                        @Override
-                        public void onAnimationEnd(Animator animation) {
-                            profileButtonAnimator = null;
-                        }
-                    });
-
-                    if (animated)
-                        profileButtonAnimator.start();
-                    else
-                        profileButtonAnimator.end();
-
-                }
 
                 if (storyView != null) {
                     storyView.setExpandCoords(avatarContainer.getMeasuredWidth() - dp(40), false, (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() + extraHeight + searchTransitionOffset);
@@ -852,10 +848,12 @@ public class ProfileHeaderLayout {
                     }
                 } else {
                     if(!avatarCollapseAnimator.isRunning() && avatarCollapsed) { // show
+                        avatarCollapseAnimator.setCurrentPlayTime(900);
                         avatarCollapseAnimator.reverse();
                         avatarCollapsed = false;
                     }
                 }
+            } else {
             }
 
             Log.d(TAG, "avatarCollapsed = " + avatarCollapsed);
@@ -1324,8 +1322,10 @@ public class ProfileHeaderLayout {
             final int height = ActionBar.getCurrentActionBarHeight() + (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0);
             final float bottom = extraHeight + height + searchTransitionOffset;
 
-            final float contentBottom = innerAvatarContainer.getTranslationY() + 600 * innerAvatarContainer.getScaleX(); //TODO: calculate content size
+            float contentBottom = dp(24) * profileButtonsView.getScaleY() + profileButtonsView.getY() + profileButtonsView.getHeight() * profileButtonsView.getScaleY(); //TODO: calculate content size
 
+
+            Log.d(TAG, "buttons scale = " + profileButtonsView.getScaleY());
             return Math.max(bottom, contentBottom);
         }
 
