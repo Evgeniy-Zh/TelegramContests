@@ -155,7 +155,7 @@ public class ProfileHeaderLayout {
 
     private FrameLayout textContainer;
 
-    private ProfileButtonsView profileButtonsView;
+    public ProfileButtonsView profileButtonsView;
 
     public AnimatorSet avatarCollapseAnimator;
     public ValueAnimator expandAnimator;
@@ -306,7 +306,7 @@ public class ProfileHeaderLayout {
 
         profileButtonsView = new ProfileButtonsView(context);
 
-        messageButton = profileButtonsView.messageButton;
+        messageButton = profileButtonsView.get(ProfileButtonsView.MESSAGE_BUTTON);
 
         actionBar = currentFragment.getActionBar();
 
@@ -467,18 +467,6 @@ public class ProfileHeaderLayout {
                 Log.d(TAG, "isPulledDown = " + isPulledDown);
 
             }
-        });
-
-        profileButtonsView.muteButton.setOnClickListener(v -> {
-            avatarCollapseAnimator.start();
-        });
-
-        profileButtonsView.callButton.setOnClickListener(v -> {
-            avatarCollapseAnimator.reverse();
-        });
-
-        profileButtonsView.videoButton.setOnClickListener(v -> {
-            listView.smoothScrollBy(0, (int) extraHeight, CubicBezierInterpolator.EASE_IN);
         });
 
     }

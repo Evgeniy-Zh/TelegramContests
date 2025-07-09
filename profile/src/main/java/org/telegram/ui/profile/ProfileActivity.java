@@ -462,8 +462,8 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
     private boolean videoCallItemVisible;
     private boolean editItemVisible;
     private ActionBarMenuItem animatingItem;
-    private ActionBarMenuItem callItem;
-    private ActionBarMenuItem videoCallItem;
+    private View callItem;
+    private View videoCallItem;
     private ActionBarMenuItem editItem;
     private ActionBarMenuItem otherItem;
     private ActionBarMenuItem searchItem;
@@ -1469,9 +1469,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
         }
 
         private ActionBarMenuItem getSecondaryMenuItem() {
-            if (callItemVisible) {
-                return callItem;
-            } else if (editItemVisible) {
+            if (editItemVisible) {
                 return editItem;
             } else if (searchItem != null) {
                 return searchItem;
@@ -1860,7 +1858,11 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
         searchTransitionProgress = 1f;
         searchMode = false;
         hasOwnBackground = true;
-        profileHeaderLayout.extraHeight = dp(profileHeaderLayout.headerHeight);
+        profileHeaderLayout.extraHeight = dp(profileHeaderLayout.headerHeight); //TODO: remove
+
+        profileHeaderLayout.profileButtonsView.setButtonsCLickListener(v -> {
+            actionBar.getActionBarMenuOnItemClick().onItemClick(v.getId());
+        });
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(final int id) {
@@ -3110,17 +3112,18 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
             }
         }
 
-        videoCallItem = menu.addItem(video_call_item, R.drawable.profile_video);
+        videoCallItem = profileHeaderLayout.profileButtonsView.addButton(video_call_item, R.drawable.profile_video, R.string.VideoCall);
         videoCallItem.setContentDescription(getString(R.string.VideoCall));
         if (chatId != 0) {
-            callItem = menu.addItem(call_item, R.drawable.msg_voicechat2);
             if (ChatObject.isChannelOrGiga(currentChat)) {
+                callItem = profileHeaderLayout.profileButtonsView.addButton(call_item, R.drawable.profile_live_stream, R.string.VoipChannelVoiceChat);
                 callItem.setContentDescription(getString(R.string.VoipChannelVoiceChat));
             } else {
+                callItem = profileHeaderLayout.profileButtonsView.addButton(call_item, R.drawable.profile_live_stream, R.string.VoipChannelVoiceChat);
                 callItem.setContentDescription(getString(R.string.VoipGroupVoiceChat));
             }
         } else {
-            callItem = menu.addItem(call_item, R.drawable.ic_call);
+            callItem = profileHeaderLayout.profileButtonsView.addButton(call_item, R.drawable.profile_call, R.string.Call);
             callItem.setContentDescription(getString(R.string.Call));
         }
         if (myProfile) {
@@ -6044,10 +6047,11 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
             actionBar.setItemsBackgroundColor(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f), false);
 
             topView.invalidate();
-            otherItem.setIconColor(peerColor != null ? Color.WHITE : getThemedColor(Theme.key_actionBarDefaultIcon));
-            callItem.setIconColor(peerColor != null ? Color.WHITE : getThemedColor(Theme.key_actionBarDefaultIcon));
-            videoCallItem.setIconColor(peerColor != null ? Color.WHITE : getThemedColor(Theme.key_actionBarDefaultIcon));
-            editItem.setIconColor(peerColor != null ? Color.WHITE : getThemedColor(Theme.key_actionBarDefaultIcon));
+            //TODO: need to set colors???
+//            otherItem.setIconColor(peerColor != null ? Color.WHITE : getThemedColor(Theme.key_actionBarDefaultIcon));
+//            callItem.setIconColor(peerColor != null ? Color.WHITE : getThemedColor(Theme.key_actionBarDefaultIcon));
+//            videoCallItem.setIconColor(peerColor != null ? Color.WHITE : getThemedColor(Theme.key_actionBarDefaultIcon));
+//            editItem.setIconColor(peerColor != null ? Color.WHITE : getThemedColor(Theme.key_actionBarDefaultIcon));
 
             if (verifiedDrawable[0] != null) {
                 color1 = getThemedColor(Theme.key_profile_verifiedBackground);
@@ -6183,12 +6187,6 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
             public void onAnimationEnd(Animator animation) {
                 if (headerAnimatorSet != null) {
                     if (mediaHeaderVisible) {
-                        if (callItemVisible) {
-                            callItem.setVisibility(View.GONE);
-                        }
-                        if (videoCallItemVisible) {
-                            videoCallItem.setVisibility(View.GONE);
-                        }
                         if (editItemVisible) {
                             editItem.setVisibility(View.GONE);
                         }
@@ -6655,7 +6653,8 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     avatarImage.setHasStories(needInsetForStories());
                 }
                 if (chatId != 0) {
-                    otherItem.setSubItemShown(gift_premium, !BuildVars.IS_BILLING_UNAVAILABLE && !getMessagesController().premiumPurchaseBlocked() && chatInfo != null && chatInfo.stargifts_available);
+                    boolean show = !BuildVars.IS_BILLING_UNAVAILABLE && !getMessagesController().premiumPurchaseBlocked() && chatInfo != null && chatInfo.stargifts_available;
+                    profileHeaderLayout.profileButtonsView.get(gift_premium).setVisibility(show ? View.VISIBLE : View.GONE);
                 }
             }
         } else if (id == NotificationCenter.chatInfoDidLoad) {
@@ -7636,7 +7635,8 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
         }
         fetchUsersFromChannelInfo();
         if (chatId != 0) {
-            otherItem.setSubItemShown(gift_premium, !BuildVars.IS_BILLING_UNAVAILABLE && !getMessagesController().premiumPurchaseBlocked() && chatInfo != null && chatInfo.stargifts_available);
+            boolean show = !BuildVars.IS_BILLING_UNAVAILABLE && !getMessagesController().premiumPurchaseBlocked() && chatInfo != null && chatInfo.stargifts_available;
+            profileHeaderLayout.profileButtonsView.get(gift_premium).setVisibility(show ? View.VISIBLE : View.GONE);
         }
     }
 
@@ -9216,7 +9216,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                         }
                         otherItem.addSubItem(add_shortcut, R.drawable.msg_home, LocaleController.getString(R.string.AddShortcut));
                         if (isBot) {
-                            otherItem.addSubItem(share, R.drawable.msg_share, LocaleController.getString(R.string.BotShare));
+                            profileHeaderLayout.profileButtonsView.addButton(share, R.drawable.profile_share, LocaleController.getString(R.string.BotShare));
                         } else {
                             otherItem.addSubItem(add_contact, R.drawable.msg_addcontact, LocaleController.getString(R.string.AddContact));
                         }
@@ -9230,7 +9230,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                             } else {
                                 otherItem.hideSubItem(bot_privacy);
                             }
-                            otherItem.addSubItem(report, R.drawable.msg_report, LocaleController.getString(R.string.ReportBot)).setColors(getThemedColor(Theme.key_text_RedRegular), getThemedColor(Theme.key_text_RedRegular));
+                            profileHeaderLayout.profileButtonsView.addButton(report, R.drawable.profile_report, LocaleController.getString(R.string.ReportBot));
                             if (!userBlocked) {
                                 otherItem.addSubItem(block_contact, R.drawable.msg_block2, LocaleController.getString(R.string.DeleteAndBlock)).setColors(getThemedColor(Theme.key_text_RedRegular), getThemedColor(Theme.key_text_RedRegular));
                             } else {
@@ -9254,7 +9254,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                 if (!UserObject.isDeleted(user) && !isBot && currentEncryptedChat == null && !userBlocked && userId != 333000 && userId != 777000 && userId != 42777) {
                     if (!BuildVars.IS_BILLING_UNAVAILABLE && !user.self && !user.bot && !MessagesController.isSupportUser(user) && !getMessagesController().premiumPurchaseBlocked()) {
                         StarsController.getInstance(currentAccount).loadStarGifts();
-                        otherItem.addSubItem(gift_premium, R.drawable.msg_gift_premium, LocaleController.getString(R.string.ProfileSendAGift));
+                        profileHeaderLayout.profileButtonsView.addButton(gift_premium, R.drawable.profile_gift, LocaleController.getString(R.string.ProfileSendAGift));
                     }
                     otherItem.addSubItem(start_secret_chat, R.drawable.msg_secret, LocaleController.getString(R.string.StartEncryptedChat));
                     otherItem.setSubItemShown(start_secret_chat, DialogObject.isEmpty(getMessagesController().isUserContactBlocked(userId)));
@@ -9282,7 +9282,8 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                 }
                 if (chatInfo != null) {
                     if (ChatObject.canManageCalls(chat) && chatInfo.call == null) {
-                        otherItem.addSubItem(call_item, R.drawable.msg_voicechat, chat.megagroup && !chat.gigagroup ? LocaleController.getString(R.string.StartVoipChat) : LocaleController.getString(R.string.StartVoipChannel));
+                        //TODO: Strings
+                        profileHeaderLayout.profileButtonsView.addButton(call_item, R.drawable.profile_live_stream, chat.megagroup && !chat.gigagroup ? LocaleController.getString(R.string.VoipGroupVoiceChat) : LocaleController.getString(R.string.StartVoipChannel));
                         hasVoiceChatItem = true;
                     }
                     if ((chatInfo.can_view_stats || chatInfo.can_view_revenue || chatInfo.can_view_stars_revenue || getMessagesController().getStoriesController().canPostStories(getDialogId())) && topicId == 0) {
@@ -9297,7 +9298,8 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                         otherItem.addSubItem(search_members, R.drawable.msg_search, LocaleController.getString(R.string.SearchMembers));
                     }
                     if (!chat.creator && !chat.left && !chat.kicked && !isTopic) {
-                        otherItem.addSubItem(leave_group, R.drawable.msg_leave, LocaleController.getString(R.string.LeaveMegaMenu));
+                        profileHeaderLayout.profileButtonsView.addButton(leave_group, R.drawable.msg_leave, LocaleController.getString(R.string.LeaveAffiliateLinkButton));
+
                     }
                     if (isTopic && ChatObject.canDeleteTopic(currentAccount, chat, topicId)) {
                         otherItem.addSubItem(delete_topic, R.drawable.msg_delete, LocaleController.getPluralString("DeleteTopics", 1));
@@ -9308,23 +9310,28 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     }
                     if (ChatObject.isPublic(chat)) {
                         otherItem.addSubItem(share, R.drawable.msg_share, LocaleController.getString(R.string.BotShare));
+                        profileHeaderLayout.profileButtonsView.addButton(share, R.drawable.profile_share, LocaleController.getString(R.string.BotShare));
                     }
                     if (!BuildVars.IS_BILLING_UNAVAILABLE && !getMessagesController().premiumPurchaseBlocked()) {
                         StarsController.getInstance(currentAccount).loadStarGifts();
-                        otherItem.addSubItem(gift_premium, R.drawable.msg_gift_premium, LocaleController.getString(R.string.ProfileSendAGiftToChannel));
-                        otherItem.setSubItemShown(gift_premium, chatInfo != null && chatInfo.stargifts_available);
+
+                        ProfileButtonsView.ProfileButton button =
+                            profileHeaderLayout.profileButtonsView.addButton(gift_premium, R.drawable.profile_gift, LocaleController.getString(R.string.ActionStarGift));
+                        boolean show = chatInfo != null && chatInfo.stargifts_available;
+                        button.setVisibility(show ? View.VISIBLE : View.GONE);
+
                     }
                     if (chatInfo != null && chatInfo.linked_chat_id != 0) {
                         otherItem.addSubItem(view_discussion, R.drawable.msg_discussion, LocaleController.getString(R.string.ViewDiscussion));
                     }
                     if (!currentChat.creator && !currentChat.left && !currentChat.kicked) {
-                        otherItem.addSubItem(leave_group, R.drawable.msg_leave, LocaleController.getString(R.string.LeaveChannelMenu));
+                        profileHeaderLayout.profileButtonsView.addButton(leave_group, R.drawable.msg_leave, LocaleController.getString(R.string.LeaveAffiliateLinkButton));
                     }
                 }
             } else {
                 if (chatInfo != null) {
                     if (ChatObject.canManageCalls(chat) && chatInfo.call == null) {
-                        otherItem.addSubItem(call_item, R.drawable.msg_voicechat, LocaleController.getString(R.string.StartVoipChat));
+                        profileHeaderLayout.profileButtonsView.addButton(call_item, R.drawable.profile_call, LocaleController.getString(R.string.Call));
                         hasVoiceChatItem = true;
                     }
                     ChatObject.Call call = getMessagesController().getGroupCall(chatId, false);
@@ -9339,7 +9346,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                         otherItem.addSubItem(search_members, R.drawable.msg_search, LocaleController.getString(R.string.SearchMembers));
                     }
                 }
-                otherItem.addSubItem(leave_group, R.drawable.msg_leave, LocaleController.getString(R.string.DeleteAndExit));
+                profileHeaderLayout.profileButtonsView.addButton(leave_group, R.drawable.msg_leave, LocaleController.getString(R.string.LeaveAffiliateLinkButton));
             }
             if (topicId == 0) {
                 otherItem.addSubItem(add_shortcut, R.drawable.msg_home, LocaleController.getString(R.string.AddShortcut));
@@ -9369,32 +9376,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
             otherItem.hideSubItem(delete_avatar);
         }
         if (!mediaHeaderVisible) {
-            if (callItemVisible) {
-                if (callItem.getVisibility() != View.VISIBLE) {
-                    callItem.setVisibility(View.VISIBLE);
-                    if (animated) {
-                        callItem.setAlpha(0);
-                        callItem.animate().alpha(1f).setDuration(150).start();
-                    }
-                }
-            } else {
-                if (callItem.getVisibility() != View.GONE) {
-                    callItem.setVisibility(View.GONE);
-                }
-            }
-            if (videoCallItemVisible) {
-                if (videoCallItem.getVisibility() != View.VISIBLE) {
-                    videoCallItem.setVisibility(View.VISIBLE);
-                    if (animated) {
-                        videoCallItem.setAlpha(0);
-                        videoCallItem.animate().alpha(1f).setDuration(150).start();
-                    }
-                }
-            } else {
-                if (videoCallItem.getVisibility() != View.GONE) {
-                    videoCallItem.setVisibility(View.GONE);
-                }
-            }
+
             if (editItemVisible) {
                 if (editItem.getVisibility() != View.VISIBLE) {
                     editItem.setVisibility(View.VISIBLE);

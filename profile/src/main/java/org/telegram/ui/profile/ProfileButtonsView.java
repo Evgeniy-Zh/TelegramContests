@@ -24,33 +24,78 @@ import org.telegram.ui.Components.LayoutHelper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class ProfileButtonsView extends LinearLayout {
 
-    public final ProfileButton messageButton;
-    public final ProfileButton muteButton;
-    public final ProfileButton callButton;
-    public final ProfileButton videoButton;
+    public static int buttonCount= 0;
+    public static final int MESSAGE_BUTTON = buttonCount++;
+    public static final int MUTE_BUTTON = buttonCount++;
+    public static final int UNMUTE_BUTTON = buttonCount++;
+    public static final int CALL_BUTTON = buttonCount++;
+    public static final int VIDEO_BUTTON = buttonCount++;
+    public static final int GIFT_BUTTON = buttonCount++;
+    private final int verticalMargin;
+    private OnClickListener buttonsListener;
+
+    private List<ProfileButton> buttons;
+
 
 
     public ProfileButtonsView(Context context) {
         super(context);
-        int verticalMargin = dp(3);
-        messageButton = new ProfileButton(context, R.drawable.profile_message, R.string.Message);
-        muteButton = new ProfileButton(context, R.drawable.profile_mute, R.string.Mute);
-        callButton = new ProfileButton(context, R.drawable.profile_call, R.string.Call);
-        videoButton = new ProfileButton(context, R.drawable.profile_video_call, R.string.VideoCall);
 
-        messageButton.setOnClickListener(v -> {
-        });
+        buttons = new ArrayList<>();
+//        buttons.add(new ProfileButton(context, R.drawable.profile_unmute, R.string.Unmute));
+//        buttons.add(new ProfileButton(context, R.drawable.profile_call, R.string.Call));
+//        buttons.add(new ProfileButton(context, R.drawable.profile_video_call, R.string.VideoCall));
+//        buttons.add(new ProfileButton(context, R.drawable.profile_gift, R.string.Gift2TitleProfile));
+
+        verticalMargin = dp(3);
+
+        ProfileButton messageButton = new ProfileButton(context, R.drawable.profile_message, R.string.Message);
+        messageButton.setId(MESSAGE_BUTTON);
+        ProfileButton muteButton = new ProfileButton(context, R.drawable.profile_mute, R.string.Mute);
+        muteButton.setId(MUTE_BUTTON);
 
         LayoutParams layoutParams = LayoutHelper.createLinear(0, LayoutHelper.MATCH_PARENT, 1f);
         layoutParams.setMargins(verticalMargin, 0, verticalMargin, 0);
 
         addView(messageButton, layoutParams);
         addView(muteButton, layoutParams);
-        addView(callButton, layoutParams);
-        addView(videoButton, layoutParams);
+    }
+
+    public ProfileButton get(int id) {
+        return findViewById(id);
+    }
+
+    public ProfileButton addButton(int id, int iconRes, int stringRes){
+        ProfileButton button = new ProfileButton(getContext(), iconRes, stringRes);
+        button.setId(id);
+
+        LayoutParams layoutParams = LayoutHelper.createLinear(0, LayoutHelper.MATCH_PARENT, 1f);
+        layoutParams.setMargins(verticalMargin, 0, verticalMargin, 0);
+
+        addView(button, layoutParams);
+        button.setOnClickListener(buttonsListener);
+        return button;
+    }
+
+    public ProfileButton addButton(int id, int iconRes, String string){
+        ProfileButton button = new ProfileButton(getContext(), iconRes, string);
+        button.setId(id);
+
+        LayoutParams layoutParams = LayoutHelper.createLinear(0, LayoutHelper.MATCH_PARENT, 1f);
+        layoutParams.setMargins(verticalMargin, 0, verticalMargin, 0);
+
+        addView(button, layoutParams);
+        button.setOnClickListener(buttonsListener);
+        return button;
+    }
+
+    public void setButtonsCLickListener(OnClickListener listener){
+        buttonsListener = listener;
+        AndroidUtilities.forEachViews(this, view -> view.setOnClickListener(listener));
     }
 
     public Animator getAnimator(float value){
@@ -68,11 +113,9 @@ public class ProfileButtonsView extends LinearLayout {
 
         set.playTogether(
                 ObjectAnimator.ofFloat(this, View.SCALE_Y, value),
-                ObjectAnimator.ofFloat(this, View.ALPHA, value),
-                messageButton.getAnimator(value),
-                muteButton.getAnimator(value),
-                callButton.getAnimator(value),
-                videoButton.getAnimator(value)
+                ObjectAnimator.ofFloat(this, View.ALPHA, value)
+
+                //TODO: add buttons
         );
         return set;
     }
@@ -86,6 +129,10 @@ public class ProfileButtonsView extends LinearLayout {
         TextView textView;
 
         public ProfileButton(Context context, int iconRes, int stringRes) {
+            this(context, iconRes, LocaleController.getString(stringRes));
+        }
+
+        public ProfileButton(Context context, int iconRes, String string) {
             super(context);
 
 
@@ -104,7 +151,7 @@ public class ProfileButtonsView extends LinearLayout {
             textView.setGravity(Gravity.CENTER);
 
             textView.setTextColor(contentColor);
-            textView.setText(LocaleController.getString(stringRes));
+            textView.setText(LocaleController.getString(string));
 
             addView(iconView, LayoutHelper.createLinear(30, 30));
             addView(textView);
