@@ -9,7 +9,6 @@ import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RadialGradient;
@@ -21,18 +20,12 @@ import android.view.View;
 import android.view.animation.Interpolator;
 
 import androidx.annotation.NonNull;
-import androidx.dynamicanimation.animation.DynamicAnimation;
-import androidx.dynamicanimation.animation.FloatValueHolder;
-import androidx.dynamicanimation.animation.SpringAnimation;
 
-import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.NotificationCenter;
-import org.telegram.messenger.Utilities;
 import org.telegram.messenger.browser.Browser;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.tgnet.tl.TL_stars;
-import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AnimatedEmojiDrawable;
 import org.telegram.ui.Components.AnimatedFloat;
@@ -227,6 +220,7 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
                 final int sz = dp(24);
                 emojiDrawable.setBounds(-sz / 2, -sz / 2, sz / 2, sz / 2);
                 emojiDrawable.setAlpha((int) (0xFF * alpha));
+                emojiDrawable.update(System.currentTimeMillis());
                 emojiDrawable.draw(canvas);
             }
             canvas.restore();
@@ -405,15 +399,6 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
             float scaleDest = 0.4f;
 
             float animationProgress = calculateTimeFraction(this.animationProgress, index);
-
-
-            //TODO: animate gifts
-//            if(!gift.emojiDrawable.getImageReceiver().isAnimationRunning()) {
-//                gift.emojiDrawable.getImageReceiver().startAnimation(true);
-//            }
-//            gift.emojiDrawable.setTime(System.currentTimeMillis());
-//            gift.emojiDrawable.update(t++);
-
 
             if (index == 0) {
                 y = lerp(ay + dp(12), yDest, animationProgress * animationProgress);
