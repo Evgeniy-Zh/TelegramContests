@@ -7264,12 +7264,6 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                 }
             }
             if (isOpen) {
-                for (int i = 0; i < 2; i++) {
-                    FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) profileHeaderLayout.onlineTextView[i + 1].getLayoutParams();
-                    layoutParams.rightMargin = (int) (-21 * AndroidUtilities.density + dp(8));
-                    profileHeaderLayout.onlineTextView[i + 1].setLayoutParams(layoutParams);
-                }
-
 
                 if (playProfileAnimation != 2) {
                     int width = (int) Math.ceil(AndroidUtilities.displaySize.x - dp(118 + 8) + 21 * AndroidUtilities.density);
