@@ -435,8 +435,8 @@ public class ProfileHeaderLayout {
 
         Animator dropViewAnimator = dropView.animator;
 
-        dropViewAnimator.setStartDelay(100);
-        dropViewAnimator.setDuration(600);
+        dropViewAnimator.setStartDelay(200);
+        dropViewAnimator.setDuration(300);
 
         avatarCollapseAnimator.playTogether(
                 giftsAnimator,

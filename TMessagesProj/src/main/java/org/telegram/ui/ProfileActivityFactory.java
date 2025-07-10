@@ -4,13 +4,13 @@ import android.os.Bundle;
 import android.util.Log;
 
 import org.telegram.ui.Components.SharedMediaLayout;
+import org.telegram.ui.profile.ProfileActivity2;
 
 import kotlin.jvm.functions.Function2;
 
 
 public class ProfileActivityFactory {
     private static final String TAG = "ProfileActivityFactory";
-    public static Function2<Bundle, SharedMediaLayout.SharedMediaPreloader, ProfileBaseActivity> factory;
 
     public static ProfileBaseActivity newInstance(Bundle args, SharedMediaLayout.SharedMediaPreloader preloader) {
 
@@ -23,18 +23,14 @@ public class ProfileActivityFactory {
                 caller.getMethodName() + "(): line " +
                 caller.getLineNumber());
 
-        try {
-            Class.forName("org.telegram.ui.profile.ProfileActivity2");
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        }
+
         Log.d(TAG, "newInstance args: " + args);
 
         if (args.getBoolean("my_profile", false)
                 || args.getBoolean("open_settings", false)) {
             return new org.telegram.ui.ProfileActivity(args, preloader);
         }
-        return factory.invoke(args, preloader);
+        return new ProfileActivity2(args, preloader);
     }
 
     public static ProfileBaseActivity of(long dialogId) {
@@ -55,7 +51,6 @@ public class ProfileActivityFactory {
             bundle.putLong("chat_id", -dialogId);
         }
 
-        //TODO: create new ProfileActivity
-        return new ProfileActivity(bundle, null);
+        return newInstance(bundle, null);
     }
 }

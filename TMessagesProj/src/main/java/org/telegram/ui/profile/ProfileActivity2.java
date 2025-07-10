@@ -371,9 +371,6 @@ import java.util.zip.ZipOutputStream;
 @Keep
 public class ProfileActivity2 extends ProfileBaseActivity implements NotificationCenter.NotificationCenterDelegate, DialogsActivity.DialogsActivityDelegate, SharedMediaLayout.SharedMediaPreloaderDelegate, ImageUpdater.ImageUpdaterDelegate, SharedMediaLayout.Delegate {
 
-    static {
-        ProfileActivityFactory.factory = ProfileActivity2::new;
-    }
     private final static int PHONE_OPTION_CALL = 0,
             PHONE_OPTION_COPY = 1,
             PHONE_OPTION_TELEGRAM_CALL = 2,
