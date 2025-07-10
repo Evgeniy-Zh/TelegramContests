@@ -369,10 +369,10 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 @Keep
-public class ProfileActivity extends ProfileBaseActivity implements NotificationCenter.NotificationCenterDelegate, DialogsActivity.DialogsActivityDelegate, SharedMediaLayout.SharedMediaPreloaderDelegate, ImageUpdater.ImageUpdaterDelegate, SharedMediaLayout.Delegate {
+public class ProfileActivity2 extends ProfileBaseActivity implements NotificationCenter.NotificationCenterDelegate, DialogsActivity.DialogsActivityDelegate, SharedMediaLayout.SharedMediaPreloaderDelegate, ImageUpdater.ImageUpdaterDelegate, SharedMediaLayout.Delegate {
 
     static {
-        ProfileActivityFactory.factory = ProfileActivity::new;
+        ProfileActivityFactory.factory = ProfileActivity2::new;
     }
     private final static int PHONE_OPTION_CALL = 0,
             PHONE_OPTION_COPY = 1,
@@ -730,15 +730,15 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
 
     private CharacterStyle loadingSpan;
 
-    private final Property<ProfileActivity, Float> HEADER_SHADOW = new AnimationProperties.FloatProperty<ProfileActivity>("headerShadow") {
+    private final Property<ProfileActivity2, Float> HEADER_SHADOW = new AnimationProperties.FloatProperty<ProfileActivity2>("headerShadow") {
         @Override
-        public void setValue(ProfileActivity object, float value) {
+        public void setValue(ProfileActivity2 object, float value) {
             profileHeaderLayout.headerShadowAlpha = value;
             topView.invalidate();
         }
 
         @Override
-        public Float get(ProfileActivity object) {
+        public Float get(ProfileActivity2 object) {
             return profileHeaderLayout.headerShadowAlpha;
         }
     };
@@ -1291,16 +1291,6 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     editItem.setScaleY(1f - value);
                     editItem.setAlpha(1f - value);
                 }
-                if (callItemVisible) {
-                    callItem.setScaleX(1f - value);
-                    callItem.setScaleY(1f - value);
-                    callItem.setAlpha(1f - value);
-                }
-                if (videoCallItemVisible) {
-                    videoCallItem.setScaleX(1f - value);
-                    videoCallItem.setScaleY(1f - value);
-                    videoCallItem.setAlpha(1f - value);
-                }
                 setScaleX(value);
                 setScaleY(value);
                 setAlpha(value);
@@ -1316,12 +1306,6 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                         if (editItemVisible) {
                             editItem.setVisibility(GONE);
                         }
-                        if (callItemVisible) {
-                            callItem.setVisibility(GONE);
-                        }
-                        if (videoCallItemVisible) {
-                            videoCallItem.setVisibility(GONE);
-                        }
                     } else {
                         setVisibility(GONE);
                     }
@@ -1335,12 +1319,6 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     }
                     if (editItemVisible) {
                         editItem.setVisibility(VISIBLE);
-                    }
-                    if (callItemVisible) {
-                        callItem.setVisibility(VISIBLE);
-                    }
-                    if (videoCallItemVisible) {
-                        videoCallItem.setVisibility(VISIBLE);
                     }
                     setVisibility(VISIBLE);
                     updateStoriesViewBounds(false);
@@ -1479,7 +1457,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
         }
     }
 
-    public ProfileActivity(Bundle args, SharedMediaLayout.SharedMediaPreloader preloader) {
+    public ProfileActivity2(Bundle args, SharedMediaLayout.SharedMediaPreloader preloader) {
         super(args);
         sharedMediaPreloader = preloader;
         profileHeaderLayout = new ProfileHeaderLayout(this);
@@ -1879,14 +1857,14 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     if (!isBot || MessagesController.isSupportUser(user)) {
                         if (userBlocked) {
                             getMessagesController().unblockPeer(userId);
-                            if (BulletinFactory.canShowBulletin(ProfileActivity.this)) {
-                                BulletinFactory.createBanBulletin(ProfileActivity.this, false).show();
+                            if (BulletinFactory.canShowBulletin(ProfileActivity2.this)) {
+                                BulletinFactory.createBanBulletin(ProfileActivity2.this, false).show();
                             }
                         } else {
                             if (reportSpam) {
-                                AlertsCreator.showBlockReportSpamAlert(ProfileActivity.this, userId, user, null, currentEncryptedChat, false, null, param -> {
+                                AlertsCreator.showBlockReportSpamAlert(ProfileActivity2.this, userId, user, null, currentEncryptedChat, false, null, param -> {
                                     if (param == 1) {
-                                        getNotificationCenter().removeObserver(ProfileActivity.this, NotificationCenter.closeChats);
+                                        getNotificationCenter().removeObserver(ProfileActivity2.this, NotificationCenter.closeChats);
                                         getNotificationCenter().postNotificationName(NotificationCenter.closeChats);
                                         playProfileAnimation = 0;
                                         finishFragment();
@@ -1900,8 +1878,8 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                                 builder.setMessage(AndroidUtilities.replaceTags(formatString("AreYouSureBlockContact2", R.string.AreYouSureBlockContact2, ContactsController.formatName(user.first_name, user.last_name))));
                                 builder.setPositiveButton(getString(R.string.BlockContact), (dialogInterface, i) -> {
                                     getMessagesController().blockPeer(userId);
-                                    if (BulletinFactory.canShowBulletin(ProfileActivity.this)) {
-                                        BulletinFactory.createBanBulletin(ProfileActivity.this, true).show();
+                                    if (BulletinFactory.canShowBulletin(ProfileActivity2.this)) {
+                                        BulletinFactory.createBanBulletin(ProfileActivity2.this, true).show();
                                     }
                                 });
                                 builder.setNegativeButton(getString(R.string.Cancel), null);
@@ -1915,7 +1893,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                         }
                     } else {
                         if (!userBlocked) {
-                            AlertsCreator.createClearOrDeleteDialogAlert(ProfileActivity.this, false, currentChat, user, currentEncryptedChat != null, true, true, (param) -> {
+                            AlertsCreator.createClearOrDeleteDialogAlert(ProfileActivity2.this, false, currentChat, user, currentEncryptedChat != null, true, true, (param) -> {
                                 if (getParentLayout() != null) {
                                     List<BaseFragment> fragmentStack = getParentLayout().getFragmentStack();
                                     BaseFragment prevFragment = fragmentStack == null || fragmentStack.size() < 2 ? null : fragmentStack.get(fragmentStack.size() - 2);
@@ -1944,7 +1922,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     args.putString("selectAlertString", getString(R.string.SendContactToText));
                     args.putString("selectAlertStringGroup", getString(R.string.SendContactToGroupText));
                     DialogsActivity fragment = new DialogsActivity(args);
-                    fragment.setDelegate(ProfileActivity.this);
+                    fragment.setDelegate(ProfileActivity2.this);
                     presentFragment(fragment);
                 } else if (id == edit_contact) {
                     Bundle args = new Bundle();
@@ -2010,7 +1988,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                         button.setTextColor(Theme.getColor(Theme.key_text_RedBold));
                     }
                 } else if (id == report) {
-                    ReportBottomSheet.openChat(ProfileActivity.this, getDialogId());
+                    ReportBottomSheet.openChat(ProfileActivity2.this, getDialogId());
                 } else if (id == edit_channel) {
                     if (isTopic) {
                         Bundle args = new Bundle();
@@ -2058,7 +2036,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                                     public void didSetRights(int rights, TLRPC.TL_chatAdminRights rightsAdmin, TLRPC.TL_chatBannedRights rightsBanned, String rank) {
                                         disableProfileAnimation = true;
                                         fragment.removeSelfFromStack();
-                                        getNotificationCenter().removeObserver(ProfileActivity.this, NotificationCenter.closeChats);
+                                        getNotificationCenter().removeObserver(ProfileActivity2.this, NotificationCenter.closeChats);
                                         getNotificationCenter().postNotificationName(NotificationCenter.closeChats);
                                     }
 
@@ -2084,7 +2062,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                                     return;
                                 }
                                 ChatActivity chatActivity = new ChatActivity(args1);
-                                getNotificationCenter().removeObserver(ProfileActivity.this, NotificationCenter.closeChats);
+                                getNotificationCenter().removeObserver(ProfileActivity2.this, NotificationCenter.closeChats);
                                 getNotificationCenter().postNotificationName(NotificationCenter.closeChats);
                                 getMessagesController().addUserToChat(-did, user, 0, null, chatActivity, true, null, null);
                                 presentFragment(chatActivity, true);
@@ -2153,9 +2131,9 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     } else if (chatId != 0) {
                         ChatObject.Call call = getMessagesController().getGroupCall(chatId, false);
                         if (call == null) {
-                            VoIPHelper.showGroupCallAlert(ProfileActivity.this, currentChat, null, false, getAccountInstance());
+                            VoIPHelper.showGroupCallAlert(ProfileActivity2.this, currentChat, null, false, getAccountInstance());
                         } else {
-                            VoIPHelper.startCall(currentChat, null, null, false, getParentActivity(), ProfileActivity.this, getAccountInstance());
+                            VoIPHelper.startCall(currentChat, null, null, false, getParentActivity(), ProfileActivity2.this, getAccountInstance());
                         }
                     }
                 } else if (id == search_members) {
@@ -2230,17 +2208,17 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                             if (getParentActivity() == null) {
                                 return;
                             }
-                            BulletinFactory.createSaveToGalleryBulletin(ProfileActivity.this, isVideo, null).show();
+                            BulletinFactory.createSaveToGalleryBulletin(ProfileActivity2.this, isVideo, null).show();
                         });
                     }
                 } else if (id == edit_info) {
                     presentFragment(new UserInfoActivity());
                 } else if (id == edit_color) {
                     if (!getUserConfig().isPremium()) {
-                        showDialog(new PremiumFeatureBottomSheet(ProfileActivity.this, PremiumPreviewFragment.PREMIUM_FEATURE_NAME_COLOR, true));
+                        showDialog(new PremiumFeatureBottomSheet(ProfileActivity2.this, PremiumPreviewFragment.PREMIUM_FEATURE_NAME_COLOR, true));
                         return;
                     }
-                    presentFragment(new PeerColorActivity(0).startOnProfile().setOnApplied(ProfileActivity.this));
+                    presentFragment(new PeerColorActivity(0).startOnProfile().setOnApplied(ProfileActivity2.this));
                 } else if (id == copy_link_profile) {
                     TLRPC.User user = getMessagesController().getUser(userId);
                     AndroidUtilities.addToClipboard(getMessagesController().linkPrefix + "/" + UserObject.getPublicUsername(user));
@@ -2955,8 +2933,6 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
 //                profileHeaderLayout.avatarContainer.setPivotX(profileHeaderLayout.avatarContainer.getMeasuredWidth() / 2f);
 //                AndroidUtilities.updateViewVisibilityAnimated(profileHeaderLayout.avatarContainer, !expanded, 0.95f, true);
 
-                callItem.setVisibility(expanded || !callItemVisible ? GONE : INVISIBLE);
-                videoCallItem.setVisibility(expanded || !videoCallItemVisible ? GONE : INVISIBLE);
                 editItem.setVisibility(expanded || !editItemVisible ? GONE : INVISIBLE);
                 otherItem.setVisibility(expanded ? GONE : INVISIBLE);
                 if (qrItem != null) {
@@ -2967,7 +2943,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
 
             @Override
             protected boolean onMemberClick(TLRPC.ChatParticipant participant, boolean isLong, View view) {
-                return ProfileActivity.this.onMemberClick(participant, isLong, view);
+                return ProfileActivity2.this.onMemberClick(participant, isLong, view);
             }
 
             @Override
@@ -3112,20 +3088,16 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
             }
         }
 
-        videoCallItem = profileHeaderLayout.profileButtonsView.addButton(video_call_item, R.drawable.profile_video, R.string.VideoCall);
+        videoCallItem = profileHeaderLayout.profileButtonsView.addButton(video_call_item, R.drawable.profile_video, R.string.Video);
+        videoCallItem.setVisibility(videoCallItemVisible ? View.VISIBLE : View.GONE);
         videoCallItem.setContentDescription(getString(R.string.VideoCall));
+
         if (chatId != 0) {
-            if (ChatObject.isChannelOrGiga(currentChat)) {
-                callItem = profileHeaderLayout.profileButtonsView.addButton(call_item, R.drawable.profile_live_stream, R.string.VoipChannelVoiceChat);
-                callItem.setContentDescription(getString(R.string.VoipChannelVoiceChat));
-            } else {
-                callItem = profileHeaderLayout.profileButtonsView.addButton(call_item, R.drawable.profile_live_stream, R.string.VoipChannelVoiceChat);
-                callItem.setContentDescription(getString(R.string.VoipGroupVoiceChat));
-            }
+            callItem = profileHeaderLayout.profileButtonsView.addButton(call_item, R.drawable.msg_voicechat2, R.string.VoipChannelVoiceChat);
         } else {
-            callItem = profileHeaderLayout.profileButtonsView.addButton(call_item, R.drawable.profile_call, R.string.Call);
-            callItem.setContentDescription(getString(R.string.Call));
+            callItem = profileHeaderLayout.profileButtonsView.addButton(call_item, R.drawable.ic_call, R.string.Call);
         }
+        callItem.setVisibility(callItemVisible? View.VISIBLE : View.GONE);
         if (myProfile) {
             editItem = menu.addItem(edit_profile, R.drawable.group_edit_profile);
             editItem.setContentDescription(getString(R.string.Edit));
@@ -3383,7 +3355,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
             } else if (position == notificationsSimpleRow) {
                 boolean muted = getMessagesController().isDialogMuted(did, topicId);
                 getNotificationsController().muteDialog(did, topicId, !muted);
-                BulletinFactory.createMuteBulletin(ProfileActivity.this, !muted, null).show();
+                BulletinFactory.createMuteBulletin(ProfileActivity2.this, !muted, null).show();
                 updateExceptions();
                 if (notificationsSimpleRow >= 0 && listAdapter != null) {
                     listAdapter.notifyItemChanged(notificationsSimpleRow);
@@ -3434,7 +3406,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
 
                     reportReactionMessageId = 0;
                     updateListAnimated(false);
-                    BulletinFactory.of(ProfileActivity.this).createReportSent(resourcesProvider).show();
+                    BulletinFactory.of(ProfileActivity2.this).createReportSent(resourcesProvider).show();
                 });
                 builder.setNegativeButton(getString(R.string.Cancel), (dialog, which) -> {
                     dialog.dismiss();
@@ -3514,8 +3486,8 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                         SharedPreferences preferences = MessagesController.getNotificationsSettings(currentAccount);
                         boolean enabled = !preferences.getBoolean("sound_enabled_" + NotificationsController.getSharedPrefKey(did, topicId), true);
                         preferences.edit().putBoolean("sound_enabled_" + NotificationsController.getSharedPrefKey(did, topicId), enabled).apply();
-                        if (BulletinFactory.canShowBulletin(ProfileActivity.this)) {
-                            BulletinFactory.createSoundEnabledBulletin(ProfileActivity.this, enabled ? NotificationsController.SETTING_SOUND_ON : NotificationsController.SETTING_SOUND_OFF, getResourceProvider()).show();
+                        if (BulletinFactory.canShowBulletin(ProfileActivity2.this)) {
+                            BulletinFactory.createSoundEnabledBulletin(ProfileActivity2.this, enabled ? NotificationsController.SETTING_SOUND_ON : NotificationsController.SETTING_SOUND_OFF, getResourceProvider()).show();
                         }
                     }
 
@@ -3525,13 +3497,13 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                             if (getMessagesController().isDialogMuted(did, topicId)) {
                                 toggleMute();
                             }
-                            if (BulletinFactory.canShowBulletin(ProfileActivity.this)) {
-                                BulletinFactory.createMuteBulletin(ProfileActivity.this, NotificationsController.SETTING_MUTE_UNMUTE, timeInSeconds, getResourceProvider()).show();
+                            if (BulletinFactory.canShowBulletin(ProfileActivity2.this)) {
+                                BulletinFactory.createMuteBulletin(ProfileActivity2.this, NotificationsController.SETTING_MUTE_UNMUTE, timeInSeconds, getResourceProvider()).show();
                             }
                         } else {
                             getNotificationsController().muteUntil(did, topicId, timeInSeconds);
-                            if (BulletinFactory.canShowBulletin(ProfileActivity.this)) {
-                                BulletinFactory.createMuteBulletin(ProfileActivity.this, NotificationsController.SETTING_MUTE_CUSTOM, timeInSeconds, getResourceProvider()).show();
+                            if (BulletinFactory.canShowBulletin(ProfileActivity2.this)) {
+                                BulletinFactory.createMuteBulletin(ProfileActivity2.this, NotificationsController.SETTING_MUTE_CUSTOM, timeInSeconds, getResourceProvider()).show();
                             }
                             updateExceptions();
                             if (notificationsRow >= 0 && listAdapter != null) {
@@ -3554,8 +3526,8 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     public void toggleMute() {
                         boolean muted = getMessagesController().isDialogMuted(did, topicId);
                         getNotificationsController().muteDialog(did, topicId, !muted);
-                        if (ProfileActivity.this.fragmentView != null) {
-                            BulletinFactory.createMuteBulletin(ProfileActivity.this, !muted, null).show();
+                        if (ProfileActivity2.this.fragmentView != null) {
+                            BulletinFactory.createMuteBulletin(ProfileActivity2.this, !muted, null).show();
                         }
                         updateExceptions();
                         if (notificationsRow >= 0 && listAdapter != null) {
@@ -3578,11 +3550,11 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     x += v.getX() + v.getPaddingLeft();
                     y += v.getY() + v.getPaddingTop();
                 }
-                chatNotificationsPopupWrapper.showAsOptions(ProfileActivity.this, view, x, y);
+                chatNotificationsPopupWrapper.showAsOptions(ProfileActivity2.this, view, x, y);
             } else if (position == unblockRow) {
                 getMessagesController().unblockPeer(userId);
-                if (BulletinFactory.canShowBulletin(ProfileActivity.this)) {
-                    BulletinFactory.createBanBulletin(ProfileActivity.this, false).show();
+                if (BulletinFactory.canShowBulletin(ProfileActivity2.this)) {
+                    BulletinFactory.createBanBulletin(ProfileActivity2.this, false).show();
                 }
             } else if (position == addToGroupButtonRow) {
                 try {
@@ -3593,7 +3565,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
             } else if (position == sendMessageRow) {
                 onWriteButtonClick();
             } else if (position == reportRow) {
-                ReportBottomSheet.openChat(ProfileActivity.this, getDialogId());
+                ReportBottomSheet.openChat(ProfileActivity2.this, getDialogId());
             } else if (position >= membersStartRow && position < membersEndRow) {
                 TLRPC.ChatParticipant participant;
                 if (!sortedUsers.isEmpty()) {
@@ -3613,7 +3585,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     presentFragment(fragment);
                 }
             } else if (position == joinRow) {
-                getMessagesController().addUserToChat(currentChat.id, getUserConfig().getCurrentUser(), 0, null, ProfileActivity.this, true, () -> {
+                getMessagesController().addUserToChat(currentChat.id, getUserConfig().getCurrentUser(), 0, null, ProfileActivity2.this, true, () -> {
                     updateRowsIds();
                     if (listAdapter != null) {
                         listAdapter.notifyDataSetChanged();
@@ -3622,7 +3594,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     if (err != null && "INVITE_REQUEST_SENT".equals(err.text)) {
                         SharedPreferences preferences = MessagesController.getNotificationsSettings(currentAccount);
                         preferences.edit().putLong("dialog_join_requested_time_" + dialogId, System.currentTimeMillis()).commit();
-                        JoinGroupAlert.showBulletin(context, ProfileActivity.this, ChatObject.isChannel(currentChat) && !currentChat.megagroup);
+                        JoinGroupAlert.showBulletin(context, ProfileActivity2.this, ChatObject.isChannel(currentChat) && !currentChat.megagroup);
                         updateRowsIds();
                         if (listAdapter != null) {
                             listAdapter.notifyDataSetChanged();
@@ -3687,7 +3659,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
             } else if (position == devicesRow) {
                 presentFragment(new SessionsActivity(0));
             } else if (position == questionRow) {
-                showDialog(AlertsCreator.createSupportAlert(ProfileActivity.this, resourcesProvider));
+                showDialog(AlertsCreator.createSupportAlert(ProfileActivity2.this, resourcesProvider));
             } else if (position == faqRow) {
                 Browser.openUrl(getParentActivity(), getString(R.string.TelegramFaqUrl));
             } else if (position == policyRow) {
@@ -3756,7 +3728,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                 final int[] reqId = new int[1];
                 reqId[0] = botPermissionEmojiStatusReqId = getConnectionsManager().sendRequest(req, (res, err) -> AndroidUtilities.runOnUIThread(() -> {
                     if (!(res instanceof TLRPC.TL_boolTrue)) {
-                        BulletinFactory.of(ProfileActivity.this).showForError(err);
+                        BulletinFactory.of(ProfileActivity2.this).showForError(err);
                     }
                     if (botPermissionEmojiStatusReqId == reqId[0]) {
                         botPermissionEmojiStatusReqId = 0;
@@ -4160,7 +4132,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     if (userInfo == null) return false;
                     try {
                         AndroidUtilities.addToClipboard(UserInfoActivity.birthdayString(userInfo.birthday));
-                        BulletinFactory.of(ProfileActivity.this).createCopyBulletin(getString(R.string.BirthdayCopied)).show();
+                        BulletinFactory.of(ProfileActivity2.this).createCopyBulletin(getString(R.string.BirthdayCopied)).show();
                     } catch (Exception e) {
                         FileLog.e(e);
                     }
@@ -4391,10 +4363,10 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                         if (document == null) {
                             return;
                         }
-                        Bulletin bulletin = BulletinFactory.of(ProfileActivity.this).createContainsEmojiBulletin(document, BulletinFactory.CONTAINS_EMOJI_IN_TOPIC, set -> {
+                        Bulletin bulletin = BulletinFactory.of(ProfileActivity2.this).createContainsEmojiBulletin(document, BulletinFactory.CONTAINS_EMOJI_IN_TOPIC, set -> {
                             ArrayList<TLRPC.InputStickerSet> inputSets = new ArrayList<>(1);
                             inputSets.add(set);
-                            EmojiPacksAlert alert = new EmojiPacksAlert(ProfileActivity.this, getParentActivity(), resourcesProvider, inputSets);
+                            EmojiPacksAlert alert = new EmojiPacksAlert(ProfileActivity2.this, getParentActivity(), resourcesProvider, inputSets);
                             showDialog(alert);
                         });
                         if (bulletin != null) {
@@ -4489,7 +4461,6 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
 
 
         avatarsViewPagerIndicatorView = profileHeaderLayout.avatarsViewPagerIndicatorView = new PagerIndicatorView(context);
-        profileHeaderLayout.avatarContainer.addView(avatarsViewPagerIndicatorView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         frameLayout.addView(actionBar);
 
@@ -4960,7 +4931,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                 if (holder != null) {
                     Integer offset = positionToOffset.get(holder.getAdapterPosition());
                     if (offset != null) {
-                        listView.smoothScrollBy(0, -(offset + (listView.getPaddingTop() - child.getTop() - actionBar.getMeasuredHeight())), CubicBezierInterpolator.EASE_OUT_QUINT);
+                        listView.smoothScrollBy(0, -(offset + (listView.getPaddingTop() - child.getTop() - actionBar.getMeasuredHeight())), CubicBezierInterpolator.EASE_IN);
                         return true;
                     }
                 }
@@ -5029,8 +5000,8 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                         getParentLayout().removeFragmentFromStack(fragment);
                         i--;
                     }
-                } else if (fragment instanceof ProfileActivity) {
-                    if (fragment != this && ((ProfileActivity) fragment).getDialogId() == getDialogId() && ((ProfileActivity) fragment).isTopic) {
+                } else if (fragment instanceof ProfileActivity2) {
+                    if (fragment != this && ((ProfileActivity2) fragment).getDialogId() == getDialogId() && ((ProfileActivity2) fragment).isTopic) {
                         getParentLayout().removeFragmentFromStack(fragment);
                         i--;
                     }
@@ -5071,7 +5042,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
 
             @Override
             public long getDialogId() {
-                return ProfileActivity.this.getDialogId();
+                return ProfileActivity2.this.getDialogId();
             }
 
             @Override
@@ -5180,7 +5151,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
         if (userId != 0) {
             TLRPC.User user = getMessagesController().getUser(userId);
             if (user.photo != null && user.photo.photo_big != null) {
-                PhotoViewer.getInstance().setParentActivity(ProfileActivity.this);
+                PhotoViewer.getInstance().setParentActivity(ProfileActivity2.this);
                 if (user.photo.dc_id != 0) {
                     user.photo.photo_big.dc_id = user.photo.dc_id;
                 }
@@ -5189,7 +5160,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
         } else if (chatId != 0) {
             TLRPC.Chat chat = getMessagesController().getChat(chatId);
             if (chat.photo != null && chat.photo.photo_big != null) {
-                PhotoViewer.getInstance().setParentActivity(ProfileActivity.this);
+                PhotoViewer.getInstance().setParentActivity(ProfileActivity2.this);
                 if (chat.photo.dc_id != 0) {
                     chat.photo.photo_big.dc_id = chat.photo.dc_id;
                 }
@@ -5247,12 +5218,12 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     }
                     Bundle args = new Bundle();
                     args.putLong("user_id", userId);
-                    if (!getMessagesController().checkCanOpenChat(args, ProfileActivity.this)) {
+                    if (!getMessagesController().checkCanOpenChat(args, ProfileActivity2.this)) {
                         return;
                     }
                     boolean removeFragment = arguments.getBoolean("removeFragmentOnChatOpen", true);
                     if (!AndroidUtilities.isTablet() && removeFragment) {
-                        getNotificationCenter().removeObserver(ProfileActivity.this, NotificationCenter.closeChats);
+                        getNotificationCenter().removeObserver(ProfileActivity2.this, NotificationCenter.closeChats);
                         getNotificationCenter().postNotificationName(NotificationCenter.closeChats);
                     }
                     int distance = getArguments().getInt("nearby_distance", -1);
@@ -5278,7 +5249,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
         }
         Bundle args = new Bundle();
         args.putLong("chat_id", chatInfo.linked_chat_id);
-        if (!getMessagesController().checkCanOpenChat(args, ProfileActivity.this)) {
+        if (!getMessagesController().checkCanOpenChat(args, ProfileActivity2.this)) {
             return;
         }
         presentFragment(new ChatActivity(args));
@@ -5370,7 +5341,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
             Bundle args = new Bundle();
             args.putLong("user_id", participant.user_id);
             args.putBoolean("preload_messages", true);
-            presentFragment(org.telegram.ui.ProfileActivityFactory.newInstance(args, null));
+            presentFragment(ProfileActivityFactory.newInstance(args, null));
         }
         return true;
     }
@@ -5380,8 +5351,8 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
         ChatRightsEditActivity fragment = new ChatRightsEditActivity(user.id, chatId, adminRights, currentChat.default_banned_rights, bannedRights, rank, action, true, false, null) {
             @Override
             public void onTransitionAnimationEnd(boolean isOpen, boolean backward) {
-                if (!isOpen && backward && needShowBulletin[0] && BulletinFactory.canShowBulletin(ProfileActivity.this)) {
-                    BulletinFactory.createPromoteToAdminBulletin(ProfileActivity.this, user.first_name).show();
+                if (!isOpen && backward && needShowBulletin[0] && BulletinFactory.canShowBulletin(ProfileActivity2.this)) {
+                    BulletinFactory.createPromoteToAdminBulletin(ProfileActivity2.this, user.first_name).show();
                 }
             }
         };
@@ -5953,9 +5924,9 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
 
     private void leaveChatPressed() {
         boolean isForum = ChatObject.isForum(currentChat);
-        AlertsCreator.createClearOrDeleteDialogAlert(ProfileActivity.this, false, currentChat, null, false, isForum, !isForum, (param) -> {
+        AlertsCreator.createClearOrDeleteDialogAlert(ProfileActivity2.this, false, currentChat, null, false, isForum, !isForum, (param) -> {
             playProfileAnimation = 0;
-            getNotificationCenter().removeObserver(ProfileActivity.this, NotificationCenter.closeChats);
+            getNotificationCenter().removeObserver(ProfileActivity2.this, NotificationCenter.closeChats);
             getNotificationCenter().postNotificationName(NotificationCenter.closeChats);
             finishFragment();
             getNotificationCenter().postNotificationName(NotificationCenter.needDeleteDialog, -currentChat.id, null, currentChat, param);
@@ -6089,9 +6060,6 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
 
             updateEmojiStatusDrawableColor();
 
-            if (avatarsViewPagerIndicatorView.getSecondaryMenuItem() != null && (videoCallItemVisible || editItemVisible || callItemVisible)) {
-//                profileHeaderLayout.needLayoutText(Math.min(1f, profileHeaderLayout.extraHeight / AndroidUtilities.dp(profileHeaderLayout.expandThreshold)));
-            }
         }
 
         @Override
@@ -6115,12 +6083,6 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
         ImageView mediaOptionsItem = sharedMediaLayout.getSearchOptionsItem();
         TextView saveItem = sharedMediaLayout.getSaveItem();
         if (!mediaHeaderVisible) {
-            if (callItemVisible) {
-                callItem.setVisibility(View.VISIBLE);
-            }
-            if (videoCallItemVisible) {
-                videoCallItem.setVisibility(View.VISIBLE);
-            }
             if (editItemVisible) {
                 editItem.setVisibility(View.VISIBLE);
             }
@@ -6154,12 +6116,8 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
 
         ArrayList<Animator> animators = new ArrayList<>();
 
-        animators.add(ObjectAnimator.ofFloat(callItem, View.ALPHA, visible ? 0.0f : 1.0f));
-        animators.add(ObjectAnimator.ofFloat(videoCallItem, View.ALPHA, visible ? 0.0f : 1.0f));
         animators.add(ObjectAnimator.ofFloat(otherItem, View.ALPHA, visible ? 0.0f : 1.0f));
         animators.add(ObjectAnimator.ofFloat(editItem, View.ALPHA, visible ? 0.0f : 1.0f));
-        animators.add(ObjectAnimator.ofFloat(callItem, View.TRANSLATION_Y, visible ? -AndroidUtilities.dp(10) : 0.0f));
-        animators.add(ObjectAnimator.ofFloat(videoCallItem, View.TRANSLATION_Y, visible ? -AndroidUtilities.dp(10) : 0.0f));
         animators.add(ObjectAnimator.ofFloat(otherItem, View.TRANSLATION_Y, visible ? -AndroidUtilities.dp(10) : 0.0f));
         animators.add(ObjectAnimator.ofFloat(editItem, View.TRANSLATION_Y, visible ? -AndroidUtilities.dp(10) : 0.0f));
         animators.add(ObjectAnimator.ofFloat(mediaSearchItem, View.ALPHA, visible ? 1.0f : 0.0f));
@@ -6199,7 +6157,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                         sharedMediaLayout.photoVideoOptionsItem.setVisibility(View.INVISIBLE);
 
                         headerShadowAnimatorSet = new AnimatorSet();
-                        headerShadowAnimatorSet.playTogether(ObjectAnimator.ofFloat(ProfileActivity.this, HEADER_SHADOW, 1.0f));
+                        headerShadowAnimatorSet.playTogether(ObjectAnimator.ofFloat(ProfileActivity2.this, HEADER_SHADOW, 1.0f));
                         headerShadowAnimatorSet.setDuration(100);
                         headerShadowAnimatorSet.addListener(new AnimatorListenerAdapter() {
                             @Override
@@ -6245,7 +6203,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     currentParticipants.add(chatInfo.participants.participants.get(i).user_id);
                 }
             }
-            getMessagesController().addUsersToChat(currentChat, ProfileActivity.this, users, fwdCount, user -> {
+            getMessagesController().addUsersToChat(currentChat, ProfileActivity2.this, users, fwdCount, user -> {
                 addedUsers.add(user);
             }, restrictedUser -> {
                 for (int i = 0; i < chatInfo.participants.participants.size(); i++) {
@@ -6603,7 +6561,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
         } else if (id == NotificationCenter.encryptedChatCreated) {
             if (creatingChat) {
                 AndroidUtilities.runOnUIThread(() -> {
-                    getNotificationCenter().removeObserver(ProfileActivity.this, NotificationCenter.closeChats);
+                    getNotificationCenter().removeObserver(ProfileActivity2.this, NotificationCenter.closeChats);
                     getNotificationCenter().postNotificationName(NotificationCenter.closeChats);
                     TLRPC.EncryptedChat encryptedChat = (TLRPC.EncryptedChat) args[0];
                     Bundle args2 = new Bundle();
@@ -7382,14 +7340,6 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     animatingItem.setAlpha(1.0f);
                     animators.add(ObjectAnimator.ofFloat(animatingItem, View.ALPHA, 0.0f));
                 }
-                if (callItemVisible && (chatId != 0 || fromChat)) {
-                    callItem.setAlpha(0.0f);
-                    animators.add(ObjectAnimator.ofFloat(callItem, View.ALPHA, 1.0f));
-                }
-                if (videoCallItemVisible) {
-                    videoCallItem.setAlpha(0.0f);
-                    animators.add(ObjectAnimator.ofFloat(videoCallItem, View.ALPHA, 1.0f));
-                }
                 if (editItemVisible) {
                     editItem.setAlpha(0.0f);
                     animators.add(ObjectAnimator.ofFloat(editItem, View.ALPHA, 1.0f));
@@ -7467,14 +7417,6 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                 if (animatingItem != null) {
                     animatingItem.setAlpha(0.0f);
                     animators.add(ObjectAnimator.ofFloat(animatingItem, View.ALPHA, 1.0f));
-                }
-                if (callItemVisible && (chatId != 0 || fromChat)) {
-                    callItem.setAlpha(1.0f);
-                    animators.add(ObjectAnimator.ofFloat(callItem, View.ALPHA, 0.0f));
-                }
-                if (videoCallItemVisible) {
-                    videoCallItem.setAlpha(1.0f);
-                    animators.add(ObjectAnimator.ofFloat(videoCallItem, View.ALPHA, 0.0f));
                 }
                 if (editItemVisible) {
                     editItem.setAlpha(1.0f);
@@ -7688,6 +7630,14 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
             } else {
                 otherItem.hideSubItem(bot_privacy);
             }
+        }
+
+        if(videoCallItem != null && userInfo.video_calls_available) {
+            videoCallItem.setVisibility(View.VISIBLE);
+        }
+        callItemVisible = userInfo.phone_calls_available;
+        if(callItem != null && callItemVisible) {
+            callItem.setVisibility(View.VISIBLE);
         }
     }
 
@@ -8656,7 +8606,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                             }
                             return;
                         }
-                        PremiumPreviewBottomSheet premiumPreviewBottomSheet = new PremiumPreviewBottomSheet(ProfileActivity.this, currentAccount, user, resourcesProvider);
+                        PremiumPreviewBottomSheet premiumPreviewBottomSheet = new PremiumPreviewBottomSheet(ProfileActivity2.this, currentAccount, user, resourcesProvider);
                         int[] coords = new int[2];
                         textView.getLocationOnScreen(coords);
                         premiumPreviewBottomSheet.startEnterFromX = textView.rightDrawableX;
@@ -9216,7 +9166,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                         }
                         otherItem.addSubItem(add_shortcut, R.drawable.msg_home, LocaleController.getString(R.string.AddShortcut));
                         if (isBot) {
-                            profileHeaderLayout.profileButtonsView.addButton(share, R.drawable.profile_share, LocaleController.getString(R.string.BotShare));
+                            profileHeaderLayout.profileButtonsView.addButton(share, R.drawable.profile_share,R.string.Share);
                         } else {
                             otherItem.addSubItem(add_contact, R.drawable.msg_addcontact, LocaleController.getString(R.string.AddContact));
                         }
@@ -9254,7 +9204,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                 if (!UserObject.isDeleted(user) && !isBot && currentEncryptedChat == null && !userBlocked && userId != 333000 && userId != 777000 && userId != 42777) {
                     if (!BuildVars.IS_BILLING_UNAVAILABLE && !user.self && !user.bot && !MessagesController.isSupportUser(user) && !getMessagesController().premiumPurchaseBlocked()) {
                         StarsController.getInstance(currentAccount).loadStarGifts();
-                        profileHeaderLayout.profileButtonsView.addButton(gift_premium, R.drawable.profile_gift, LocaleController.getString(R.string.ProfileSendAGift));
+                        profileHeaderLayout.profileButtonsView.addButton(gift_premium, R.drawable.profile_gift, LocaleController.getString(R.string.Gift));
                     }
                     otherItem.addSubItem(start_secret_chat, R.drawable.msg_secret, LocaleController.getString(R.string.StartEncryptedChat));
                     otherItem.setSubItemShown(start_secret_chat, DialogObject.isEmpty(getMessagesController().isUserContactBlocked(userId)));
@@ -9282,8 +9232,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                 }
                 if (chatInfo != null) {
                     if (ChatObject.canManageCalls(chat) && chatInfo.call == null) {
-                        //TODO: Strings
-                        profileHeaderLayout.profileButtonsView.addButton(call_item, R.drawable.profile_live_stream, chat.megagroup && !chat.gigagroup ? LocaleController.getString(R.string.VoipGroupVoiceChat) : LocaleController.getString(R.string.StartVoipChannel));
+                        otherItem.addSubItem(call_item, R.drawable.msg_voicechat, chat.megagroup && !chat.gigagroup ? LocaleController.getString(R.string.StartVoipChat) : LocaleController.getString(R.string.StartVoipChannel));
                         hasVoiceChatItem = true;
                     }
                     if ((chatInfo.can_view_stats || chatInfo.can_view_revenue || chatInfo.can_view_stars_revenue || getMessagesController().getStoriesController().canPostStories(getDialogId())) && topicId == 0) {
@@ -9298,7 +9247,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                         otherItem.addSubItem(search_members, R.drawable.msg_search, LocaleController.getString(R.string.SearchMembers));
                     }
                     if (!chat.creator && !chat.left && !chat.kicked && !isTopic) {
-                        profileHeaderLayout.profileButtonsView.addButton(leave_group, R.drawable.msg_leave, LocaleController.getString(R.string.LeaveAffiliateLinkButton));
+                        profileHeaderLayout.profileButtonsView.addButton(leave_group, R.drawable.profile_leave, LocaleController.getString(R.string.Leave));
 
                     }
                     if (isTopic && ChatObject.canDeleteTopic(currentAccount, chat, topicId)) {
@@ -9309,29 +9258,29 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                         otherItem.addSubItem(channel_stories, R.drawable.msg_archive, LocaleController.getString(R.string.OpenChannelArchiveStories));
                     }
                     if (ChatObject.isPublic(chat)) {
-                        otherItem.addSubItem(share, R.drawable.msg_share, LocaleController.getString(R.string.BotShare));
-                        profileHeaderLayout.profileButtonsView.addButton(share, R.drawable.profile_share, LocaleController.getString(R.string.BotShare));
+                        profileHeaderLayout.profileButtonsView.addButton(share, R.drawable.profile_share, LocaleController.getString(R.string.Share));
                     }
                     if (!BuildVars.IS_BILLING_UNAVAILABLE && !getMessagesController().premiumPurchaseBlocked()) {
                         StarsController.getInstance(currentAccount).loadStarGifts();
 
                         ProfileButtonsView.ProfileButton button =
-                            profileHeaderLayout.profileButtonsView.addButton(gift_premium, R.drawable.profile_gift, LocaleController.getString(R.string.ActionStarGift));
+                            profileHeaderLayout.profileButtonsView.addButton(gift_premium, R.drawable.profile_gift, LocaleController.getString(R.string.Gift));
                         boolean show = chatInfo != null && chatInfo.stargifts_available;
-                        button.setVisibility(show ? View.VISIBLE : View.GONE);
+                        if(button != null)
+                            button.setVisibility(show ? View.VISIBLE : View.GONE);
 
                     }
                     if (chatInfo != null && chatInfo.linked_chat_id != 0) {
                         otherItem.addSubItem(view_discussion, R.drawable.msg_discussion, LocaleController.getString(R.string.ViewDiscussion));
                     }
                     if (!currentChat.creator && !currentChat.left && !currentChat.kicked) {
-                        profileHeaderLayout.profileButtonsView.addButton(leave_group, R.drawable.msg_leave, LocaleController.getString(R.string.LeaveAffiliateLinkButton));
+                        profileHeaderLayout.profileButtonsView.addButton(leave_group, R.drawable.profile_leave, LocaleController.getString(R.string.Leave));
                     }
                 }
             } else {
                 if (chatInfo != null) {
                     if (ChatObject.canManageCalls(chat) && chatInfo.call == null) {
-                        profileHeaderLayout.profileButtonsView.addButton(call_item, R.drawable.profile_call, LocaleController.getString(R.string.Call));
+                        otherItem.addSubItem(call_item, R.drawable.msg_voicechat, LocaleController.getString(R.string.StartVoipChat));
                         hasVoiceChatItem = true;
                     }
                     ChatObject.Call call = getMessagesController().getGroupCall(chatId, false);
@@ -9346,7 +9295,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                         otherItem.addSubItem(search_members, R.drawable.msg_search, LocaleController.getString(R.string.SearchMembers));
                     }
                 }
-                profileHeaderLayout.profileButtonsView.addButton(leave_group, R.drawable.msg_leave, LocaleController.getString(R.string.LeaveAffiliateLinkButton));
+                profileHeaderLayout.profileButtonsView.addButton(leave_group, R.drawable.profile_leave, LocaleController.getString(R.string.Leave));
             }
             if (topicId == 0) {
                 otherItem.addSubItem(add_shortcut, R.drawable.msg_home, LocaleController.getString(R.string.AddShortcut));
@@ -9398,16 +9347,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     editItem.animate().cancel();
                     editItem.setAlpha(1f);
                 }
-                if (callItemVisible) {
-                    callItem.setVisibility(View.GONE);
-                    callItem.animate().cancel();
-                    callItem.setAlpha(1f);
-                }
-                if (videoCallItemVisible) {
-                    videoCallItem.setVisibility(View.GONE);
-                    videoCallItem.animate().cancel();
-                    videoCallItem.setAlpha(1f);
-                }
+
             }
         }
         if (sharedMediaLayout != null) {
@@ -9426,7 +9366,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
 
             @Override
             public void setAutoDeleteHistory(int time, int action) {
-                ProfileActivity.this.setAutoDeleteHistory(time, action);
+                ProfileActivity2.this.setAutoDeleteHistory(time, action);
             }
 
             @Override
@@ -9543,7 +9483,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
             }
             if (grantResults.length > 0 && allGranted) {
                 ChatObject.Call call = getMessagesController().getGroupCall(chatId, false);
-                VoIPHelper.startCall(currentChat, null, null, call == null, getParentActivity(), ProfileActivity.this, getAccountInstance());
+                VoIPHelper.startCall(currentChat, null, null, call == null, getParentActivity(), ProfileActivity2.this, getAccountInstance());
             } else {
                 VoIPHelper.permissionDenied(getParentActivity(), null, requestCode);
             }
@@ -10114,7 +10054,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     view.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
                     break;
                 case VIEW_TYPE_ABOUT_LINK: {
-                    view = aboutLinkCell = new AboutLinkCell(mContext, ProfileActivity.this, resourcesProvider) {
+                    view = aboutLinkCell = new AboutLinkCell(mContext, ProfileActivity2.this, resourcesProvider) {
                         @Override
                         protected void didPressUrl(String url, Browser.Progress progress) {
                             openUrl(url, progress);
@@ -10297,14 +10237,14 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                         @Override
                         protected void onYesClick(int type) {
                             AndroidUtilities.runOnUIThread(() -> {
-                                getNotificationCenter().removeObserver(ProfileActivity.this, NotificationCenter.newSuggestionsAvailable);
+                                getNotificationCenter().removeObserver(ProfileActivity2.this, NotificationCenter.newSuggestionsAvailable);
                                 if (type == SettingsSuggestionCell.TYPE_GRACE) {
                                     getMessagesController().removeSuggestion(0, "PREMIUM_GRACE");
                                     Browser.openUrl(getContext(), getMessagesController().premiumManageSubscriptionUrl);
                                 } else {
                                     getMessagesController().removeSuggestion(0, type == SettingsSuggestionCell.TYPE_PHONE ? "VALIDATE_PHONE_NUMBER" : "VALIDATE_PASSWORD");
                                 }
-                                getNotificationCenter().addObserver(ProfileActivity.this, NotificationCenter.newSuggestionsAvailable);
+                                getNotificationCenter().addObserver(ProfileActivity2.this, NotificationCenter.newSuggestionsAvailable);
                                 updateListAnimated(false);
                             });
                         }
@@ -10326,7 +10266,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     view.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
                     break;
                 case VIEW_TYPE_CHANNEL:
-                    view = new ProfileChannelCell(ProfileActivity.this) {
+                    view = new ProfileChannelCell(ProfileActivity2.this) {
                         @Override
                         public int processColor(int color) {
                             return dontApplyPeerColor(color, false);
@@ -10340,7 +10280,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     button.setText(LocaleController.getString(R.string.ProfileBotOpenApp), false);
                     button.setOnClickListener(v -> {
                         TLRPC.User bot = getMessagesController().getUser(userId);
-                        getMessagesController().openApp(ProfileActivity.this, bot, null, getClassGuid(), null);
+                        getMessagesController().openApp(ProfileActivity2.this, bot, null, getClassGuid(), null);
                     });
                     frameLayout.addView(button, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, Gravity.FILL, 18, 14, 18, 14));
                     view = frameLayout;
@@ -10558,13 +10498,13 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                             detailCell.setImageClickListener(null);
                         } else {
                             detailCell.setImage(drawable, LocaleController.getString(R.string.GiftPremium));
-                            detailCell.setImageClickListener(ProfileActivity.this::onTextDetailCellImageClicked);
+                            detailCell.setImageClickListener(ProfileActivity2.this::onTextDetailCellImageClicked);
                         }
                     } else if (containsQr) {
                         Drawable drawable = ContextCompat.getDrawable(detailCell.getContext(), R.drawable.msg_qr_mini);
                         drawable.setColorFilter(new PorterDuffColorFilter(dontApplyPeerColor(getThemedColor(Theme.key_switch2TrackChecked), false), PorterDuff.Mode.MULTIPLY));
                         detailCell.setImage(drawable, LocaleController.getString(R.string.GetQRCode));
-                        detailCell.setImageClickListener(ProfileActivity.this::onTextDetailCellImageClicked);
+                        detailCell.setImageClickListener(ProfileActivity2.this::onTextDetailCellImageClicked);
                     } else {
                         detailCell.setImage(null);
                         detailCell.setImageClickListener(null);
@@ -11288,10 +11228,10 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
 
             @Override
             public boolean equals(Object obj) {
-                if (!(obj instanceof ProfileActivity.SearchAdapter.SearchResult)) {
+                if (!(obj instanceof SearchResult)) {
                     return false;
                 }
-                ProfileActivity.SearchAdapter.SearchResult result = (ProfileActivity.SearchAdapter.SearchResult) obj;
+                SearchResult result = (SearchResult) obj;
                 return guid == result.guid;
             }
 
@@ -11310,12 +11250,12 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
             }
         }
 
-        private ProfileActivity.SearchAdapter.SearchResult[] searchArray = onCreateSearchArray();
+        private SearchResult[] searchArray = onCreateSearchArray();
         private ArrayList<MessagesController.FaqSearchResult> faqSearchArray = new ArrayList<>();
 
         private Context mContext;
         private ArrayList<CharSequence> resultNames = new ArrayList<>();
-        private ArrayList<ProfileActivity.SearchAdapter.SearchResult> searchResults = new ArrayList<>();
+        private ArrayList<SearchResult> searchResults = new ArrayList<>();
         private ArrayList<MessagesController.FaqSearchResult> faqSearchResults = new ArrayList<>();
         private ArrayList<Object> recentSearches = new ArrayList<>();
         private boolean searchWas;
@@ -11331,7 +11271,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
         }
 
         private void updateSearchArray() {
-            HashMap<Integer, ProfileActivity.SearchAdapter.SearchResult> resultHashMap = new HashMap<>();
+            HashMap<Integer, SearchResult> resultHashMap = new HashMap<>();
             for (int a = 0; a < searchArray.length; a++) {
                 if (searchArray[a] == null) {
                     continue;
@@ -11360,7 +11300,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                             result.num = num;
                             recentSearches.add(result);
                         } else if (type == 1) {
-                            ProfileActivity.SearchAdapter.SearchResult result = resultHashMap.get(data.readInt32(false));
+                            SearchResult result = resultHashMap.get(data.readInt32(false));
                             if (result != null) {
                                 result.num = num;
                                 recentSearches.add(result);
@@ -11383,11 +11323,11 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
             });
         }
 
-        private ProfileActivity.SearchAdapter.SearchResult[] onCreateSearchArray() {
-            return new ProfileActivity.SearchAdapter.SearchResult[]{
-                    new ProfileActivity.SearchAdapter.SearchResult(500, getString(R.string.EditName), 0, () -> presentFragment(new ChangeNameActivity(resourcesProvider))),
-                    new ProfileActivity.SearchAdapter.SearchResult(501, getString(R.string.ChangePhoneNumber), 0, () -> presentFragment(new ActionIntroActivity(ActionIntroActivity.ACTION_TYPE_CHANGE_PHONE_NUMBER))),
-                    new ProfileActivity.SearchAdapter.SearchResult(502, getString(R.string.AddAnotherAccount), 0, () -> {
+        private SearchResult[] onCreateSearchArray() {
+            return new SearchResult[]{
+                    new SearchResult(500, getString(R.string.EditName), 0, () -> presentFragment(new ChangeNameActivity(resourcesProvider))),
+                    new SearchResult(501, getString(R.string.ChangePhoneNumber), 0, () -> presentFragment(new ActionIntroActivity(ActionIntroActivity.ACTION_TYPE_CHANGE_PHONE_NUMBER))),
+                    new SearchResult(502, getString(R.string.AddAnotherAccount), 0, () -> {
                         int freeAccount = -1;
                         for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) {
                             if (!UserConfig.getInstance(a).isClientActivated()) {
@@ -11399,251 +11339,251 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                             presentFragment(new LoginActivity(freeAccount));
                         }
                     }),
-                    new ProfileActivity.SearchAdapter.SearchResult(503, getString(R.string.UserBio), 0, () -> {
+                    new SearchResult(503, getString(R.string.UserBio), 0, () -> {
                         if (userInfo != null) {
                             presentFragment(new ChangeBioActivity());
                         }
                     }),
-                    new ProfileActivity.SearchAdapter.SearchResult(504, getString(R.string.AddPhoto), 0, ProfileActivity.this::onWriteButtonClick),
+                    new SearchResult(504, getString(R.string.AddPhoto), 0, ProfileActivity2.this::onWriteButtonClick),
 
-                    new ProfileActivity.SearchAdapter.SearchResult(1, getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(2, getString(R.string.NotificationsPrivateChats), getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsCustomSettingsActivity(NotificationsController.TYPE_PRIVATE, new ArrayList<>(), null, true))),
-                    new ProfileActivity.SearchAdapter.SearchResult(3, getString(R.string.NotificationsGroups), getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsCustomSettingsActivity(NotificationsController.TYPE_GROUP, new ArrayList<>(), null, true))),
-                    new ProfileActivity.SearchAdapter.SearchResult(4, getString(R.string.NotificationsChannels), getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsCustomSettingsActivity(NotificationsController.TYPE_CHANNEL, new ArrayList<>(), null, true))),
-                    new ProfileActivity.SearchAdapter.SearchResult(5, getString(R.string.VoipNotificationSettings), "callsSectionRow", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(6, getString(R.string.BadgeNumber), "badgeNumberSection", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(7, getString(R.string.InAppNotifications), "inappSectionRow", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(8, getString(R.string.ContactJoined), "contactJoinedRow", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(9, getString(R.string.PinnedMessages), "pinnedMessageRow", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(10, getString(R.string.ResetAllNotifications), "resetNotificationsRow", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(11, getString(R.string.NotificationsService), "notificationsServiceRow", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(12, getString(R.string.NotificationsServiceConnection), "notificationsServiceConnectionRow", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(13, getString(R.string.RepeatNotifications), "repeatRow", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
+                    new SearchResult(1, getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
+                    new SearchResult(2, getString(R.string.NotificationsPrivateChats), getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsCustomSettingsActivity(NotificationsController.TYPE_PRIVATE, new ArrayList<>(), null, true))),
+                    new SearchResult(3, getString(R.string.NotificationsGroups), getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsCustomSettingsActivity(NotificationsController.TYPE_GROUP, new ArrayList<>(), null, true))),
+                    new SearchResult(4, getString(R.string.NotificationsChannels), getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsCustomSettingsActivity(NotificationsController.TYPE_CHANNEL, new ArrayList<>(), null, true))),
+                    new SearchResult(5, getString(R.string.VoipNotificationSettings), "callsSectionRow", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
+                    new SearchResult(6, getString(R.string.BadgeNumber), "badgeNumberSection", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
+                    new SearchResult(7, getString(R.string.InAppNotifications), "inappSectionRow", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
+                    new SearchResult(8, getString(R.string.ContactJoined), "contactJoinedRow", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
+                    new SearchResult(9, getString(R.string.PinnedMessages), "pinnedMessageRow", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
+                    new SearchResult(10, getString(R.string.ResetAllNotifications), "resetNotificationsRow", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
+                    new SearchResult(11, getString(R.string.NotificationsService), "notificationsServiceRow", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
+                    new SearchResult(12, getString(R.string.NotificationsServiceConnection), "notificationsServiceConnectionRow", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
+                    new SearchResult(13, getString(R.string.RepeatNotifications), "repeatRow", getString(R.string.NotificationsAndSounds), R.drawable.msg_notifications, () -> presentFragment(new NotificationsSettingsActivity())),
 
-                    new ProfileActivity.SearchAdapter.SearchResult(100, getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacySettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(109, getString(R.string.TwoStepVerification), getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new TwoStepVerificationActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(124, getString(R.string.AutoDeleteMessages), getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> {
+                    new SearchResult(100, getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacySettingsActivity())),
+                    new SearchResult(109, getString(R.string.TwoStepVerification), getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new TwoStepVerificationActivity())),
+                    new SearchResult(124, getString(R.string.AutoDeleteMessages), getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> {
                         if (getUserConfig().getGlobalTTl() >= 0) {
                             presentFragment(new AutoDeleteMessagesActivity());
                         }
                     }),
-                    new ProfileActivity.SearchAdapter.SearchResult(108, getString(R.string.Passcode), getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(PasscodeActivity.determineOpenFragment())),
-                    SharedConfig.hasEmailLogin ? new ProfileActivity.SearchAdapter.SearchResult(125, getString(R.string.EmailLogin), "emailLoginRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())) : null,
-                    new ProfileActivity.SearchAdapter.SearchResult(101, getString(R.string.BlockedUsers), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacyUsersActivity().loadBlocked())),
-                    new ProfileActivity.SearchAdapter.SearchResult(110, getString(R.string.SessionsTitle), R.drawable.msg2_secret, () -> presentFragment(new SessionsActivity(0))),
-                    new ProfileActivity.SearchAdapter.SearchResult(105, getString(R.string.PrivacyPhone), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacyControlActivity(ContactsController.PRIVACY_RULES_TYPE_PHONE, true))),
-                    new ProfileActivity.SearchAdapter.SearchResult(102, getString(R.string.PrivacyLastSeen), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacyControlActivity(ContactsController.PRIVACY_RULES_TYPE_LASTSEEN, true))),
-                    new ProfileActivity.SearchAdapter.SearchResult(103, getString(R.string.PrivacyProfilePhoto), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacyControlActivity(ContactsController.PRIVACY_RULES_TYPE_PHOTO, true))),
-                    new ProfileActivity.SearchAdapter.SearchResult(104, getString(R.string.PrivacyForwards), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacyControlActivity(ContactsController.PRIVACY_RULES_TYPE_FORWARDS, true))),
-                    new ProfileActivity.SearchAdapter.SearchResult(122, getString(R.string.PrivacyP2P), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacyControlActivity(ContactsController.PRIVACY_RULES_TYPE_P2P, true))),
-                    new ProfileActivity.SearchAdapter.SearchResult(106, getString(R.string.Calls), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacyControlActivity(ContactsController.PRIVACY_RULES_TYPE_CALLS, true))),
-                    new ProfileActivity.SearchAdapter.SearchResult(107, getString(R.string.PrivacyInvites), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacyControlActivity(ContactsController.PRIVACY_RULES_TYPE_INVITE, true))),
-                    new ProfileActivity.SearchAdapter.SearchResult(123, getString(R.string.PrivacyVoiceMessages), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> {
+                    new SearchResult(108, getString(R.string.Passcode), getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(PasscodeActivity.determineOpenFragment())),
+                    SharedConfig.hasEmailLogin ? new SearchResult(125, getString(R.string.EmailLogin), "emailLoginRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())) : null,
+                    new SearchResult(101, getString(R.string.BlockedUsers), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacyUsersActivity().loadBlocked())),
+                    new SearchResult(110, getString(R.string.SessionsTitle), R.drawable.msg2_secret, () -> presentFragment(new SessionsActivity(0))),
+                    new SearchResult(105, getString(R.string.PrivacyPhone), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacyControlActivity(ContactsController.PRIVACY_RULES_TYPE_PHONE, true))),
+                    new SearchResult(102, getString(R.string.PrivacyLastSeen), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacyControlActivity(ContactsController.PRIVACY_RULES_TYPE_LASTSEEN, true))),
+                    new SearchResult(103, getString(R.string.PrivacyProfilePhoto), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacyControlActivity(ContactsController.PRIVACY_RULES_TYPE_PHOTO, true))),
+                    new SearchResult(104, getString(R.string.PrivacyForwards), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacyControlActivity(ContactsController.PRIVACY_RULES_TYPE_FORWARDS, true))),
+                    new SearchResult(122, getString(R.string.PrivacyP2P), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacyControlActivity(ContactsController.PRIVACY_RULES_TYPE_P2P, true))),
+                    new SearchResult(106, getString(R.string.Calls), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacyControlActivity(ContactsController.PRIVACY_RULES_TYPE_CALLS, true))),
+                    new SearchResult(107, getString(R.string.PrivacyInvites), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> presentFragment(new PrivacyControlActivity(ContactsController.PRIVACY_RULES_TYPE_INVITE, true))),
+                    new SearchResult(123, getString(R.string.PrivacyVoiceMessages), getString(R.string.PrivacySettings), R.drawable.msg_secret, () -> {
                         if (!getUserConfig().isPremium()) {
                             try {
                                 fragmentView.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
                             } catch (Exception ignored) {}
-                            BulletinFactory.of(ProfileActivity.this).createRestrictVoiceMessagesPremiumBulletin().show();
+                            BulletinFactory.of(ProfileActivity2.this).createRestrictVoiceMessagesPremiumBulletin().show();
                             return;
                         }
                         presentFragment(new PrivacyControlActivity(ContactsController.PRIVACY_RULES_TYPE_VOICE_MESSAGES, true));
                     }),
-                    getMessagesController().autoarchiveAvailable ? new ProfileActivity.SearchAdapter.SearchResult(121, getString(R.string.ArchiveAndMute), "newChatsRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())) : null,
-                    new ProfileActivity.SearchAdapter.SearchResult(112, getString(R.string.DeleteAccountIfAwayFor2), "deleteAccountRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(113, getString(R.string.PrivacyPaymentsClear), "paymentsClearRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(114, getString(R.string.WebSessionsTitle), getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new SessionsActivity(1))),
-                    new ProfileActivity.SearchAdapter.SearchResult(115, getString(R.string.SyncContactsDelete), "contactsDeleteRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(116, getString(R.string.SyncContacts), "contactsSyncRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(117, getString(R.string.SuggestContacts), "contactsSuggestRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(118, getString(R.string.MapPreviewProvider), "secretMapRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(119, getString(R.string.SecretWebPage), "secretWebpageRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())),
+                    getMessagesController().autoarchiveAvailable ? new SearchResult(121, getString(R.string.ArchiveAndMute), "newChatsRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())) : null,
+                    new SearchResult(112, getString(R.string.DeleteAccountIfAwayFor2), "deleteAccountRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())),
+                    new SearchResult(113, getString(R.string.PrivacyPaymentsClear), "paymentsClearRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())),
+                    new SearchResult(114, getString(R.string.WebSessionsTitle), getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new SessionsActivity(1))),
+                    new SearchResult(115, getString(R.string.SyncContactsDelete), "contactsDeleteRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())),
+                    new SearchResult(116, getString(R.string.SyncContacts), "contactsSyncRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())),
+                    new SearchResult(117, getString(R.string.SuggestContacts), "contactsSuggestRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())),
+                    new SearchResult(118, getString(R.string.MapPreviewProvider), "secretMapRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())),
+                    new SearchResult(119, getString(R.string.SecretWebPage), "secretWebpageRow", getString(R.string.PrivacySettings), R.drawable.msg2_secret, () -> presentFragment(new PrivacySettingsActivity())),
 
-                    new ProfileActivity.SearchAdapter.SearchResult(120, getString(R.string.Devices), R.drawable.msg2_devices, () -> presentFragment(new SessionsActivity(0))),
-                    new ProfileActivity.SearchAdapter.SearchResult(121, getString(R.string.TerminateAllSessions), "terminateAllSessionsRow", getString(R.string.Devices), R.drawable.msg2_devices, () -> presentFragment(new SessionsActivity(0))),
-                    new ProfileActivity.SearchAdapter.SearchResult(122, getString(R.string.LinkDesktopDevice), getString(R.string.Devices), R.drawable.msg2_devices, () -> presentFragment(new SessionsActivity(0).setHighlightLinkDesktopDevice())),
+                    new SearchResult(120, getString(R.string.Devices), R.drawable.msg2_devices, () -> presentFragment(new SessionsActivity(0))),
+                    new SearchResult(121, getString(R.string.TerminateAllSessions), "terminateAllSessionsRow", getString(R.string.Devices), R.drawable.msg2_devices, () -> presentFragment(new SessionsActivity(0))),
+                    new SearchResult(122, getString(R.string.LinkDesktopDevice), getString(R.string.Devices), R.drawable.msg2_devices, () -> presentFragment(new SessionsActivity(0).setHighlightLinkDesktopDevice())),
 
-                    new ProfileActivity.SearchAdapter.SearchResult(200, getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(201, getString(R.string.DataUsage), "usageSectionRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(202, getString(R.string.StorageUsage), getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new CacheControlActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(203, getString(R.string.KeepMedia), "keepMediaRow", getString(R.string.DataSettings), getString(R.string.StorageUsage), R.drawable.msg2_data, () -> presentFragment(new CacheControlActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(204, getString(R.string.ClearMediaCache), "cacheRow", getString(R.string.DataSettings), getString(R.string.StorageUsage), R.drawable.msg2_data, () -> presentFragment(new CacheControlActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(205, getString(R.string.LocalDatabase), "databaseRow", getString(R.string.DataSettings), getString(R.string.StorageUsage), R.drawable.msg2_data, () -> presentFragment(new CacheControlActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(206, getString(R.string.NetworkUsage), getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataUsage2Activity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(207, getString(R.string.AutomaticMediaDownload), "mediaDownloadSectionRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(208, getString(R.string.WhenUsingMobileData), getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataAutoDownloadActivity(0))),
-                    new ProfileActivity.SearchAdapter.SearchResult(209, getString(R.string.WhenConnectedOnWiFi), getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataAutoDownloadActivity(1))),
-                    new ProfileActivity.SearchAdapter.SearchResult(210, getString(R.string.WhenRoaming), getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataAutoDownloadActivity(2))),
-                    new ProfileActivity.SearchAdapter.SearchResult(211, getString(R.string.ResetAutomaticMediaDownload), "resetDownloadRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(215, getString(R.string.Streaming), "streamSectionRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(216, getString(R.string.EnableStreaming), "enableStreamRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(217, getString(R.string.Calls), "callsSectionRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(218, getString(R.string.VoipUseLessData), "useLessDataForCallsRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(219, getString(R.string.VoipQuickReplies), "quickRepliesRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(220, getString(R.string.ProxySettings), getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new ProxyListActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(221, getString(R.string.UseProxyForCalls), "callsRow", getString(R.string.DataSettings), getString(R.string.ProxySettings), R.drawable.msg2_data, () -> presentFragment(new ProxyListActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(111, getString(R.string.PrivacyDeleteCloudDrafts), "clearDraftsRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(222, getString(R.string.SaveToGallery), "saveToGallerySectionRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(223, getString(R.string.SaveToGalleryPrivate), "saveToGalleryPeerRow", getString(R.string.DataSettings), getString(R.string.SaveToGallery), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(224, getString(R.string.SaveToGalleryGroups), "saveToGalleryGroupsRow", getString(R.string.DataSettings), getString(R.string.SaveToGallery), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(225, getString(R.string.SaveToGalleryChannels), "saveToGalleryChannelsRow", getString(R.string.DataSettings), getString(R.string.SaveToGallery), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
+                    new SearchResult(200, getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
+                    new SearchResult(201, getString(R.string.DataUsage), "usageSectionRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
+                    new SearchResult(202, getString(R.string.StorageUsage), getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new CacheControlActivity())),
+                    new SearchResult(203, getString(R.string.KeepMedia), "keepMediaRow", getString(R.string.DataSettings), getString(R.string.StorageUsage), R.drawable.msg2_data, () -> presentFragment(new CacheControlActivity())),
+                    new SearchResult(204, getString(R.string.ClearMediaCache), "cacheRow", getString(R.string.DataSettings), getString(R.string.StorageUsage), R.drawable.msg2_data, () -> presentFragment(new CacheControlActivity())),
+                    new SearchResult(205, getString(R.string.LocalDatabase), "databaseRow", getString(R.string.DataSettings), getString(R.string.StorageUsage), R.drawable.msg2_data, () -> presentFragment(new CacheControlActivity())),
+                    new SearchResult(206, getString(R.string.NetworkUsage), getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataUsage2Activity())),
+                    new SearchResult(207, getString(R.string.AutomaticMediaDownload), "mediaDownloadSectionRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
+                    new SearchResult(208, getString(R.string.WhenUsingMobileData), getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataAutoDownloadActivity(0))),
+                    new SearchResult(209, getString(R.string.WhenConnectedOnWiFi), getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataAutoDownloadActivity(1))),
+                    new SearchResult(210, getString(R.string.WhenRoaming), getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataAutoDownloadActivity(2))),
+                    new SearchResult(211, getString(R.string.ResetAutomaticMediaDownload), "resetDownloadRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
+                    new SearchResult(215, getString(R.string.Streaming), "streamSectionRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
+                    new SearchResult(216, getString(R.string.EnableStreaming), "enableStreamRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
+                    new SearchResult(217, getString(R.string.Calls), "callsSectionRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
+                    new SearchResult(218, getString(R.string.VoipUseLessData), "useLessDataForCallsRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
+                    new SearchResult(219, getString(R.string.VoipQuickReplies), "quickRepliesRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
+                    new SearchResult(220, getString(R.string.ProxySettings), getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new ProxyListActivity())),
+                    new SearchResult(221, getString(R.string.UseProxyForCalls), "callsRow", getString(R.string.DataSettings), getString(R.string.ProxySettings), R.drawable.msg2_data, () -> presentFragment(new ProxyListActivity())),
+                    new SearchResult(111, getString(R.string.PrivacyDeleteCloudDrafts), "clearDraftsRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
+                    new SearchResult(222, getString(R.string.SaveToGallery), "saveToGallerySectionRow", getString(R.string.DataSettings), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
+                    new SearchResult(223, getString(R.string.SaveToGalleryPrivate), "saveToGalleryPeerRow", getString(R.string.DataSettings), getString(R.string.SaveToGallery), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
+                    new SearchResult(224, getString(R.string.SaveToGalleryGroups), "saveToGalleryGroupsRow", getString(R.string.DataSettings), getString(R.string.SaveToGallery), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
+                    new SearchResult(225, getString(R.string.SaveToGalleryChannels), "saveToGalleryChannelsRow", getString(R.string.DataSettings), getString(R.string.SaveToGallery), R.drawable.msg2_data, () -> presentFragment(new DataSettingsActivity())),
 
-                    new ProfileActivity.SearchAdapter.SearchResult(300, getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
-                    new ProfileActivity.SearchAdapter.SearchResult(301, getString(R.string.TextSizeHeader), "textSizeHeaderRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
-                    new ProfileActivity.SearchAdapter.SearchResult(302, getString(R.string.ChangeChatBackground), getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new WallpapersListActivity(WallpapersListActivity.TYPE_ALL))),
-                    new ProfileActivity.SearchAdapter.SearchResult(303, getString(R.string.SetColor), null, getString(R.string.ChatSettings), getString(R.string.ChatBackground), R.drawable.msg2_discussion, () -> presentFragment(new WallpapersListActivity(WallpapersListActivity.TYPE_COLOR))),
-                    new ProfileActivity.SearchAdapter.SearchResult(304, getString(R.string.ResetChatBackgrounds), "resetRow", getString(R.string.ChatSettings), getString(R.string.ChatBackground), R.drawable.msg2_discussion, () -> presentFragment(new WallpapersListActivity(WallpapersListActivity.TYPE_ALL))),
-                    new ProfileActivity.SearchAdapter.SearchResult(306, getString(R.string.ColorTheme), "themeHeaderRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
-                    new ProfileActivity.SearchAdapter.SearchResult(319, getString(R.string.BrowseThemes), null, getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_THEMES_BROWSER))),
-                    new ProfileActivity.SearchAdapter.SearchResult(320, getString(R.string.CreateNewTheme), "createNewThemeRow", getString(R.string.ChatSettings), getString(R.string.BrowseThemes), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_THEMES_BROWSER))),
-                    new ProfileActivity.SearchAdapter.SearchResult(321, getString(R.string.BubbleRadius), "bubbleRadiusHeaderRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
-                    new ProfileActivity.SearchAdapter.SearchResult(322, getString(R.string.ChatList), "chatListHeaderRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
-                    new ProfileActivity.SearchAdapter.SearchResult(323, getString(R.string.ChatListSwipeGesture), "swipeGestureHeaderRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
-                    new ProfileActivity.SearchAdapter.SearchResult(324, getString(R.string.AppIcon), "appIconHeaderRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
-                    new ProfileActivity.SearchAdapter.SearchResult(305, getString(R.string.AutoNightTheme), getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_NIGHT))),
-                    new ProfileActivity.SearchAdapter.SearchResult(328, getString(R.string.NextMediaTap), "nextMediaTapRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
-                    new ProfileActivity.SearchAdapter.SearchResult(327, getString(R.string.RaiseToListen), "raiseToListenRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
-                    new ProfileActivity.SearchAdapter.SearchResult(310, getString(R.string.RaiseToSpeak), "raiseToSpeakRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
-                    new ProfileActivity.SearchAdapter.SearchResult(326, getString(R.string.PauseMusicOnMedia), "pauseOnMediaRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
-                    new ProfileActivity.SearchAdapter.SearchResult(325, getString(R.string.MicrophoneForVoiceMessages), "bluetoothScoRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
-                    new ProfileActivity.SearchAdapter.SearchResult(308, getString(R.string.DirectShare), "directShareRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
-                    new ProfileActivity.SearchAdapter.SearchResult(311, getString(R.string.SendByEnter), "sendByEnterRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
-                    new ProfileActivity.SearchAdapter.SearchResult(318, getString(R.string.DistanceUnits), "distanceRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
+                    new SearchResult(300, getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
+                    new SearchResult(301, getString(R.string.TextSizeHeader), "textSizeHeaderRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
+                    new SearchResult(302, getString(R.string.ChangeChatBackground), getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new WallpapersListActivity(WallpapersListActivity.TYPE_ALL))),
+                    new SearchResult(303, getString(R.string.SetColor), null, getString(R.string.ChatSettings), getString(R.string.ChatBackground), R.drawable.msg2_discussion, () -> presentFragment(new WallpapersListActivity(WallpapersListActivity.TYPE_COLOR))),
+                    new SearchResult(304, getString(R.string.ResetChatBackgrounds), "resetRow", getString(R.string.ChatSettings), getString(R.string.ChatBackground), R.drawable.msg2_discussion, () -> presentFragment(new WallpapersListActivity(WallpapersListActivity.TYPE_ALL))),
+                    new SearchResult(306, getString(R.string.ColorTheme), "themeHeaderRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
+                    new SearchResult(319, getString(R.string.BrowseThemes), null, getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_THEMES_BROWSER))),
+                    new SearchResult(320, getString(R.string.CreateNewTheme), "createNewThemeRow", getString(R.string.ChatSettings), getString(R.string.BrowseThemes), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_THEMES_BROWSER))),
+                    new SearchResult(321, getString(R.string.BubbleRadius), "bubbleRadiusHeaderRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
+                    new SearchResult(322, getString(R.string.ChatList), "chatListHeaderRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
+                    new SearchResult(323, getString(R.string.ChatListSwipeGesture), "swipeGestureHeaderRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
+                    new SearchResult(324, getString(R.string.AppIcon), "appIconHeaderRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
+                    new SearchResult(305, getString(R.string.AutoNightTheme), getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_NIGHT))),
+                    new SearchResult(328, getString(R.string.NextMediaTap), "nextMediaTapRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
+                    new SearchResult(327, getString(R.string.RaiseToListen), "raiseToListenRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
+                    new SearchResult(310, getString(R.string.RaiseToSpeak), "raiseToSpeakRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
+                    new SearchResult(326, getString(R.string.PauseMusicOnMedia), "pauseOnMediaRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
+                    new SearchResult(325, getString(R.string.MicrophoneForVoiceMessages), "bluetoothScoRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
+                    new SearchResult(308, getString(R.string.DirectShare), "directShareRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
+                    new SearchResult(311, getString(R.string.SendByEnter), "sendByEnterRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
+                    new SearchResult(318, getString(R.string.DistanceUnits), "distanceRow", getString(R.string.ChatSettings), R.drawable.msg2_discussion, () -> presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC))),
 
-                    new ProfileActivity.SearchAdapter.SearchResult(600, getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_IMAGE, null))),
-                    new ProfileActivity.SearchAdapter.SearchResult(601, getString(R.string.SuggestStickers), "suggestRow", getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_IMAGE, null))),
-                    new ProfileActivity.SearchAdapter.SearchResult(602, getString(R.string.FeaturedStickers), "featuredStickersHeaderRow", getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_IMAGE, null))),
-                    new ProfileActivity.SearchAdapter.SearchResult(603, getString(R.string.Masks), null, getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_MASK, null))),
-                    new ProfileActivity.SearchAdapter.SearchResult(604, getString(R.string.ArchivedStickers), null, getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new ArchivedStickersActivity(MediaDataController.TYPE_IMAGE))),
-                    new ProfileActivity.SearchAdapter.SearchResult(605, getString(R.string.ArchivedMasks), null, getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new ArchivedStickersActivity(MediaDataController.TYPE_MASK))),
-                    new ProfileActivity.SearchAdapter.SearchResult(606, getString(R.string.LargeEmoji), "largeEmojiRow", getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_IMAGE, null))),
-                    new ProfileActivity.SearchAdapter.SearchResult(607, getString(R.string.LoopAnimatedStickers), "loopRow", getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_IMAGE, null))),
-                    new ProfileActivity.SearchAdapter.SearchResult(608, getString(R.string.Emoji), null, getString(R.string.StickersName), R.drawable.input_smile, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_EMOJIPACKS, null))),
-                    new ProfileActivity.SearchAdapter.SearchResult(609, getString(R.string.SuggestAnimatedEmoji), "suggestAnimatedEmojiRow", getString(R.string.StickersName), getString(R.string.Emoji), R.drawable.input_smile, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_EMOJIPACKS, null))),
-                    new ProfileActivity.SearchAdapter.SearchResult(610, getString(R.string.FeaturedEmojiPacks), "featuredStickersHeaderRow", getString(R.string.StickersName), getString(R.string.Emoji), R.drawable.input_smile, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_EMOJIPACKS, null))),
-                    new ProfileActivity.SearchAdapter.SearchResult(611, getString(R.string.DoubleTapSetting), null, getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new ReactionsDoubleTapManageActivity())),
+                    new SearchResult(600, getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_IMAGE, null))),
+                    new SearchResult(601, getString(R.string.SuggestStickers), "suggestRow", getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_IMAGE, null))),
+                    new SearchResult(602, getString(R.string.FeaturedStickers), "featuredStickersHeaderRow", getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_IMAGE, null))),
+                    new SearchResult(603, getString(R.string.Masks), null, getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_MASK, null))),
+                    new SearchResult(604, getString(R.string.ArchivedStickers), null, getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new ArchivedStickersActivity(MediaDataController.TYPE_IMAGE))),
+                    new SearchResult(605, getString(R.string.ArchivedMasks), null, getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new ArchivedStickersActivity(MediaDataController.TYPE_MASK))),
+                    new SearchResult(606, getString(R.string.LargeEmoji), "largeEmojiRow", getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_IMAGE, null))),
+                    new SearchResult(607, getString(R.string.LoopAnimatedStickers), "loopRow", getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_IMAGE, null))),
+                    new SearchResult(608, getString(R.string.Emoji), null, getString(R.string.StickersName), R.drawable.input_smile, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_EMOJIPACKS, null))),
+                    new SearchResult(609, getString(R.string.SuggestAnimatedEmoji), "suggestAnimatedEmojiRow", getString(R.string.StickersName), getString(R.string.Emoji), R.drawable.input_smile, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_EMOJIPACKS, null))),
+                    new SearchResult(610, getString(R.string.FeaturedEmojiPacks), "featuredStickersHeaderRow", getString(R.string.StickersName), getString(R.string.Emoji), R.drawable.input_smile, () -> presentFragment(new StickersActivity(MediaDataController.TYPE_EMOJIPACKS, null))),
+                    new SearchResult(611, getString(R.string.DoubleTapSetting), null, getString(R.string.StickersName), R.drawable.msg2_sticker, () -> presentFragment(new ReactionsDoubleTapManageActivity())),
 
-                    new ProfileActivity.SearchAdapter.SearchResult(700, getString(R.string.Filters), null, R.drawable.msg2_folder, () -> presentFragment(new FiltersSetupActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(701, getString(R.string.CreateNewFilter), "createFilterRow", getString(R.string.Filters), R.drawable.msg2_folder, () -> presentFragment(new FiltersSetupActivity())),
+                    new SearchResult(700, getString(R.string.Filters), null, R.drawable.msg2_folder, () -> presentFragment(new FiltersSetupActivity())),
+                    new SearchResult(701, getString(R.string.CreateNewFilter), "createFilterRow", getString(R.string.Filters), R.drawable.msg2_folder, () -> presentFragment(new FiltersSetupActivity())),
 
-                    isPremiumFeatureAvailable(-1) ? new ProfileActivity.SearchAdapter.SearchResult(800, getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> presentFragment(new PremiumPreviewFragment("settings"))) : null,
-                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_LIMITS) ? new ProfileActivity.SearchAdapter.SearchResult(801, getString(R.string.PremiumPreviewLimits), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity.this, PremiumPreviewFragment.PREMIUM_FEATURE_LIMITS, false).setForceAbout())) : null,
-                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_ANIMATED_EMOJI) ? new ProfileActivity.SearchAdapter.SearchResult(802, getString(R.string.PremiumPreviewEmoji), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity.this, PremiumPreviewFragment.PREMIUM_FEATURE_ANIMATED_EMOJI, false).setForceAbout())) : null,
-                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_UPLOAD_LIMIT) ? new ProfileActivity.SearchAdapter.SearchResult(803, getString(R.string.PremiumPreviewUploads), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity.this, PremiumPreviewFragment.PREMIUM_FEATURE_UPLOAD_LIMIT, false).setForceAbout())) : null,
-                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_DOWNLOAD_SPEED) ? new ProfileActivity.SearchAdapter.SearchResult(804, getString(R.string.PremiumPreviewDownloadSpeed), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity.this, PremiumPreviewFragment.PREMIUM_FEATURE_DOWNLOAD_SPEED, false).setForceAbout())) : null,
-                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_VOICE_TO_TEXT) ? new ProfileActivity.SearchAdapter.SearchResult(805, getString(R.string.PremiumPreviewVoiceToText), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity.this, PremiumPreviewFragment.PREMIUM_FEATURE_VOICE_TO_TEXT, false).setForceAbout())) : null,
-                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_ADS) ? new ProfileActivity.SearchAdapter.SearchResult(806, getString(R.string.PremiumPreviewNoAds), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity.this, PremiumPreviewFragment.PREMIUM_FEATURE_ADS, false).setForceAbout())) : null,
-                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_REACTIONS) ? new ProfileActivity.SearchAdapter.SearchResult(807, getString(R.string.PremiumPreviewReactions), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity.this, PremiumPreviewFragment.PREMIUM_FEATURE_REACTIONS, false).setForceAbout())) : null,
-                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_STICKERS) ? new ProfileActivity.SearchAdapter.SearchResult(808, getString(R.string.PremiumPreviewStickers), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity.this, PremiumPreviewFragment.PREMIUM_FEATURE_STICKERS, false).setForceAbout())) : null,
-                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_ADVANCED_CHAT_MANAGEMENT) ? new ProfileActivity.SearchAdapter.SearchResult(809, getString(R.string.PremiumPreviewAdvancedChatManagement), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity.this, PremiumPreviewFragment.PREMIUM_FEATURE_ADVANCED_CHAT_MANAGEMENT, false).setForceAbout())) : null,
-                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_PROFILE_BADGE) ? new ProfileActivity.SearchAdapter.SearchResult(810, getString(R.string.PremiumPreviewProfileBadge), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity.this, PremiumPreviewFragment.PREMIUM_FEATURE_PROFILE_BADGE, false).setForceAbout())) : null,
-                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_ANIMATED_AVATARS) ? new ProfileActivity.SearchAdapter.SearchResult(811, getString(R.string.PremiumPreviewAnimatedProfiles), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity.this, PremiumPreviewFragment.PREMIUM_FEATURE_ANIMATED_AVATARS, false).setForceAbout())) : null,
-                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_APPLICATION_ICONS) ? new ProfileActivity.SearchAdapter.SearchResult(812, getString(R.string.PremiumPreviewAppIcon), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity.this, PremiumPreviewFragment.PREMIUM_FEATURE_APPLICATION_ICONS, false).setForceAbout())) : null,
-                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_EMOJI_STATUS) ? new ProfileActivity.SearchAdapter.SearchResult(813, getString(R.string.PremiumPreviewEmojiStatus), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity.this, PremiumPreviewFragment.PREMIUM_FEATURE_EMOJI_STATUS, false).setForceAbout())) : null,
+                    isPremiumFeatureAvailable(-1) ? new SearchResult(800, getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> presentFragment(new PremiumPreviewFragment("settings"))) : null,
+                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_LIMITS) ? new SearchResult(801, getString(R.string.PremiumPreviewLimits), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity2.this, PremiumPreviewFragment.PREMIUM_FEATURE_LIMITS, false).setForceAbout())) : null,
+                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_ANIMATED_EMOJI) ? new SearchResult(802, getString(R.string.PremiumPreviewEmoji), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity2.this, PremiumPreviewFragment.PREMIUM_FEATURE_ANIMATED_EMOJI, false).setForceAbout())) : null,
+                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_UPLOAD_LIMIT) ? new SearchResult(803, getString(R.string.PremiumPreviewUploads), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity2.this, PremiumPreviewFragment.PREMIUM_FEATURE_UPLOAD_LIMIT, false).setForceAbout())) : null,
+                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_DOWNLOAD_SPEED) ? new SearchResult(804, getString(R.string.PremiumPreviewDownloadSpeed), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity2.this, PremiumPreviewFragment.PREMIUM_FEATURE_DOWNLOAD_SPEED, false).setForceAbout())) : null,
+                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_VOICE_TO_TEXT) ? new SearchResult(805, getString(R.string.PremiumPreviewVoiceToText), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity2.this, PremiumPreviewFragment.PREMIUM_FEATURE_VOICE_TO_TEXT, false).setForceAbout())) : null,
+                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_ADS) ? new SearchResult(806, getString(R.string.PremiumPreviewNoAds), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity2.this, PremiumPreviewFragment.PREMIUM_FEATURE_ADS, false).setForceAbout())) : null,
+                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_REACTIONS) ? new SearchResult(807, getString(R.string.PremiumPreviewReactions), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity2.this, PremiumPreviewFragment.PREMIUM_FEATURE_REACTIONS, false).setForceAbout())) : null,
+                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_STICKERS) ? new SearchResult(808, getString(R.string.PremiumPreviewStickers), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity2.this, PremiumPreviewFragment.PREMIUM_FEATURE_STICKERS, false).setForceAbout())) : null,
+                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_ADVANCED_CHAT_MANAGEMENT) ? new SearchResult(809, getString(R.string.PremiumPreviewAdvancedChatManagement), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity2.this, PremiumPreviewFragment.PREMIUM_FEATURE_ADVANCED_CHAT_MANAGEMENT, false).setForceAbout())) : null,
+                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_PROFILE_BADGE) ? new SearchResult(810, getString(R.string.PremiumPreviewProfileBadge), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity2.this, PremiumPreviewFragment.PREMIUM_FEATURE_PROFILE_BADGE, false).setForceAbout())) : null,
+                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_ANIMATED_AVATARS) ? new SearchResult(811, getString(R.string.PremiumPreviewAnimatedProfiles), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity2.this, PremiumPreviewFragment.PREMIUM_FEATURE_ANIMATED_AVATARS, false).setForceAbout())) : null,
+                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_APPLICATION_ICONS) ? new SearchResult(812, getString(R.string.PremiumPreviewAppIcon), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity2.this, PremiumPreviewFragment.PREMIUM_FEATURE_APPLICATION_ICONS, false).setForceAbout())) : null,
+                    isPremiumFeatureAvailable(PremiumPreviewFragment.PREMIUM_FEATURE_EMOJI_STATUS) ? new SearchResult(813, getString(R.string.PremiumPreviewEmojiStatus), getString(R.string.TelegramPremium), R.drawable.msg_settings_premium, () -> showDialog(new PremiumFeatureBottomSheet(ProfileActivity2.this, PremiumPreviewFragment.PREMIUM_FEATURE_EMOJI_STATUS, false).setForceAbout())) : null,
 
-                    new ProfileActivity.SearchAdapter.SearchResult(900, getString(R.string.PowerUsage), null, R.drawable.msg2_battery, () -> presentFragment(new LiteModeSettingsActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(901, getString(R.string.LiteOptionsStickers), getString(R.string.PowerUsage), R.drawable.msg2_battery, () -> {
+                    new SearchResult(900, getString(R.string.PowerUsage), null, R.drawable.msg2_battery, () -> presentFragment(new LiteModeSettingsActivity())),
+                    new SearchResult(901, getString(R.string.LiteOptionsStickers), getString(R.string.PowerUsage), R.drawable.msg2_battery, () -> {
                         LiteModeSettingsActivity set = new LiteModeSettingsActivity();
                         presentFragment(set);
                         set.scrollToFlags(LiteMode.FLAGS_ANIMATED_STICKERS);
                     }),
-                    new ProfileActivity.SearchAdapter.SearchResult(902, getString(R.string.LiteOptionsAutoplayKeyboard), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsStickers), R.drawable.msg2_battery, () -> {
+                    new SearchResult(902, getString(R.string.LiteOptionsAutoplayKeyboard), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsStickers), R.drawable.msg2_battery, () -> {
                         LiteModeSettingsActivity set = new LiteModeSettingsActivity();
                         presentFragment(set);
                         set.setExpanded(LiteMode.FLAGS_ANIMATED_STICKERS, true);
                         set.scrollToFlags(LiteMode.FLAG_ANIMATED_STICKERS_KEYBOARD);
                     }),
-                    new ProfileActivity.SearchAdapter.SearchResult(903, getString(R.string.LiteOptionsAutoplayChat), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsStickers), R.drawable.msg2_battery, () -> {
+                    new SearchResult(903, getString(R.string.LiteOptionsAutoplayChat), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsStickers), R.drawable.msg2_battery, () -> {
                         LiteModeSettingsActivity set = new LiteModeSettingsActivity();
                         presentFragment(set);
                         set.setExpanded(LiteMode.FLAGS_ANIMATED_STICKERS, true);
                         set.scrollToFlags(LiteMode.FLAG_ANIMATED_STICKERS_CHAT);
                     }),
-                    new ProfileActivity.SearchAdapter.SearchResult(904, getString(R.string.LiteOptionsEmoji), getString(R.string.PowerUsage), R.drawable.msg2_battery, () -> {
+                    new SearchResult(904, getString(R.string.LiteOptionsEmoji), getString(R.string.PowerUsage), R.drawable.msg2_battery, () -> {
                         LiteModeSettingsActivity set = new LiteModeSettingsActivity();
                         presentFragment(set);
                         set.scrollToFlags(LiteMode.FLAGS_ANIMATED_EMOJI);
                     }),
-                    new ProfileActivity.SearchAdapter.SearchResult(905, getString(R.string.LiteOptionsAutoplayKeyboard), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsEmoji), R.drawable.msg2_battery, () -> {
+                    new SearchResult(905, getString(R.string.LiteOptionsAutoplayKeyboard), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsEmoji), R.drawable.msg2_battery, () -> {
                         LiteModeSettingsActivity set = new LiteModeSettingsActivity();
                         presentFragment(set);
                         set.setExpanded(LiteMode.FLAGS_ANIMATED_EMOJI, true);
                         set.scrollToFlags(LiteMode.FLAG_ANIMATED_EMOJI_KEYBOARD);
                     }),
-                    new ProfileActivity.SearchAdapter.SearchResult(906, getString(R.string.LiteOptionsAutoplayReactions), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsEmoji), R.drawable.msg2_battery, () -> {
+                    new SearchResult(906, getString(R.string.LiteOptionsAutoplayReactions), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsEmoji), R.drawable.msg2_battery, () -> {
                         LiteModeSettingsActivity set = new LiteModeSettingsActivity();
                         presentFragment(set);
                         set.setExpanded(LiteMode.FLAGS_ANIMATED_EMOJI, true);
                         set.scrollToFlags(LiteMode.FLAG_ANIMATED_EMOJI_REACTIONS);
                     }),
-                    new ProfileActivity.SearchAdapter.SearchResult(907, getString(R.string.LiteOptionsAutoplayChat), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsEmoji), R.drawable.msg2_battery, () -> {
+                    new SearchResult(907, getString(R.string.LiteOptionsAutoplayChat), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsEmoji), R.drawable.msg2_battery, () -> {
                         LiteModeSettingsActivity set = new LiteModeSettingsActivity();
                         presentFragment(set);
                         set.setExpanded(LiteMode.FLAGS_ANIMATED_EMOJI, true);
                         set.scrollToFlags(LiteMode.FLAG_ANIMATED_EMOJI_CHAT);
                     }),
-                    new ProfileActivity.SearchAdapter.SearchResult(908, getString(R.string.LiteOptionsChat), getString(R.string.PowerUsage), R.drawable.msg2_battery, () -> {
+                    new SearchResult(908, getString(R.string.LiteOptionsChat), getString(R.string.PowerUsage), R.drawable.msg2_battery, () -> {
                         LiteModeSettingsActivity set = new LiteModeSettingsActivity();
                         presentFragment(set);
                         set.scrollToFlags(LiteMode.FLAGS_CHAT);
                     }),
-                    new ProfileActivity.SearchAdapter.SearchResult(909, getString(R.string.LiteOptionsBackground), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsChat), R.drawable.msg2_battery, () -> {
+                    new SearchResult(909, getString(R.string.LiteOptionsBackground), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsChat), R.drawable.msg2_battery, () -> {
                         LiteModeSettingsActivity set = new LiteModeSettingsActivity();
                         presentFragment(set);
                         set.setExpanded(LiteMode.FLAGS_CHAT, true);
                         set.scrollToFlags(LiteMode.FLAG_CHAT_BACKGROUND);
                     }),
-                    new ProfileActivity.SearchAdapter.SearchResult(910, getString(R.string.LiteOptionsTopics), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsChat), R.drawable.msg2_battery, () -> {
+                    new SearchResult(910, getString(R.string.LiteOptionsTopics), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsChat), R.drawable.msg2_battery, () -> {
                         LiteModeSettingsActivity set = new LiteModeSettingsActivity();
                         presentFragment(set);
                         set.setExpanded(LiteMode.FLAGS_CHAT, true);
                         set.scrollToFlags(LiteMode.FLAG_CHAT_FORUM_TWOCOLUMN);
                     }),
-                    new ProfileActivity.SearchAdapter.SearchResult(911, getString(R.string.LiteOptionsSpoiler), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsChat), R.drawable.msg2_battery, () -> {
+                    new SearchResult(911, getString(R.string.LiteOptionsSpoiler), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsChat), R.drawable.msg2_battery, () -> {
                         LiteModeSettingsActivity set = new LiteModeSettingsActivity();
                         presentFragment(set);
                         set.setExpanded(LiteMode.FLAGS_CHAT, true);
                         set.scrollToFlags(LiteMode.FLAG_CHAT_SPOILER);
                     }),
-                    SharedConfig.getDevicePerformanceClass() >= SharedConfig.PERFORMANCE_CLASS_AVERAGE ? new ProfileActivity.SearchAdapter.SearchResult(326 /* for compatibility */, getString(R.string.LiteOptionsBlur), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsChat), R.drawable.msg2_battery, () -> {
+                    SharedConfig.getDevicePerformanceClass() >= SharedConfig.PERFORMANCE_CLASS_AVERAGE ? new SearchResult(326 /* for compatibility */, getString(R.string.LiteOptionsBlur), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsChat), R.drawable.msg2_battery, () -> {
                         LiteModeSettingsActivity set = new LiteModeSettingsActivity();
                         presentFragment(set);
                         set.setExpanded(LiteMode.FLAGS_CHAT, true);
                         set.scrollToFlags(LiteMode.FLAG_CHAT_BLUR);
                     }) : null,
-                    new ProfileActivity.SearchAdapter.SearchResult(912, getString(R.string.LiteOptionsScale), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsChat), R.drawable.msg2_battery, () -> {
+                    new SearchResult(912, getString(R.string.LiteOptionsScale), null, getString(R.string.PowerUsage), getString(R.string.LiteOptionsChat), R.drawable.msg2_battery, () -> {
                         LiteModeSettingsActivity set = new LiteModeSettingsActivity();
                         presentFragment(set);
                         set.setExpanded(LiteMode.FLAGS_CHAT, true);
                         set.scrollToFlags(LiteMode.FLAG_CHAT_SCALE);
                     }),
-                    new ProfileActivity.SearchAdapter.SearchResult(913, getString(R.string.LiteOptionsCalls), getString(R.string.PowerUsage), R.drawable.msg2_battery, () -> {
+                    new SearchResult(913, getString(R.string.LiteOptionsCalls), getString(R.string.PowerUsage), R.drawable.msg2_battery, () -> {
                         LiteModeSettingsActivity set = new LiteModeSettingsActivity();
                         presentFragment(set);
                         set.scrollToFlags(LiteMode.FLAG_CALLS_ANIMATIONS);
                     }),
-                    new ProfileActivity.SearchAdapter.SearchResult(214 /* for compatibility */, getString(R.string.LiteOptionsAutoplayVideo), getString(R.string.PowerUsage), R.drawable.msg2_battery, () -> {
+                    new SearchResult(214 /* for compatibility */, getString(R.string.LiteOptionsAutoplayVideo), getString(R.string.PowerUsage), R.drawable.msg2_battery, () -> {
                         LiteModeSettingsActivity set = new LiteModeSettingsActivity();
                         presentFragment(set);
                         set.scrollToFlags(LiteMode.FLAG_AUTOPLAY_VIDEOS);
                     }),
-                    new ProfileActivity.SearchAdapter.SearchResult(213 /* for compatibility */, getString(R.string.LiteOptionsAutoplayGifs), getString(R.string.PowerUsage), R.drawable.msg2_battery, () -> {
+                    new SearchResult(213 /* for compatibility */, getString(R.string.LiteOptionsAutoplayGifs), getString(R.string.PowerUsage), R.drawable.msg2_battery, () -> {
                         LiteModeSettingsActivity set = new LiteModeSettingsActivity();
                         presentFragment(set);
                         set.scrollToFlags(LiteMode.FLAG_AUTOPLAY_GIFS);
                     }),
-                    new ProfileActivity.SearchAdapter.SearchResult(914, getString(R.string.LiteSmoothTransitions), getString(R.string.PowerUsage), R.drawable.msg2_battery, () -> {
+                    new SearchResult(914, getString(R.string.LiteSmoothTransitions), getString(R.string.PowerUsage), R.drawable.msg2_battery, () -> {
                         LiteModeSettingsActivity set = new LiteModeSettingsActivity();
                         presentFragment(set);
                         set.scrollToType(LiteModeSettingsActivity.SWITCH_TYPE_SMOOTH_TRANSITIONS);
                     }),
 
-                    new ProfileActivity.SearchAdapter.SearchResult(400, getString(R.string.Language), R.drawable.msg2_language, () -> presentFragment(new LanguageSelectActivity())),
-                    new ProfileActivity.SearchAdapter.SearchResult(405, getString(R.string.ShowTranslateButton), getString(R.string.Language), R.drawable.msg2_language, () -> presentFragment(new LanguageSelectActivity())),
-                    MessagesController.getInstance(currentAccount).getTranslateController().isContextTranslateEnabled() ? new ProfileActivity.SearchAdapter.SearchResult(406, getString(R.string.DoNotTranslate), getString(R.string.Language), R.drawable.msg2_language, () -> presentFragment(new LanguageSelectActivity())) : null,
+                    new SearchResult(400, getString(R.string.Language), R.drawable.msg2_language, () -> presentFragment(new LanguageSelectActivity())),
+                    new SearchResult(405, getString(R.string.ShowTranslateButton), getString(R.string.Language), R.drawable.msg2_language, () -> presentFragment(new LanguageSelectActivity())),
+                    MessagesController.getInstance(currentAccount).getTranslateController().isContextTranslateEnabled() ? new SearchResult(406, getString(R.string.DoNotTranslate), getString(R.string.Language), R.drawable.msg2_language, () -> presentFragment(new LanguageSelectActivity())) : null,
 
-                    new ProfileActivity.SearchAdapter.SearchResult(402, getString(R.string.AskAQuestion), getString(R.string.SettingsHelp), R.drawable.msg2_help, () -> showDialog(AlertsCreator.createSupportAlert(ProfileActivity.this, null))),
-                    new ProfileActivity.SearchAdapter.SearchResult(403, getString(R.string.TelegramFAQ), getString(R.string.SettingsHelp), R.drawable.msg2_help, () -> Browser.openUrl(getParentActivity(), getString(R.string.TelegramFaqUrl))),
-                    new ProfileActivity.SearchAdapter.SearchResult(404, getString(R.string.PrivacyPolicy), getString(R.string.SettingsHelp), R.drawable.msg2_help, () -> Browser.openUrl(getParentActivity(), getString(R.string.PrivacyPolicyUrl))),
+                    new SearchResult(402, getString(R.string.AskAQuestion), getString(R.string.SettingsHelp), R.drawable.msg2_help, () -> showDialog(AlertsCreator.createSupportAlert(ProfileActivity2.this, null))),
+                    new SearchResult(403, getString(R.string.TelegramFAQ), getString(R.string.SettingsHelp), R.drawable.msg2_help, () -> Browser.openUrl(getParentActivity(), getString(R.string.TelegramFaqUrl))),
+                    new SearchResult(404, getString(R.string.PrivacyPolicy), getString(R.string.SettingsHelp), R.drawable.msg2_help, () -> Browser.openUrl(getParentActivity(), getString(R.string.PrivacyPolicyUrl))),
             };
         }
 
@@ -11750,8 +11690,8 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     SettingsSearchCell searchCell = (SettingsSearchCell) holder.itemView;
                     if (searchWas) {
                         if (position < searchResults.size()) {
-                            ProfileActivity.SearchAdapter.SearchResult result = searchResults.get(position);
-                            ProfileActivity.SearchAdapter.SearchResult prevResult = position > 0 ? searchResults.get(position - 1) : null;
+                            SearchResult result = searchResults.get(position);
+                            SearchResult prevResult = position > 0 ? searchResults.get(position - 1) : null;
                             int icon;
                             if (prevResult != null && prevResult.iconResId == result.iconResId) {
                                 icon = 0;
@@ -11770,8 +11710,8 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                         }
                         if (position < recentSearches.size()) {
                             Object object = recentSearches.get(position);
-                            if (object instanceof ProfileActivity.SearchAdapter.SearchResult) {
-                                ProfileActivity.SearchAdapter.SearchResult result = (ProfileActivity.SearchAdapter.SearchResult) object;
+                            if (object instanceof SearchResult) {
+                                SearchResult result = (SearchResult) object;
                                 searchCell.setTextAndValue(result.searchTitle, result.path, false, position < recentSearches.size() - 1);
                             } else if (object instanceof MessagesController.FaqSearchResult) {
                                 MessagesController.FaqSearchResult result = (MessagesController.FaqSearchResult) object;
@@ -11854,8 +11794,8 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
             LinkedHashSet<String> toSave = new LinkedHashSet<>();
             for (int a = 0, N = recentSearches.size(); a < N; a++) {
                 Object o = recentSearches.get(a);
-                if (o instanceof ProfileActivity.SearchAdapter.SearchResult) {
-                    ((ProfileActivity.SearchAdapter.SearchResult) o).num = a;
+                if (o instanceof SearchResult) {
+                    ((SearchResult) o).num = a;
                 } else if (o instanceof MessagesController.FaqSearchResult) {
                     ((MessagesController.FaqSearchResult) o).num = a;
                 }
@@ -11871,8 +11811,8 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
         }
 
         private int getNum(Object o) {
-            if (o instanceof ProfileActivity.SearchAdapter.SearchResult) {
-                return ((ProfileActivity.SearchAdapter.SearchResult) o).num;
+            if (o instanceof SearchResult) {
+                return ((SearchResult) o).num;
             } else if (o instanceof MessagesController.FaqSearchResult) {
                 return ((MessagesController.FaqSearchResult) o).num;
             }
@@ -11896,7 +11836,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                 return;
             }
             Utilities.searchQueue.postRunnable(searchRunnable = () -> {
-                ArrayList<ProfileActivity.SearchAdapter.SearchResult> results = new ArrayList<>();
+                ArrayList<SearchResult> results = new ArrayList<>();
                 ArrayList<MessagesController.FaqSearchResult> faqResults = new ArrayList<>();
                 ArrayList<CharSequence> names = new ArrayList<>();
                 String[] searchArgs = text.split(" ");
@@ -11909,7 +11849,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                 }
 
                 for (int a = 0; a < searchArray.length; a++) {
-                    ProfileActivity.SearchAdapter.SearchResult result = searchArray[a];
+                    SearchResult result = searchArray[a];
                     if (result == null) {
                         continue;
                     }
@@ -12005,7 +11945,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
 
     private void openUrl(String url, Browser.Progress progress) {
         if (url.startsWith("@")) {
-            getMessagesController().openByUserName(url.substring(1), ProfileActivity.this, 0, progress);
+            getMessagesController().openByUserName(url.substring(1), ProfileActivity2.this, 0, progress);
         } else if (url.startsWith("#") || url.startsWith("$")) {
             DialogsActivity fragment = new DialogsActivity(null);
             fragment.setSearchString(url);
@@ -12241,7 +12181,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
             return;
         }
 
-        ProfileActivity.DiffCallback diffCallback = new ProfileActivity.DiffCallback();
+        DiffCallback diffCallback = new DiffCallback();
         diffCallback.oldRowCount = rowCount;
         diffCallback.fillPositions(diffCallback.oldPositionToItem);
         diffCallback.oldChatParticipant.clear();
@@ -12680,7 +12620,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
     }
 
     private void listCodecs(String type, StringBuilder info) {
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             return;
         }
         try {
@@ -12718,7 +12658,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                 }
                 MediaCodecInfo codec = MediaCodecList.getCodecInfoAt(decoderIndexes.get(a));
                 info.append("{d} ").append(codec.getName()).append(" (");
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     if (codec.isHardwareAccelerated()) {
                         info.append("gpu"); // as Gpu
                     }
@@ -12738,7 +12678,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                 }
                 MediaCodecInfo codec = MediaCodecList.getCodecInfoAt(encoderIndexes.get(a));
                 info.append("{e} ").append(codec.getName()).append(" (");
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     if (codec.isHardwareAccelerated()) {
                         info.append("gpu"); // as Gpu
                     }
@@ -12785,10 +12725,10 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
         blurredView.setVisibility(View.VISIBLE);
     }
 
-    private ProfileActivity.ShowDrawable showStatusButton;
-    public ProfileActivity.ShowDrawable getShowStatusButton() {
+    private ShowDrawable showStatusButton;
+    public ShowDrawable getShowStatusButton() {
         if (showStatusButton == null) {
-            showStatusButton = new ProfileActivity.ShowDrawable(LocaleController.getString(R.string.StatusHiddenShow));
+            showStatusButton = new ShowDrawable(LocaleController.getString(R.string.StatusHiddenShow));
             showStatusButton.setAlpha((int) (0xFF * Math.min(1f, profileHeaderLayout.extraHeight / AndroidUtilities.dp(profileHeaderLayout.headerHeight))));
             showStatusButton.setBackgroundColor(ColorUtils.blendARGB(Theme.multAlpha(Theme.adaptHSV(profileHeaderLayout.actionBarBackgroundColor, +0.18f, -0.1f), 0.5f), 0x23ffffff, profileHeaderLayout.currentExpandAnimatorValue));
         }
@@ -13118,7 +13058,7 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                     getMessagesController().invalidateContentSettings();
                     getConnectionsManager().sendRequest(req, (res, err) -> AndroidUtilities.runOnUIThread(() -> {
                         if (res instanceof TLRPC.TL_boolTrue) {
-                            BulletinFactory.of(ProfileActivity.this)
+                            BulletinFactory.of(ProfileActivity2.this)
                                     .createSimpleBulletin(R.raw.contact_check, LocaleController.getString(R.string.PrivacyBirthdaySetDone))
                                     .setDuration(Bulletin.DURATION_PROLONG).show();
                         } else {
@@ -13142,14 +13082,14 @@ public class ProfileActivity extends ProfileBaseActivity implements Notification
                                     );
                                 }
                             } else {
-                                BulletinFactory.of(ProfileActivity.this)
+                                BulletinFactory.of(ProfileActivity2.this)
                                         .createSimpleBulletin(R.raw.error, LocaleController.getString(R.string.UnknownError))
                                         .show();
                             }
                         }
                     }), ConnectionsManager.RequestFlagDoNotWaitFloodWait);
                 }, () -> {
-                    BaseFragment.BottomSheetParams params = new BaseFragment.BottomSheetParams();
+                    BottomSheetParams params = new BottomSheetParams();
                     params.transitionFromLeft = true;
                     params.allowNestedScroll = false;
                     showAsSheet(new PrivacyControlActivity(PrivacyControlActivity.PRIVACY_RULES_TYPE_BIRTHDAY), params);

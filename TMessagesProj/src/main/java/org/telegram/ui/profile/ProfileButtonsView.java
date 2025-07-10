@@ -2,7 +2,6 @@ package org.telegram.ui.profile;
 
 
 import static org.telegram.messenger.AndroidUtilities.dp;
-import static org.telegram.messenger.AndroidUtilities.forEachViews;
 
 import android.animation.Animator;
 import android.animation.AnimatorSet;
@@ -18,13 +17,12 @@ import android.widget.TextView;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
-import org.telegram.messenger.profile.R;
+import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.LayoutHelper;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class ProfileButtonsView extends LinearLayout {
 
@@ -69,7 +67,8 @@ public class ProfileButtonsView extends LinearLayout {
         return findViewById(id);
     }
 
-    public ProfileButton addButton(int id, int iconRes, int stringRes){
+    public ProfileButton addButton(int id, int iconRes, int stringRes) {
+        if(get(id) != null) return null;
         ProfileButton button = new ProfileButton(getContext(), iconRes, stringRes);
         button.setId(id);
 
@@ -81,7 +80,8 @@ public class ProfileButtonsView extends LinearLayout {
         return button;
     }
 
-    public ProfileButton addButton(int id, int iconRes, String string){
+    public ProfileButton addButton(int id, int iconRes, String string) {
+        if(get(id) != null) return null;
         ProfileButton button = new ProfileButton(getContext(), iconRes, string);
         button.setId(id);
 

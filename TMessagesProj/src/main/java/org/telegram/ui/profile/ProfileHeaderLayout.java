@@ -1,7 +1,6 @@
 package org.telegram.ui.profile;
 
 import static org.telegram.messenger.AndroidUtilities.dp;
-import static org.telegram.messenger.AndroidUtilities.dpf2;
 import static org.telegram.messenger.AndroidUtilities.lerp;
 
 import android.animation.Animator;
@@ -24,8 +23,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.view.animation.DecelerateInterpolator;
-import android.view.animation.LinearInterpolator;
 import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
@@ -67,9 +64,6 @@ import org.telegram.ui.PeerColorActivity;
 import org.telegram.ui.Stars.StarGiftPatterns;
 import org.telegram.ui.Stories.ProfileStoriesView;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class ProfileHeaderLayout {
 
     private static final String TAG = "ProfileHeaderLayout";
@@ -98,8 +92,8 @@ public class ProfileHeaderLayout {
 
     private RecyclerListView listView;
 
-    public org.telegram.ui.profile.ProfileActivity.OverlaysView overlaysView; //TODO: make private
-    public org.telegram.ui.profile.ProfileActivity.PagerIndicatorView avatarsViewPagerIndicatorView; //TODO: make private
+    public ProfileActivity2.OverlaysView overlaysView; //TODO: make private
+    public ProfileActivity2.PagerIndicatorView avatarsViewPagerIndicatorView; //TODO: make private
     public TopView topView;
 
 
@@ -310,7 +304,7 @@ public class ProfileHeaderLayout {
 
         actionBar = currentFragment.getActionBar();
 
-        topView = new ProfileHeaderLayout.TopView(context);
+        topView = new TopView(context);
 
         final float diff = Math.min(1f, extraHeight / dp(headerHeight));
 
@@ -336,10 +330,11 @@ public class ProfileHeaderLayout {
 
         innerAvatarContainer.setTranslationY(avatarY);
 
-        avatarContainer.addView(mediaCounterTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 118.33f, -2, 8, 0));
 
         avatarContainer.addView(avatarsViewPager);
         avatarContainer.addView(overlaysView);
+        avatarContainer.addView(avatarsViewPagerIndicatorView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+
         avatarImage.setAvatarsViewPager(avatarsViewPager);
 
         textContainer = new FrameLayout(context);
@@ -597,6 +592,20 @@ public class ProfileHeaderLayout {
                     )
             );
         }
+
+        textContainer.addView(
+                mediaCounterTextView,
+                LayoutHelper.createFrame(
+                        LayoutHelper.WRAP_CONTENT,
+                        LayoutHelper.WRAP_CONTENT,
+                        Gravity.TOP | Gravity.CENTER_HORIZONTAL,
+                        0,
+                        32,
+                        0,
+                        0
+                )
+        );
+
 
     }
     
@@ -926,8 +935,8 @@ public class ProfileHeaderLayout {
                         nameY = extraHeight - profileButtonsView.getHeight();
                         textContainer.setTranslationY(nameY);         //pulling expanded
 
-                        mediaCounterTextView.setTranslationX(textContainer.getTranslationX());
-                        mediaCounterTextView.setTranslationY(textContainer.getTranslationY());
+//                        mediaCounterTextView.setTranslationX(textContainer.getTranslationX());
+//                        mediaCounterTextView.setTranslationY(textContainer.getTranslationY());
                         updateCollectibleHint();
                     }
                 } else {

@@ -24,7 +24,7 @@ public class ProfileActivityFactory {
                 caller.getLineNumber());
 
         try {
-            Class.forName("org.telegram.ui.profile.ProfileActivity");
+            Class.forName("org.telegram.ui.profile.ProfileActivity2");
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
