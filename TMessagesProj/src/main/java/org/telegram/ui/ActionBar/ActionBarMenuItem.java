@@ -8,6 +8,8 @@
 
 package org.telegram.ui.ActionBar;
 
+import static org.telegram.messenger.AndroidUtilities.dp;
+
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
@@ -49,9 +51,9 @@ import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.PopupWindow;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.ColorUtils;
@@ -59,12 +61,12 @@ import androidx.core.graphics.ColorUtils;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.AnimationNotificationsLocker;
 import org.telegram.messenger.LocaleController;
-import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.Adapters.FiltersView;
+import org.telegram.ui.Components.AnimatedEmojiDrawable;
 import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.CloseProgressDrawable2;
 import org.telegram.ui.Components.CombinedDrawable;
@@ -73,6 +75,7 @@ import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.RLottieImageView;
+import org.telegram.ui.Components.Reactions.ReactionsLayoutInBubble;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -121,11 +124,19 @@ public class ActionBarMenuItem extends FrameLayout {
         public void onSearchPressed(EditText editText) {
         }
 
+        public boolean canClearCaption() {
+            return true;
+        }
+
         public void onCaptionCleared() {
         }
 
         public boolean forceShowClear() {
             return false;
+        }
+
+        public boolean showClearForCaption() {
+            return true;
         }
 
         public Animator getCustomToggleTransition() {
@@ -179,6 +190,7 @@ public class ActionBarMenuItem extends FrameLayout {
     private Runnable showMenuRunnable;
     private int subMenuOpenSide;
     private int yOffset;
+    private int xOffset;
     private ActionBarMenuItemDelegate delegate;
     private ActionBarSubMenuItemDelegate subMenuDelegate;
     private boolean allowCloseAnimation = true;
@@ -233,7 +245,7 @@ public class ActionBarMenuItem extends FrameLayout {
         if (text) {
             textView = new TextView(context);
             textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
-            textView.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+            textView.setTypeface(AndroidUtilities.bold());
             textView.setGravity(Gravity.CENTER);
             textView.setPadding(AndroidUtilities.dp(4), 0, AndroidUtilities.dp(4), 0);
             textView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -586,6 +598,29 @@ public class ActionBarMenuItem extends FrameLayout {
         return cell;
     }
 
+    public View addSubItem(int id, View cell) {
+        createPopupLayout();
+
+        cell.setMinimumWidth(AndroidUtilities.dp(196));
+        cell.setTag(id);
+        popupLayout.addView(cell);
+        LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) cell.getLayoutParams();
+        if (LocaleController.isRTL) {
+            layoutParams.gravity = Gravity.RIGHT;
+        }
+        layoutParams.width = LayoutHelper.MATCH_PARENT;
+        layoutParams.height = AndroidUtilities.dp(48);
+        cell.setLayoutParams(layoutParams);
+        cell.setOnClickListener(view -> {
+            if (parentMenu != null) {
+                parentMenu.onItemClick((Integer) view.getTag());
+            } else if (delegate != null) {
+                delegate.onItemClick((Integer) view.getTag());
+            }
+        });
+        return cell;
+    }
+
     public ActionBarMenuSubItem addSwipeBackItem(int icon, Drawable iconDrawable, String text, View viewToSwipeBack) {
         createPopupLayout();
 
@@ -691,6 +726,10 @@ public class ActionBarMenuItem extends FrameLayout {
 
     public void setMenuYOffset(int offset) {
         yOffset = offset;
+    }
+
+    public void setMenuXOffset(int offset) {
+        xOffset = offset;
     }
 
     public void toggleSubMenu(View topView, View fromView) {
@@ -986,7 +1025,7 @@ public class ActionBarMenuItem extends FrameLayout {
         boolean visible = !currentSearchFilters.isEmpty();
         ArrayList<FiltersView.MediaFilterData> localFilters = new ArrayList<>(currentSearchFilters);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT && searchContainer.getTag() != null) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT && searchContainer != null && searchContainer.getTag() != null) {
             TransitionSet transition = new TransitionSet();
             ChangeBounds changeBounds = new ChangeBounds();
             changeBounds.setDuration(150);
@@ -1051,17 +1090,25 @@ public class ActionBarMenuItem extends FrameLayout {
             TransitionManager.beginDelayedTransition(searchFilterLayout, transition);
         }
 
-        for (int i = 0; i < searchFilterLayout.getChildCount(); i++) {
-            boolean removed = localFilters.remove(((SearchFilterView)searchFilterLayout.getChildAt(i)).getFilter());
-            if (!removed) {
-                searchFilterLayout.removeViewAt(i);
-                i--;
+        if (searchFilterLayout != null) {
+            for (int i = 0; i < searchFilterLayout.getChildCount(); i++) {
+                boolean removed = localFilters.remove(((SearchFilterView) searchFilterLayout.getChildAt(i)).getFilter());
+                if (!removed) {
+                    searchFilterLayout.removeViewAt(i);
+                    i--;
+                }
             }
         }
 
         for (int i = 0; i < localFilters.size(); i++) {
-            SearchFilterView searchFilterView = new SearchFilterView(getContext(), resourcesProvider);
-            searchFilterView.setData(localFilters.get(i));
+            FiltersView.MediaFilterData filter = localFilters.get(i);
+            SearchFilterView searchFilterView;
+            if (filter.reaction != null) {
+                searchFilterView = new ReactionFilterView(getContext(), resourcesProvider);
+            } else {
+                searchFilterView = new SearchFilterView(getContext(), resourcesProvider);
+            }
+            searchFilterView.setData(filter);
             searchFilterView.setOnClickListener(view -> {
                 int index = currentSearchFilters.indexOf(searchFilterView.getFilter());
                 if (selectedFilterIndex != index) {
@@ -1567,7 +1614,7 @@ public class ActionBarMenuItem extends FrameLayout {
                         }
                     }
                     clearSearchFilters();
-                } else if (searchFieldCaption != null && searchFieldCaption.getVisibility() == VISIBLE) {
+                } else if (searchFieldCaption != null && searchFieldCaption.getVisibility() == VISIBLE && (listener == null || listener.canClearCaption())) {
                     searchFieldCaption.setVisibility(GONE);
                     if (listener != null) {
                         listener.onCaptionCleared();
@@ -1576,7 +1623,7 @@ public class ActionBarMenuItem extends FrameLayout {
                 searchField.requestFocus();
                 AndroidUtilities.showKeyboard(searchField);
             });
-            clearButton.setContentDescription(LocaleController.getString("ClearButton", R.string.ClearButton));
+            clearButton.setContentDescription(LocaleController.getString(R.string.ClearButton));
             if (wrapSearchInScrollView) {
                 wrappedSearchFrameLayout.addView(clearButton, LayoutHelper.createFrame(48, LayoutHelper.MATCH_PARENT, Gravity.CENTER_VERTICAL | Gravity.RIGHT));
             } else {
@@ -1598,7 +1645,7 @@ public class ActionBarMenuItem extends FrameLayout {
         if (clearButton != null) {
             if (!hasRemovableFilters() && TextUtils.isEmpty(searchField.getText()) &&
                     (listener == null || !listener.forceShowClear()) &&
-                    (searchFieldCaption == null || searchFieldCaption.getVisibility() != VISIBLE)) {
+                    (searchFieldCaption == null || searchFieldCaption.getVisibility() != VISIBLE || listener != null && !listener.showClearForCaption())) {
                 if (clearButton.getTag() != null) {
                     clearButton.setTag(null);
                     if (clearButtonAnimator != null) {
@@ -1803,21 +1850,21 @@ public class ActionBarMenuItem extends FrameLayout {
             View parent = parentMenu.parentActionBar;
             if (subMenuOpenSide == 0) {
                 if (show) {
-                    popupWindow.showAsDropDown(parent, fromView.getLeft() + parentMenu.getLeft() + fromView.getMeasuredWidth() - popupWindow.getContentView().getMeasuredWidth() + (int) getTranslationX(), offsetY);
+                    popupWindow.showAsDropDown(parent, fromView.getLeft() + parentMenu.getLeft() + fromView.getMeasuredWidth() - popupWindow.getContentView().getMeasuredWidth() + (int) getTranslationX() + xOffset, offsetY);
                 }
                 if (update) {
-                    popupWindow.update(parent, fromView.getLeft() + parentMenu.getLeft() + fromView.getMeasuredWidth() - popupWindow.getContentView().getMeasuredWidth() + (int) getTranslationX(), offsetY, -1, -1);
+                    popupWindow.update(parent, fromView.getLeft() + parentMenu.getLeft() + fromView.getMeasuredWidth() - popupWindow.getContentView().getMeasuredWidth() + (int) getTranslationX() + xOffset, offsetY, -1, -1);
                 }
             } else {
                 if (show) {
                     if (forceSmoothKeyboard) {
-                        popupWindow.showAtLocation(parent, Gravity.LEFT | Gravity.TOP, getLeft() - AndroidUtilities.dp(8) + (int) getTranslationX(), offsetY);
+                        popupWindow.showAtLocation(parent, Gravity.LEFT | Gravity.TOP, getLeft() - AndroidUtilities.dp(8) + (int) getTranslationX() + xOffset, offsetY);
                     } else {
-                        popupWindow.showAsDropDown(parent, getLeft() - AndroidUtilities.dp(8) + (int) getTranslationX(), offsetY);
+                        popupWindow.showAsDropDown(parent, getLeft() - AndroidUtilities.dp(8) + (int) getTranslationX() + xOffset, offsetY);
                     }
                 }
                 if (update) {
-                    popupWindow.update(parent, getLeft() - AndroidUtilities.dp(8) + (int) getTranslationX(), offsetY, -1, -1);
+                    popupWindow.update(parent, getLeft() - AndroidUtilities.dp(8) + (int) getTranslationX() + xOffset, offsetY, -1, -1);
                 }
             }
         } else {
@@ -1825,25 +1872,25 @@ public class ActionBarMenuItem extends FrameLayout {
                 if (getParent() != null) {
                     View parent = (View) getParent();
                     if (show) {
-                        popupWindow.showAsDropDown(parent, getLeft() + getMeasuredWidth() - popupWindow.getContentView().getMeasuredWidth() + additionalXOffset, offsetY);
+                        popupWindow.showAsDropDown(parent, getLeft() + getMeasuredWidth() - popupWindow.getContentView().getMeasuredWidth() + additionalXOffset + xOffset, offsetY);
                     }
                     if (update) {
-                        popupWindow.update(parent, getLeft() + getMeasuredWidth() - popupWindow.getContentView().getMeasuredWidth() + additionalXOffset, offsetY, -1, -1);
+                        popupWindow.update(parent, getLeft() + getMeasuredWidth() - popupWindow.getContentView().getMeasuredWidth() + additionalXOffset + xOffset, offsetY, -1, -1);
                     }
                 }
             } else if (subMenuOpenSide == 1) {
                 if (show) {
-                    popupWindow.showAsDropDown(this, -AndroidUtilities.dp(8) + additionalXOffset, offsetY);
+                    popupWindow.showAsDropDown(this, -AndroidUtilities.dp(8) + additionalXOffset + xOffset, offsetY);
                 }
                 if (update) {
-                    popupWindow.update(this, -AndroidUtilities.dp(8) + additionalXOffset, offsetY, -1, -1);
+                    popupWindow.update(this, -AndroidUtilities.dp(8) + additionalXOffset + xOffset, offsetY, -1, -1);
                 }
             } else {
                 if (show) {
-                    popupWindow.showAsDropDown(this, getMeasuredWidth() - popupWindow.getContentView().getMeasuredWidth() + additionalXOffset, offsetY);
+                    popupWindow.showAsDropDown(this, getMeasuredWidth() - popupWindow.getContentView().getMeasuredWidth() + additionalXOffset + xOffset, offsetY);
                 }
                 if (update) {
-                    popupWindow.update(this, getMeasuredWidth() - popupWindow.getContentView().getMeasuredWidth() + additionalXOffset, offsetY, -1, -1);
+                    popupWindow.update(this, getMeasuredWidth() - popupWindow.getContentView().getMeasuredWidth() + additionalXOffset + xOffset, offsetY, -1, -1);
                 }
             }
         }
@@ -1862,6 +1909,17 @@ public class ActionBarMenuItem extends FrameLayout {
             view.setVisibility(GONE);
             measurePopup = true;
         }
+    }
+
+    public boolean hasSubItem(int id) {
+        Item lazyItem = findLazyItem(id);
+        if (lazyItem != null) {
+            return true;
+        }
+        if (popupLayout == null) {
+            return false;
+        }
+        return popupLayout.findViewWithTag(id) != null;
     }
 
     /**
@@ -1904,6 +1962,9 @@ public class ActionBarMenuItem extends FrameLayout {
         showSubItem(id, false);
     }
 
+    public View getSubItem(int id) {
+        return popupLayout.findViewWithTag(id);
+    }
     public void showSubItem(int id, boolean animated) {
         Item lazyItem = findLazyItem(id);
         if (lazyItem != null) {
@@ -1919,6 +1980,13 @@ public class ActionBarMenuItem extends FrameLayout {
             view.setVisibility(VISIBLE);
             measurePopup = true;
         }
+    }
+
+    public void setSubItemShown(int id, boolean show) {
+        if (show)
+            showSubItem(id);
+        else
+            hideSubItem(id);
     }
 
     public int getVisibleSubItemsCount() {
@@ -2003,6 +2071,80 @@ public class ActionBarMenuItem extends FrameLayout {
         return Theme.getColor(key, resourcesProvider);
     }
 
+    private static class ReactionFilterView extends SearchFilterView {
+
+        private ReactionsLayoutInBubble.ReactionButton reactionButton;
+
+        public ReactionFilterView(Context context, Theme.ResourcesProvider resourcesProvider) {
+            super(context, resourcesProvider);
+            removeAllViews();
+            setBackground(null);
+
+            setWillNotDraw(false);
+        }
+
+        public void setData(FiltersView.MediaFilterData data) {
+            TLRPC.TL_reactionCount reactionCount = new TLRPC.TL_reactionCount();
+            reactionCount.count = 1;
+            reactionCount.reaction = data.reaction.toTLReaction();
+
+            reactionButton = new ReactionsLayoutInBubble.ReactionButton(null, UserConfig.selectedAccount, this, reactionCount, false, true, resourcesProvider) {
+                @Override
+                protected void updateColors(float progress) {
+                    lastDrawnBackgroundColor = ColorUtils.blendARGB(fromBackgroundColor, Theme.getColor(Theme.key_chat_inReactionButtonBackground, resourcesProvider), progress);
+                    lastDrawnTagDotColor = ColorUtils.blendARGB(fromTagDotColor, 0x5affffff, progress);
+                }
+
+                @Override
+                protected int getCacheType() {
+                    return AnimatedEmojiDrawable.CACHE_TYPE_ALERT_EMOJI_STATUS;
+                }
+            };
+            reactionButton.isTag = true;
+            reactionButton.width = dp(44.33f);
+            reactionButton.height = dp(28);
+            reactionButton.choosen = true;
+            if (attached) {
+                reactionButton.attach();
+            }
+        }
+
+        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            setMeasuredDimension(dp(45 + 4), dp(32));
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            if (reactionButton != null) {
+                reactionButton.draw(canvas, (getWidth() - dp(4) - reactionButton.width) / 2f, (getHeight() - reactionButton.height) / 2f, 1f, 1f, false, false, 0.0f);
+            }
+        }
+
+        private boolean attached;
+        @Override
+        protected void onAttachedToWindow() {
+            super.onAttachedToWindow();
+            if (!attached) {
+                if (reactionButton != null) {
+                    reactionButton.attach();
+                }
+                attached = true;
+            }
+        }
+
+        @Override
+        protected void onDetachedFromWindow() {
+            super.onDetachedFromWindow();
+            if (attached) {
+                if (reactionButton != null) {
+                    reactionButton.detach();
+                }
+                attached = false;
+            }
+        }
+    }
+
     private static class SearchFilterView extends FrameLayout {
 
         Drawable thumbDrawable;
@@ -2025,7 +2167,7 @@ public class ActionBarMenuItem extends FrameLayout {
             }
         };
 
-        private final Theme.ResourcesProvider resourcesProvider;
+        protected final Theme.ResourcesProvider resourcesProvider;
 
         public SearchFilterView(Context context, Theme.ResourcesProvider resourcesProvider) {
             super(context);
@@ -2358,6 +2500,9 @@ public class ActionBarMenuItem extends FrameLayout {
     public Item lazilyAddSubItem(int id, int icon, CharSequence text) {
         return lazilyAddSubItem(id, icon, null, text, true, false);
     }
+    public Item lazilyAddSubItem(int id, Drawable iconDrawable, CharSequence text) {
+        return lazilyAddSubItem(id, 0, iconDrawable, text, true, false);
+    }
     public Item lazilyAddSubItem(int id, int icon, Drawable iconDrawable, CharSequence text, boolean dismiss, boolean needCheck) {
         return putLazyItem(Item.asSubItem(id, icon, iconDrawable, text, dismiss, needCheck));
     }
@@ -2397,11 +2542,11 @@ public class ActionBarMenuItem extends FrameLayout {
         lazyList.clear();
     }
 
-    public static ActionBarMenuSubItem addItem(ActionBarPopupWindow.ActionBarPopupWindowLayout windowLayout, int icon, CharSequence text, boolean needCheck, Theme.ResourcesProvider resourcesProvider) {
+    public static ActionBarMenuSubItem addItem(ViewGroup windowLayout, int icon, CharSequence text, boolean needCheck, Theme.ResourcesProvider resourcesProvider) {
         return addItem(false, false, windowLayout, icon, text, needCheck, resourcesProvider);
     }
 
-    public static ActionBarMenuSubItem addItem(boolean first, boolean last, ActionBarPopupWindow.ActionBarPopupWindowLayout windowLayout, int icon, CharSequence text, boolean needCheck, Theme.ResourcesProvider resourcesProvider) {
+    public static ActionBarMenuSubItem addItem(boolean first, boolean last, ViewGroup windowLayout, int icon, CharSequence text, boolean needCheck, Theme.ResourcesProvider resourcesProvider) {
         ActionBarMenuSubItem cell = new ActionBarMenuSubItem(windowLayout.getContext(), needCheck, first, last, resourcesProvider);
         cell.setTextAndIcon(text, icon);
         cell.setMinimumWidth(AndroidUtilities.dp(196));

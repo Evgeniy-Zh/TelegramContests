@@ -26,7 +26,10 @@ import java.util.ArrayList;
 
 public class EmojiThemes {
 
+    public static final String REMOVED_EMOJI = "❌";
+
     public boolean showAsDefaultStub;
+    public boolean showAsRemovedStub;
     public String emoji;
     public TLRPC.WallPaper wallpaper;
     int currentIndex = 0;
@@ -65,6 +68,10 @@ public class EmojiThemes {
         }
     }
 
+    public boolean isAnyStub() {
+        return showAsDefaultStub || showAsRemovedStub;
+    }
+
     public static EmojiThemes createPreviewFullTheme(int currentAccount, TLRPC.TL_theme tl_theme) {
         EmojiThemes chatTheme = new EmojiThemes(currentAccount);
         chatTheme.emoji = tl_theme.emoticon;
@@ -82,8 +89,25 @@ public class EmojiThemes {
     public static EmojiThemes createChatThemesDefault(int currentAccount) {
 
         EmojiThemes themeItem = new EmojiThemes(currentAccount);
-        themeItem.emoji = "❌";
+        themeItem.emoji = REMOVED_EMOJI;
         themeItem.showAsDefaultStub = true;
+
+        ThemeItem lightTheme = new ThemeItem();
+        lightTheme.themeInfo = getDefaultThemeInfo(true);
+        themeItem.items.add(lightTheme);
+
+        ThemeItem darkTheme = new ThemeItem();
+        darkTheme.themeInfo = getDefaultThemeInfo(false);
+        themeItem.items.add(darkTheme);
+
+        return themeItem;
+    }
+
+    public static EmojiThemes createChatThemesRemoved(int currentAccount) {
+
+        EmojiThemes themeItem = new EmojiThemes(currentAccount);
+        themeItem.emoji = REMOVED_EMOJI;
+        themeItem.showAsRemovedStub = true;
 
         ThemeItem lightTheme = new ThemeItem();
         lightTheme.themeInfo = getDefaultThemeInfo(true);
@@ -254,15 +278,21 @@ public class EmojiThemes {
             } else {
                 baseTheme = Theme.getTheme("Blue");
             }
-            themeInfo = new Theme.ThemeInfo(baseTheme);
-            accent = themeInfo.createNewAccent(tlTheme, currentAccount, true, settingsIndex);
-            if (accent != null) {
-                themeInfo.setCurrentAccentId(accent.id);
+            if (baseTheme != null) {
+                themeInfo = new Theme.ThemeInfo(baseTheme);
+                accent = themeInfo.createNewAccent(tlTheme, currentAccount, true, settingsIndex);
+                if (accent != null) {
+                    themeInfo.setCurrentAccentId(accent.id);
+                }
             }
         } else {
             if (themeInfo.themeAccentsMap != null) {
                 accent = themeInfo.themeAccentsMap.get(items.get(index).accentId);
             }
+        }
+
+        if (themeInfo == null) {
+            return currentColors;
         }
 
         SparseIntArray currentColorsNoAccent;
@@ -285,23 +315,28 @@ public class EmojiThemes {
         }
 
         SparseIntArray fallbackKeys = Theme.getFallbackKeys();
-        items.get(index).currentPreviewColors = new SparseIntArray();
-        for (int i = 0; i < previewColorKeys.length; i++) {
-            int key = previewColorKeys[i];
-            int colorIndex = currentColors.indexOfKey(key);
-            if (colorIndex >= 0) {
-                items.get(index).currentPreviewColors.put(key, currentColors.valueAt(colorIndex));
-            } else {
-                int fallbackKey = fallbackKeys.get(key, -1);
-                if (fallbackKey >= 0) {
-                    int fallbackIndex = currentColors.indexOfKey(fallbackKey);
-                    if (fallbackIndex >= 0) {
-                        items.get(index).currentPreviewColors.put(key, currentColors.valueAt(fallbackIndex));
+        SparseIntArray array = new SparseIntArray();
+        items.get(index).currentPreviewColors = array;
+        try {
+            for (int i = 0; i < previewColorKeys.length; i++) {
+                int key = previewColorKeys[i];
+                int colorIndex = currentColors.indexOfKey(key);
+                if (colorIndex >= 0) {
+                    array.put(key, currentColors.valueAt(colorIndex));
+                } else {
+                    int fallbackKey = fallbackKeys.get(key, -1);
+                    if (fallbackKey >= 0) {
+                        int fallbackIndex = currentColors.indexOfKey(fallbackKey);
+                        if (fallbackIndex >= 0) {
+                            array.put(key, currentColors.valueAt(fallbackIndex));
+                        }
                     }
                 }
             }
+        } catch (Exception e) {
+            FileLog.e(e);
         }
-        return items.get(index).currentPreviewColors;
+        return array;
     }
 
     public SparseIntArray createColors(int currentAccount, int index) {
@@ -560,9 +595,14 @@ public class EmojiThemes {
     }
 
     private int getOrDefault(SparseIntArray colorsMap, int key) {
-        int index = colorsMap.indexOfKey(key);
-        if (index >= 0) {
-            return colorsMap.valueAt(index);
+        if (colorsMap == null) return Theme.getDefaultColor(key);
+        try {
+            int index = colorsMap.indexOfKey(key);
+            if (index >= 0) {
+                return colorsMap.valueAt(index);
+            }
+        } catch (Exception e) {
+            FileLog.e(e);
         }
         return Theme.getDefaultColor(key);
     }

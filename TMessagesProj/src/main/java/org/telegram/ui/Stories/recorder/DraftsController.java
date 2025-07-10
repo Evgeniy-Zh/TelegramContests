@@ -54,6 +54,7 @@ public class DraftsController {
                 if (database == null) {
                     return;
                 }
+                ArrayList<Long> todelete = new ArrayList<>();
                 cursor = database.queryFinalized("SELECT id, data, type FROM story_drafts WHERE type = " + (failed ? "2" : "0 OR type = 1") + " ORDER BY date DESC");
                 while (cursor.next()) {
                     long id = cursor.longValue(0);
@@ -65,8 +66,17 @@ public class DraftsController {
                             loadedDrafts.add(draft);
                         } catch (Exception e) {
                             FileLog.e(e);
+                            todelete.add(id);
                         }
                         buffer.reuse();
+                    }
+                }
+                if (cursor != null) {
+                    cursor.dispose();
+                }
+                if (todelete.size() > 0) {
+                    for (int i = 0; i < todelete.size(); ++i) {
+                        database.executeFast("DELETE FROM story_drafts WHERE id = " + todelete.get(i)).stepThis().dispose();
                     }
                 }
             } catch (Exception e) {
@@ -98,8 +108,10 @@ public class DraftsController {
                     continue;
                 }
                 if (
-                    entry.file == null ||
-                    !entry.file.exists() ||
+                    !entry.isCollage() && (
+                        entry.file == null ||
+                        !entry.file.exists()
+                    ) ||
                     (entry.isEdit ?
                         (now > entry.editExpireDate) :
                         (now - entry.draftDate > EXPIRATION_PERIOD)
@@ -138,8 +150,10 @@ public class DraftsController {
                     continue;
                 }
                 if (
-                    entry.file == null ||
-                    !entry.file.exists() ||
+                    !entry.isCollage() && (
+                        entry.file == null ||
+                        !entry.file.exists()
+                    ) ||
                     now - entry.draftDate > EXPIRATION_PERIOD
                 ) {
                     deleteEntries.add(entry);
@@ -253,7 +267,7 @@ public class DraftsController {
     }
 
     public void append(StoryEntry entry) {
-        if (entry == null) {
+        if (entry == null || entry.isRepostMessage) {
             return;
         }
         prepare(entry);
@@ -330,7 +344,7 @@ public class DraftsController {
     }
 
     public void saveForEdit(StoryEntry entry, long dialogId, TL_stories.StoryItem storyItem) {
-        if (entry == null || storyItem == null || storyItem.media == null) {
+        if (entry == null || entry.isRepostMessage || storyItem == null || storyItem.media == null) {
             return;
         }
 
@@ -456,6 +470,7 @@ public class DraftsController {
 
         public int orientation, invert;
         public int width, height;
+        public MediaController.CropState crop;
         public int resultWidth, resultHeight;
         public long duration;
 
@@ -477,8 +492,6 @@ public class DraftsController {
 
         private int period;
 
-        private final ArrayList<StoryEntry.Part> parts = new ArrayList<>();
-
         public boolean isEdit;
         public int editStoryId;
         public long editStoryPeerId;
@@ -496,7 +509,24 @@ public class DraftsController {
         public float audioLeft, audioRight = 1;
         public float audioVolume = 1;
 
+        public String roundPath;
+        public String roundThumb;
+        public long roundDuration;
+        public long roundOffset;
+        public float roundLeft;
+        public float roundRight;
+        public float roundVolume = 1;
+
+        public float videoVolume = 1f;
+
         public TLRPC.InputPeer peer;
+
+        public long botId;
+        public String botLang;
+        public TLRPC.InputMedia botEdit;
+
+        public CollageLayout collage;
+        public ArrayList<VideoEditedInfo.Part> collageParts;
 
         public StoryDraft(@NonNull StoryEntry entry) {
             this.id = entry.draftId;
@@ -513,6 +543,7 @@ public class DraftsController {
             this.invert = entry.invert;
             this.width = entry.width;
             this.height = entry.height;
+            this.crop = entry.crop;
             this.resultWidth = entry.resultWidth;
             this.resultHeight = entry.resultHeight;
             this.duration = entry.duration;
@@ -531,8 +562,6 @@ public class DraftsController {
             this.filterFilePath = entry.filterFile == null ? "" : entry.filterFile.toString();
             this.filterState = entry.filterState;
             this.period = entry.period;
-            this.parts.clear();
-            this.parts.addAll(entry.parts);
             this.isError = entry.isError;
             this.error = entry.error;
 
@@ -545,7 +574,23 @@ public class DraftsController {
             this.audioRight = entry.audioRight;
             this.audioVolume = entry.audioVolume;
 
+            this.roundPath = entry.round == null ? null : entry.round.getAbsolutePath();
+            this.roundThumb = entry.roundThumb;
+            this.roundDuration = entry.roundDuration;
+            this.roundOffset = entry.roundOffset;
+            this.roundLeft = entry.roundLeft;
+            this.roundRight = entry.roundRight;
+            this.roundVolume = entry.roundVolume;
+
+            this.videoVolume = entry.videoVolume;
+
             this.peer = entry.peer;
+            this.botId = entry.botId;
+            this.botLang = entry.botLang;
+            this.botEdit = entry.editingBotPreview;
+
+            this.collage = entry.collage;
+            this.collageParts = VideoEditedInfo.Part.toParts(entry);
         }
 
         public StoryEntry toEntry() {
@@ -577,6 +622,7 @@ public class DraftsController {
             entry.invert = invert;
             entry.width = width;
             entry.height = height;
+            entry.crop = crop;
             entry.resultWidth = resultWidth;
             entry.resultHeight = resultHeight;
             entry.matrix.setValues(matrixValues);
@@ -609,12 +655,6 @@ public class DraftsController {
             }
             entry.filterState = filterState;
             entry.period = period;
-            entry.parts.clear();
-            entry.parts.addAll(parts);
-            entry.partsMaxId = 0;
-            for (int i = 0; i < parts.size(); ++i) {
-                entry.partsMaxId = Math.max(entry.partsMaxId, parts.get(i).id);
-            }
             entry.isEdit = isEdit;
             entry.editStoryId = editStoryId;
             entry.editStoryPeerId = editStoryPeerId;
@@ -632,7 +672,27 @@ public class DraftsController {
             entry.audioLeft = audioLeft;
             entry.audioRight = audioRight;
             entry.audioVolume = audioVolume;
+
+            if (roundPath != null) {
+                entry.round = new File(roundPath);
+            }
+            entry.roundThumb = roundThumb;
+            entry.roundDuration = roundDuration;
+            entry.roundOffset = roundOffset;
+            entry.roundLeft = roundLeft;
+            entry.roundRight = roundRight;
+            entry.roundVolume = roundVolume;
+
+            entry.videoVolume = videoVolume;
+
             entry.peer = peer;
+            entry.botId = botId;
+            entry.botLang = botLang;
+            entry.editingBotPreview = botEdit;
+
+            entry.collage = collage;
+            entry.collageContent = VideoEditedInfo.Part.toStoryEntries(collageParts);
+
             return entry;
         }
 
@@ -699,10 +759,7 @@ public class DraftsController {
             }
             stream.writeInt32(period);
             stream.writeInt32(0x1cb5c415);
-            stream.writeInt32(parts.size());
-            for (int i = 0; i < parts.size(); ++i) {
-                parts.get(i).serializeToStream(stream);
-            }
+            stream.writeInt32(0);
             stream.writeBool(isEdit);
             stream.writeInt32(editStoryId);
             stream.writeInt64(editStoryPeerId);
@@ -741,10 +798,49 @@ public class DraftsController {
                 stream.writeFloat(audioRight);
                 stream.writeFloat(audioVolume);
             }
+
             if (peer != null) {
                 peer.serializeToStream(stream);
             } else {
                 new TLRPC.TL_inputPeerSelf().serializeToStream(stream);
+            }
+
+            if (TextUtils.isEmpty(roundPath)) {
+                stream.writeInt32(TLRPC.TL_null.constructor);
+            } else {
+                stream.writeInt32(TLRPC.TL_documentAttributeVideo.constructor);
+                stream.writeString(roundPath);
+                stream.writeInt64(roundDuration);
+                stream.writeInt64(roundOffset);
+                stream.writeFloat(roundLeft);
+                stream.writeFloat(roundRight);
+                stream.writeFloat(roundVolume);
+            }
+
+            stream.writeFloat(videoVolume);
+
+            stream.writeInt64(botId);
+            stream.writeString(botLang == null ? "" : botLang);
+            if (botEdit == null) {
+                stream.writeInt32(TLRPC.TL_null.constructor);
+            } else {
+                botEdit.serializeToStream(stream);
+            }
+
+            if (collage == null || collage.parts.size() <= 1 || collageParts == null || collageParts.size() <= 1) {
+                stream.writeInt32(TLRPC.TL_null.constructor);
+            } else {
+                stream.writeInt32(0xdeadbeef);
+                stream.writeString(collage.toString());
+                for (VideoEditedInfo.Part part : collageParts) {
+                    part.serializeToStream(stream);
+                }
+            }
+
+            if (crop == null) {
+                stream.writeInt32(TLRPC.TL_null.constructor);
+            } else {
+                crop.serializeToStream(stream);
             }
         }
 
@@ -833,7 +929,7 @@ public class DraftsController {
                 if (mediaEntities == null) {
                     mediaEntities = new ArrayList<>();
                 }
-                mediaEntities.add(new VideoEditedInfo.MediaEntity(stream, true));
+                mediaEntities.add(new VideoEditedInfo.MediaEntity(stream, true, exception));
             }
             magic = stream.readInt32(exception);
             if (magic != 0x1cb5c415) {
@@ -870,12 +966,6 @@ public class DraftsController {
                     return;
                 }
                 count = stream.readInt32(exception);
-                parts.clear();
-                for (int i = 0; i < count; ++i) {
-                    StoryEntry.Part part = new StoryEntry.Part();
-                    part.readParams(stream, exception);
-                    parts.add(part);
-                }
             }
             if (stream.remaining() > 0) {
                 isEdit = stream.readBool(exception);
@@ -922,6 +1012,48 @@ public class DraftsController {
             }
             if (stream.remaining() > 0) {
                 peer = TLRPC.InputPeer.TLdeserialize(stream, stream.readInt32(exception), exception);
+            }
+            if (stream.remaining() > 0) {
+                magic = stream.readInt32(exception);
+                if (magic == TLRPC.TL_documentAttributeVideo.constructor) {
+                    roundPath = stream.readString(exception);
+                    roundDuration = stream.readInt64(exception);
+                    roundOffset = stream.readInt64(exception);
+                    roundLeft = stream.readFloat(exception);
+                    roundRight = stream.readFloat(exception);
+                    roundVolume = stream.readFloat(exception);
+                }
+            }
+            if (stream.remaining() > 0) {
+                videoVolume = stream.readFloat(exception);
+            }
+            if (stream.remaining() > 0) {
+                botId = stream.readInt64(exception);
+                botLang = stream.readString(exception);
+                magic = stream.readInt32(exception);
+                if (magic != TLRPC.TL_null.constructor) {
+                    botEdit = TLRPC.InputMedia.TLdeserialize(stream, magic, exception);
+                }
+            }
+            if (stream.remaining() > 0) {
+                magic = stream.readInt32(exception);
+                if (magic == 0xdeadbeef) {
+                    collage = new CollageLayout(stream.readString(exception));
+                    collageParts = new ArrayList<>();
+                    for (int i = 0; i < collage.parts.size(); ++i) {
+                        VideoEditedInfo.Part part = new VideoEditedInfo.Part();
+                        part.readParams(stream, exception);
+                        part.part = collage.parts.get(i);
+                        collageParts.add(part);
+                    }
+                }
+            }
+            if (stream.remaining() > 0) {
+                magic = stream.readInt32(exception);
+                if (magic == MediaController.CropState.constructor) {
+                    crop = new MediaController.CropState();
+                    crop.readParams(stream, exception);
+                }
             }
         }
     }

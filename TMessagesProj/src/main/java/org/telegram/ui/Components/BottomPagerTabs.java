@@ -22,8 +22,6 @@ import androidx.annotation.NonNull;
 import androidx.core.graphics.ColorUtils;
 
 import org.telegram.messenger.AndroidUtilities;
-import org.telegram.messenger.LocaleController;
-import org.telegram.messenger.R;
 import org.telegram.messenger.Utilities;
 import org.telegram.ui.ActionBar.Theme;
 
@@ -46,9 +44,18 @@ public class BottomPagerTabs extends View {
         final AnimatedFloat nonscrollingT = new AnimatedFloat(BottomPagerTabs.this, 0, 200, CubicBezierInterpolator.EASE_OUT_QUINT);
         public int customEndFrameMid;
         public int customEndFrameEnd;
+        public boolean customFrameInvert;
 
-        public Tab(int i, int resId, CharSequence text) {
+        public Tab customFrameInvert() {
+            this.customFrameInvert = true;
+            return this;
+        }
+
+        public Tab(int i, int resId, int endFrameMid, int endFrameEnd, CharSequence text) {
             this.i = i;
+
+            customEndFrameMid = endFrameMid;
+            customEndFrameEnd = endFrameEnd;
 
             drawable = new RLottieDrawable(resId, "" + resId, dp(29), dp(29));
             drawable.setMasterParent(BottomPagerTabs.this);
@@ -56,7 +63,7 @@ public class BottomPagerTabs extends View {
             drawable.setPlayInDirectionOfCustomEndFrame(true);
             drawable.setAutoRepeat(0);
 
-            paint.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_MEDIUM));
+            paint.setTypeface(AndroidUtilities.bold());
             paint.setTextSize(dp(12));
             paint.setColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
             layout = new StaticLayout(text, paint, AndroidUtilities.displaySize.x, Layout.Alignment.ALIGN_NORMAL, 1f, 0f, false);
@@ -68,6 +75,9 @@ public class BottomPagerTabs extends View {
 
         private boolean active;
         public void setActive(boolean active, boolean animated) {
+            if (customFrameInvert) {
+                active = !active;
+            }
             if (this.active == active) {
                 return;
             }

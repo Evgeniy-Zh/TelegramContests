@@ -349,7 +349,7 @@ public class TextPaintView extends EntityView {
     }
 
     public void setSwatch(Swatch swatch) {
-        this.swatch = swatch;
+        this.swatch = swatch.clone();
         updateColor();
     }
 
@@ -382,7 +382,7 @@ public class TextPaintView extends EntityView {
     }
 
     @Override
-    protected Rect getSelectionBounds() {
+    public Rect getSelectionBounds() {
         ViewGroup parentView = (ViewGroup) getParent();
         if (parentView == null) {
             return new Rect();

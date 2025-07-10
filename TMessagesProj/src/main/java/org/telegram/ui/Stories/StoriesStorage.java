@@ -17,6 +17,7 @@ import org.telegram.messenger.FileLog;
 import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.MessagesStorage;
+import org.telegram.messenger.Timer;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.support.LongSparseIntArray;
 import org.telegram.tgnet.ConnectionsManager;
@@ -49,6 +50,7 @@ public class StoriesStorage {
             ArrayList<TL_stories.PeerStories> userStoriesArray = new ArrayList<>();
             ArrayList<Long> usersToLoad = new ArrayList<>();
             ArrayList<Long> chatsToLoad = new ArrayList<>();
+            final int now = ConnectionsManager.getInstance(currentAccount).getCurrentTime();
             boolean failed = false;
             try {
                 cursor = database.queryFinalized("SELECT dialog_id, max_read FROM stories_counter");
@@ -78,6 +80,19 @@ public class StoriesStorage {
                         if (data != null) {
                             TL_stories.StoryItem storyItem = TL_stories.StoryItem.TLdeserialize(data, data.readInt32(true), true);
                             storyItem.dialogId = dialogId;
+                            if (storyItem.fwd_from != null && storyItem.fwd_from.from != null) {
+                                MessagesStorage.addLoadPeerInfo(storyItem.fwd_from.from, usersToLoad, chatsToLoad);
+                            }
+                            for (int j = 0; j < storyItem.media_areas.size(); ++j) {
+                                if (storyItem.media_areas.get(j) instanceof TL_stories.TL_mediaAreaChannelPost) {
+                                    long channel_id = ((TL_stories.TL_mediaAreaChannelPost) storyItem.media_areas.get(j)).channel_id;
+                                    if (!chatsToLoad.contains(channel_id))
+                                        chatsToLoad.add(channel_id);
+                                }
+                            }
+                            if (storyItem.from_id != null) {
+                                MessagesStorage.addLoadPeerInfo(storyItem.from_id, usersToLoad, chatsToLoad);
+                            }
                             StoryCustomParamsHelper.readLocalParams(storyItem, customData);
                             storyItems.add(storyItem);
                             data.reuse();
@@ -542,10 +557,10 @@ public class StoriesStorage {
     }
 
     //storage queue
-    public void fillMessagesWithStories(LongSparseArray<ArrayList<MessageObject>> messagesWithUnknownStories, Runnable runnable, int classGuid) {
-        fillMessagesWithStories(messagesWithUnknownStories, runnable, classGuid, true);
+    public void fillMessagesWithStories(LongSparseArray<ArrayList<MessageObject>> messagesWithUnknownStories, Runnable runnable, int classGuid, Timer timer) {
+        fillMessagesWithStories(messagesWithUnknownStories, runnable, classGuid, true, timer);
     }
-    public void fillMessagesWithStories(LongSparseArray<ArrayList<MessageObject>> messagesWithUnknownStories, Runnable runnable, int classGuid, boolean updateDatabase) {
+    public void fillMessagesWithStories(LongSparseArray<ArrayList<MessageObject>> messagesWithUnknownStories, Runnable runnable, int classGuid, boolean updateDatabase, Timer timer) {
         if (runnable == null) {
             return;
         }
@@ -554,6 +569,7 @@ public class StoriesStorage {
             return;
         }
         ArrayList<MessageObject> updatedMessages = new ArrayList<>();
+        Timer.Task t1 = Timer.start(timer, "fillMessagesWithStories: applying stories for existing array");
         for (int i = 0; i < messagesWithUnknownStories.size(); i++) {
             long dialogId = messagesWithUnknownStories.keyAt(i);
             ArrayList<MessageObject> messageObjects = messagesWithUnknownStories.valueAt(i);
@@ -574,6 +590,7 @@ public class StoriesStorage {
                 }
             }
         }
+        Timer.done(t1);
 
         if (updateDatabase) {
             updateMessagesWithStories(updatedMessages);
@@ -589,7 +606,9 @@ public class StoriesStorage {
                 for (int j = 0; j < messageObjects.size(); j++) {
                     request.id.add(getStoryId(messageObjects.get(j)));
                 }
+                Timer.Task t2 = Timer.start(timer, "fillMessagesWithStories: getStoriesByID did=" + dialogId + " ids=" + TextUtils.join(",", request.id));
                 int reqId = ConnectionsManager.getInstance(currentAccount).sendRequest(request, (response, error) -> {
+                    Timer.done(t2);
                     if (response != null) {
                         TL_stories.TL_stories_stories stories = (TL_stories.TL_stories_stories) response;
                         for (int j = 0; j < messageObjects.size(); j++) {
@@ -613,6 +632,8 @@ public class StoriesStorage {
                                 });
                             }
                         }
+                    } else if (error != null) {
+                        Timer.log(timer, "fillMessagesWithStories: getStoriesByID error " + error.code + " " + error.text);
                     }
                     requestsCount[0]--;
                     if (requestsCount[0] == 0) {

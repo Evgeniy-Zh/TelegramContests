@@ -39,6 +39,7 @@ import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.Utilities;
+import org.telegram.messenger.VideoEncodingService;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AnimatedFloat;
@@ -343,6 +344,7 @@ public class DownloadButton extends ImageView {
 
                     if (finalSize > 0) {
                         onDone.run();
+                        VideoEncodingService.stop();
                         stop(false);
                     }
                 }
@@ -380,6 +382,10 @@ public class DownloadButton extends ImageView {
         private float doneLayoutWidth, doneLayoutLeft;
 
         public PreparingVideoToast(Context context) {
+            this(context, LocaleController.getString(R.string.PreparingVideo));
+        }
+
+        public PreparingVideoToast(Context context, String text) {
             super(context);
 
             dimPaint.setColor(0x5a000000);
@@ -399,7 +405,7 @@ public class DownloadButton extends ImageView {
             textPaint.setTextSize(dp(14));
             textPaint2.setTextSize(dpf2(14.66f));
 
-            preparingLayout = new StaticLayout(LocaleController.getString("PreparingVideo"), textPaint, AndroidUtilities.displaySize.x, Layout.Alignment.ALIGN_NORMAL, 1f, 0, false);
+            preparingLayout = new StaticLayout(text, textPaint, AndroidUtilities.displaySize.x, Layout.Alignment.ALIGN_NORMAL, 1f, 0, false);
             preparingLayoutWidth = preparingLayout.getLineCount() > 0 ? preparingLayout.getLineWidth(0) : 0;
             preparingLayoutLeft = preparingLayout.getLineCount() > 0 ? preparingLayout.getLineLeft(0) : 0;
 

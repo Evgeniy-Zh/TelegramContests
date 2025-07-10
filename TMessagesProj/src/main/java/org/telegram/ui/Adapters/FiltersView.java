@@ -36,6 +36,7 @@ import org.telegram.ui.ActionBar.ThemeDescription;
 import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.CombinedDrawable;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.Reactions.ReactionsLayoutInBubble;
 import org.telegram.ui.Components.RecyclerListView;
 
 import java.text.SimpleDateFormat;
@@ -231,7 +232,7 @@ public class FiltersView extends RecyclerListView {
                     TLRPC.User user = (TLRPC.User) object;
                     String title;
                     if (UserConfig.getInstance(UserConfig.selectedAccount).getCurrentUser().id == user.id) {
-                        title = LocaleController.getString("SavedMessages", R.string.SavedMessages);
+                        title = LocaleController.getString(R.string.SavedMessages);
                     } else {
                         title = ContactsController.formatName(user.first_name, user.last_name, 10);
                     }
@@ -291,7 +292,7 @@ public class FiltersView extends RecyclerListView {
         if (q.length() < 3) {
             return;
         }
-        if (LocaleController.getString("SearchTipToday", R.string.SearchTipToday).toLowerCase().startsWith(q) || "today".startsWith(q)) {
+        if (LocaleController.getString(R.string.SearchTipToday).toLowerCase().startsWith(q) || "today".startsWith(q)) {
             Calendar calendar = Calendar.getInstance();
             int year = calendar.get(Calendar.YEAR);
             int month = calendar.get(Calendar.MONTH);
@@ -300,11 +301,11 @@ public class FiltersView extends RecyclerListView {
             long minDate = calendar.getTimeInMillis();
             calendar.set(year, month, day + 1, 0, 0, 0);
             long maxDate = calendar.getTimeInMillis() - 1;
-            dates.add(new DateData(LocaleController.getString("SearchTipToday", R.string.SearchTipToday), minDate, maxDate));
+            dates.add(new DateData(LocaleController.getString(R.string.SearchTipToday), minDate, maxDate));
             return;
         }
 
-        if (LocaleController.getString("SearchTipYesterday", R.string.SearchTipYesterday).toLowerCase().startsWith(q) || "yesterday".startsWith(q)) {
+        if (LocaleController.getString(R.string.SearchTipYesterday).toLowerCase().startsWith(q) || "yesterday".startsWith(q)) {
             Calendar calendar = Calendar.getInstance();
             int year = calendar.get(Calendar.YEAR);
             int month = calendar.get(Calendar.MONTH);
@@ -313,7 +314,7 @@ public class FiltersView extends RecyclerListView {
             long minDate = calendar.getTimeInMillis() - 86400000L;
             calendar.set(year, month, day + 1, 0, 0, 0);
             long maxDate = calendar.getTimeInMillis() - 86400001L;
-            dates.add(new DateData(LocaleController.getString("SearchTipYesterday", R.string.SearchTipYesterday), minDate, maxDate));
+            dates.add(new DateData(LocaleController.getString(R.string.SearchTipYesterday), minDate, maxDate));
             return;
         }
         Matcher matcher;
@@ -333,7 +334,7 @@ public class FiltersView extends RecyclerListView {
             long minDate = calendar.getTimeInMillis();
             calendar.set(year, month, day + 1, 0, 0, 0);
             long maxDate = calendar.getTimeInMillis() - 1;
-            dates.add(new DateData(LocaleController.getInstance().formatterWeekLong.format(minDate), minDate, maxDate));
+            dates.add(new DateData(LocaleController.getInstance().getFormatterWeekLong().format(minDate), minDate, maxDate));
             return;
         }
         if ((matcher = shortDate.matcher(q)).matches()) {
@@ -381,7 +382,7 @@ public class FiltersView extends RecyclerListView {
                 long minDate = calendar.getTimeInMillis();
                 calendar.set(year, month, day + 1, 0, 0, 0);
                 long maxDate = calendar.getTimeInMillis() - 1;
-                dates.add(new DateData(LocaleController.getInstance().formatterYearMax.format(minDate), minDate, maxDate));
+                dates.add(new DateData(LocaleController.getInstance().getFormatterYearMax().format(minDate), minDate, maxDate));
                 return;
             }
 
@@ -461,7 +462,7 @@ public class FiltersView extends RecyclerListView {
                     }
                     calendar.add(Calendar.MONTH, 1);
                     long maxDate = calendar.getTimeInMillis() - 1;
-                    dates.add(new DateData(LocaleController.getInstance().formatterMonthYear.format(minDate), minDate, maxDate));
+                    dates.add(new DateData(LocaleController.getInstance().getFormatterMonthYear().format(minDate), minDate, maxDate));
                 }
             }
         }
@@ -479,7 +480,7 @@ public class FiltersView extends RecyclerListView {
             }
             calendar.add(Calendar.MONTH, 1);
             long maxDate = calendar.getTimeInMillis() - 1;
-            dates.add(new DateData(LocaleController.getInstance().formatterMonthYear.format(minDate), minDate, maxDate));
+            dates.add(new DateData(LocaleController.getInstance().getFormatterMonthYear().format(minDate), minDate, maxDate));
         }
     }
 
@@ -501,9 +502,9 @@ public class FiltersView extends RecyclerListView {
                 calendar.set(i, month, day + 2, 0, 0, 0);
                 long maxDate = calendar.getTimeInMillis() - 1;
                 if (i == currentYear) {
-                    dates.add(new DateData(LocaleController.getInstance().formatterDayMonth.format(minDate), minDate, maxDate));
+                    dates.add(new DateData(LocaleController.getInstance().getFormatterDayMonth().format(minDate), minDate, maxDate));
                 } else {
-                    dates.add(new DateData(LocaleController.getInstance().formatterYearMax.format(minDate), minDate, maxDate));
+                    dates.add(new DateData(LocaleController.getInstance().getFormatterYearMax().format(minDate), minDate, maxDate));
                 }
             }
         }
@@ -526,7 +527,7 @@ public class FiltersView extends RecyclerListView {
         SimpleDateFormat dateFormat = new SimpleDateFormat("EEEE", Locale.ENGLISH);
         for (int i = 0; i < 7; i++) {
             c.set(Calendar.DAY_OF_WEEK, i);
-            if (LocaleController.getInstance().formatterWeekLong.format(c.getTime()).toLowerCase().startsWith(q)) {
+            if (LocaleController.getInstance().getFormatterWeekLong().format(c.getTime()).toLowerCase().startsWith(q)) {
                 return i;
             }
             if (dateFormat.format(c.getTime()).toLowerCase().startsWith(q)) {
@@ -538,18 +539,18 @@ public class FiltersView extends RecyclerListView {
 
     public static int getMonth(String q) {
         String[] months = new String[]{
-                LocaleController.getString("January", R.string.January).toLowerCase(),
-                LocaleController.getString("February", R.string.February).toLowerCase(),
-                LocaleController.getString("March", R.string.March).toLowerCase(),
-                LocaleController.getString("April", R.string.April).toLowerCase(),
-                LocaleController.getString("May", R.string.May).toLowerCase(),
-                LocaleController.getString("June", R.string.June).toLowerCase(),
-                LocaleController.getString("July", R.string.July).toLowerCase(),
-                LocaleController.getString("August", R.string.August).toLowerCase(),
-                LocaleController.getString("September", R.string.September).toLowerCase(),
-                LocaleController.getString("October", R.string.October).toLowerCase(),
-                LocaleController.getString("November", R.string.November).toLowerCase(),
-                LocaleController.getString("December", R.string.December).toLowerCase()
+                LocaleController.getString(R.string.January).toLowerCase(),
+                LocaleController.getString(R.string.February).toLowerCase(),
+                LocaleController.getString(R.string.March).toLowerCase(),
+                LocaleController.getString(R.string.April).toLowerCase(),
+                LocaleController.getString(R.string.May).toLowerCase(),
+                LocaleController.getString(R.string.June).toLowerCase(),
+                LocaleController.getString(R.string.July).toLowerCase(),
+                LocaleController.getString(R.string.August).toLowerCase(),
+                LocaleController.getString(R.string.September).toLowerCase(),
+                LocaleController.getString(R.string.October).toLowerCase(),
+                LocaleController.getString(R.string.November).toLowerCase(),
+                LocaleController.getString(R.string.December).toLowerCase()
         };
 
         String[] monthsEng = new String[12];
@@ -786,14 +787,20 @@ public class FiltersView extends RecyclerListView {
 
     public static class MediaFilterData {
 
-        public final int iconResFilled;
+        public ReactionsLayoutInBubble.VisibleReaction reaction;
+
+        public int iconResFilled;
         public int titleResId;
         private String title;
-        public final int filterType;
-        public final TLRPC.MessagesFilter filter;
+        public int filterType;
+        public TLRPC.MessagesFilter filter;
         public TLObject chat;
         public DateData dateData;
         public boolean removable = true;
+
+        public MediaFilterData(ReactionsLayoutInBubble.VisibleReaction reaction) {
+            this.reaction = reaction;
+        }
 
         public MediaFilterData(int iconResFilled, String title, TLRPC.MessagesFilter filter, int filterType) {
             this.iconResFilled = iconResFilled;

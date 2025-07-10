@@ -1,18 +1,21 @@
 package org.telegram.ui.Components.Premium.boosts.cells;
 
-import static org.telegram.messenger.AndroidUtilities.dp;
+import static org.telegram.messenger.AndroidUtilities.REPLACING_TAG_TYPE_LINKBOLD;
+import static org.telegram.messenger.AndroidUtilities.lerp;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Outline;
+import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
 import android.os.Build;
-import android.os.Bundle;
-import android.text.Html;
 import android.text.SpannableStringBuilder;
-import android.text.Spanned;
 import android.text.method.LinkMovementMethod;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -24,31 +27,24 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.graphics.ColorUtils;
-import androidx.core.text.HtmlCompat;
 
 import org.telegram.messenger.AndroidUtilities;
-import org.telegram.messenger.Emoji;
-import org.telegram.messenger.FileLog;
+import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.R;
-import org.telegram.messenger.SendMessagesHelper;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
 import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.Theme;
-import org.telegram.ui.ChatActivity;
-import org.telegram.ui.Components.AvatarDrawable;
+import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.LinkSpanDrawable;
 import org.telegram.ui.Components.Premium.GLIcon.GLIconRenderer;
 import org.telegram.ui.Components.Premium.GLIcon.GLIconTextureView;
 import org.telegram.ui.Components.Premium.StarParticlesView;
-import org.telegram.ui.Components.Premium.boosts.BoostDialogs;
-import org.telegram.ui.DialogsActivity;
-import org.telegram.ui.LaunchActivity;
 
 @SuppressLint("ViewConstructor")
 public class HeaderCell extends FrameLayout {
@@ -60,6 +56,8 @@ public class HeaderCell extends FrameLayout {
     private final Theme.ResourcesProvider resourcesProvider;
     private final LinearLayout linearLayout;
     private LinkSpanDrawable.LinkCollector links;
+
+    private final Paint[] paints;
 
     public HeaderCell(@NonNull Context context, Theme.ResourcesProvider resourcesProvider) {
         super(context);
@@ -109,15 +107,19 @@ public class HeaderCell extends FrameLayout {
             }
         };
 
-        starParticlesView.drawable.useGradient = true;
+        paints = new Paint[20];
+        updatePaints(0);
+
+        starParticlesView.drawable.useGradient = false;
         starParticlesView.drawable.useBlur = false;
         starParticlesView.drawable.forceMaxAlpha = true;
         starParticlesView.drawable.checkBounds = true;
+        starParticlesView.drawable.getPaint = i -> paints[i % paints.length];
         starParticlesView.drawable.init();
         iconTextureView.setStarParticlesView(starParticlesView);
 
         titleView = new TextView(context);
-        titleView.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_MEDIUM));
+        titleView.setTypeface(AndroidUtilities.bold());
         titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 22);
         titleView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
         titleView.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -139,7 +141,7 @@ public class HeaderCell extends FrameLayout {
         setWillNotDraw(false);
     }
 
-    public void setBoostViaGifsText() {
+    public void setBoostViaGifsText(TLRPC.Chat currentChat) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             setOutlineProvider(new ViewOutlineProvider() {
                 @Override
@@ -155,7 +157,8 @@ public class HeaderCell extends FrameLayout {
         setLayoutParams(lp);
         setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider));
         titleView.setText(LocaleController.formatString("BoostingBoostsViaGifts", R.string.BoostingBoostsViaGifts));
-        subtitleView.setText(LocaleController.formatString("BoostingGetMoreBoost", R.string.BoostingGetMoreBoost));
+        boolean isChannel = ChatObject.isChannelAndNotMegaGroup(currentChat);
+        subtitleView.setText(LocaleController.formatString(isChannel ? R.string.BoostingGetMoreBoost2 : R.string.BoostingGetMoreBoostGroup));
         subtitleView.setTextColor(Theme.getColor(Theme.key_dialogTextGray3, resourcesProvider));
     }
 
@@ -177,31 +180,16 @@ public class HeaderCell extends FrameLayout {
     public void setGiftLinkToUserText(long toUserId, Utilities.Callback<TLObject> onObjectClicked) {
         titleView.setText(LocaleController.formatString("BoostingGiftLink", R.string.BoostingGiftLink));
 
-        SpannableStringBuilder stringBuilder = new SpannableStringBuilder();
-        try {
-            String description = LocaleController.getString("BoostingLinkAllowsToUser", R.string.BoostingLinkAllowsToUser);
-            CharSequence descriptionStart = description.substring(0, description.indexOf("**%1$s**") + 8);
-            CharSequence descriptionEnd = description.substring(description.indexOf("**%1$s**") + 8);
+        CharSequence description = AndroidUtilities.replaceTags(LocaleController.getString(R.string.BoostingLinkAllowsToUser));
+        TLRPC.User toUser = MessagesController.getInstance(UserConfig.selectedAccount).getUser(toUserId);
 
-            TLRPC.User toUser = MessagesController.getInstance(UserConfig.selectedAccount).getUser(toUserId);
-            SpannableStringBuilder userName = new SpannableStringBuilder();
-            userName.append("**");
-            userName.append(Emoji.replaceEmoji(UserObject.getUserName(toUser), subtitleView.getPaint().getFontMetricsInt(), AndroidUtilities.dp(12), false));
-            userName.append("**");
-
-            descriptionStart = AndroidUtilities.replaceSingleTag(
-                    descriptionStart.toString().replace("**%1$s**", userName),
-                    Theme.key_chat_messageLinkIn, 0,
-                    () -> onObjectClicked.run(toUser),
-                    resourcesProvider
-            );
-            descriptionEnd = AndroidUtilities.replaceTags(descriptionEnd.toString());
-            stringBuilder.append(descriptionStart);
-            stringBuilder.append(descriptionEnd);
-        } catch (Exception e) {
-            FileLog.e(e);
-        }
-        subtitleView.setText(stringBuilder);
+        SpannableStringBuilder link = AndroidUtilities.replaceSingleTag(
+                "**" + UserObject.getUserName(toUser) + "**",
+                Theme.key_chat_messageLinkIn, REPLACING_TAG_TYPE_LINKBOLD,
+                () -> onObjectClicked.run(toUser),
+                resourcesProvider
+        );
+        subtitleView.setText(AndroidUtilities.replaceCharSequence("%1$s", description, link));
     }
 
     @Override
@@ -214,6 +202,60 @@ public class HeaderCell extends FrameLayout {
     public void setPaused(boolean value) {
         iconTextureView.setPaused(value);
         starParticlesView.setPaused(value);
+    }
+
+    private ValueAnimator goldenAnimator;
+    public void setStars(boolean stars) {
+        if (goldenAnimator != null) {
+            goldenAnimator.cancel();
+        }
+        final float from = iconTextureView.mRenderer.golden;
+        final float to = stars ? 1f : 0f;
+        goldenAnimator = ValueAnimator.ofFloat(0, 1f);
+        final float[] lastT = new float[] { 0 };
+        iconTextureView.cancelIdleAnimation();
+        iconTextureView.cancelAnimatons();
+        iconTextureView.startBackAnimation();
+        goldenAnimator.addUpdateListener(anm -> {
+            float t = (float) anm.getAnimatedValue();
+            float dt = t - lastT[0];
+            lastT[0] = t;
+            iconTextureView.mRenderer.golden = lerp(from, to, t);
+            iconTextureView.mRenderer.angleX3 += dt * 360f * (stars ? +1 : -1);
+            iconTextureView.mRenderer.updateColors();
+            updatePaints(iconTextureView.mRenderer.golden);
+        });
+        goldenAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                float t = 1f;
+                float dt = t - lastT[0];
+                lastT[0] = t;
+                iconTextureView.mRenderer.golden = lerp(from, to, t);
+                iconTextureView.mRenderer.angleX3 += dt * 360f * (stars ? +1 : -1);
+                iconTextureView.mRenderer.updateColors();
+                updatePaints(iconTextureView.mRenderer.golden);
+
+                iconTextureView.scheduleIdleAnimation(750);
+            }
+        });
+        goldenAnimator.setDuration(680);
+        goldenAnimator.setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT);
+        goldenAnimator.start();
+    }
+
+    private void updatePaints(float golden) {
+        final int premiumColor1 = Theme.getColor(Theme.key_premiumGradient1, resourcesProvider);
+        final int premiumColor2 = Theme.getColor(Theme.key_premiumGradient2, resourcesProvider);
+        final int color1 = ColorUtils.blendARGB(premiumColor1, 0xFFFA5416, golden);
+        final int color2 = ColorUtils.blendARGB(premiumColor2, 0xFFFFC837, golden);
+        for (int i = 0; i < paints.length; ++i) {
+            paints[i] = new Paint(Paint.ANTI_ALIAS_FLAG);
+            paints[i].setColorFilter(new PorterDuffColorFilter(
+                ColorUtils.blendARGB(color1, color2, i / (float) (paints.length - 1)),
+                PorterDuff.Mode.SRC_IN)
+            );
+        }
     }
 
     @Override

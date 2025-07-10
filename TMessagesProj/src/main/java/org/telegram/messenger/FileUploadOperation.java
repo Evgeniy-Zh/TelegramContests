@@ -53,7 +53,8 @@ public class FileUploadOperation {
     private int state;
     private byte[] readBuffer;
     private FileUploadOperationDelegate delegate;
-    private SparseIntArray requestTokens = new SparseIntArray();
+    public final SparseIntArray requestTokens = new SparseIntArray();
+    public final ArrayList<Integer> uiRequestTokens = new ArrayList<>();
     private int currentPartNum;
     private long currentFileId;
     private long totalFileSize;
@@ -82,6 +83,8 @@ public class FileUploadOperation {
     private SparseArray<UploadCachedResult> cachedResults = new SparseArray<>();
     private boolean[] recalculatedEstimatedSize = {false, false};
     protected long lastProgressUpdateTime;
+
+    public volatile boolean caughtPremiumFloodWait;
 
     public interface FileUploadOperationDelegate {
         void didFinishUploadingFile(FileUploadOperation operation, TLRPC.InputFile inputFile, TLRPC.InputEncryptedFile inputEncryptedFile, byte[] key, byte[] iv);
@@ -160,6 +163,7 @@ public class FileUploadOperation {
                 }
             }
         });
+        AndroidUtilities.runOnUIThread(() -> uiRequestTokens.clear());
     }
 
     public void cancel() {
@@ -568,6 +572,7 @@ public class FileUploadOperation {
                 freeRequestIvs.add(currentRequestIv);
             }
             requestTokens.delete(requestNumFinal);
+            AndroidUtilities.runOnUIThread(() -> uiRequestTokens.remove((Integer) requestToken[0]));
             if (response instanceof TLRPC.TL_boolTrue) {
                 if (state != 1) {
                     return;
@@ -671,8 +676,9 @@ public class FileUploadOperation {
             }
         }), forceSmallFile ? ConnectionsManager.RequestFlagCanCompress : 0, ConnectionsManager.DEFAULT_DATACENTER_ID, connectionType, true);
         if (BuildVars.LOGS_ENABLED) {
-            FileLog.d("debug_uploading: " + " send reqId " + requestToken[0] + " " + uploadingFilePath);
+            FileLog.d("debug_uploading: " + " send reqId " + requestToken[0] + " " + uploadingFilePath + " file_part=" + currentRequestPartNum + " isBig=" + isBigFile + " file_id=" + currentFileId);
         }
         requestTokens.put(requestNumFinal, requestToken[0]);
+        AndroidUtilities.runOnUIThread(() -> uiRequestTokens.add(requestToken[0]));
     }
 }

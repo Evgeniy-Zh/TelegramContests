@@ -2,7 +2,6 @@ package org.telegram.ui.Stories;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.SparseArray;
 import android.webkit.MimeTypeMap;
@@ -25,6 +24,7 @@ import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.DownloadController;
 import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.FileRefController;
 import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MediaController;
@@ -36,6 +36,7 @@ import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.NotificationsController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SendMessagesHelper;
+import org.telegram.messenger.Timer;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
 import org.telegram.messenger.Utilities;
@@ -47,15 +48,19 @@ import org.telegram.tgnet.RequestDelegate;
 import org.telegram.tgnet.SerializedData;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
+import org.telegram.tgnet.Vector;
+import org.telegram.tgnet.tl.TL_bots;
 import org.telegram.tgnet.tl.TL_stories;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.Bulletin;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.Premium.LimitReachedBottomSheet;
+import org.telegram.ui.Components.Reactions.ReactionImageHolder;
 import org.telegram.ui.Components.Reactions.ReactionsLayoutInBubble;
 import org.telegram.ui.LaunchActivity;
 import org.telegram.ui.StatisticActivity;
+import org.telegram.ui.Stories.bots.BotPreviewsEditContainer;
 import org.telegram.ui.Stories.recorder.DraftsController;
 import org.telegram.ui.Stories.recorder.StoryEntry;
 import org.telegram.ui.Stories.recorder.StoryPrivacyBottomSheet;
@@ -87,6 +92,7 @@ public class StoriesController {
     private final int currentAccount;
     private final LongSparseArray<ArrayList<UploadingStory>> uploadingStoriesByDialogId = new LongSparseArray<>();
     private final LongSparseArray<ArrayList<UploadingStory>> uploadingAndEditingStories = new LongSparseArray<>();
+    public int uploadedStories = 0;
     private final LongSparseArray<HashMap<Integer, UploadingStory>> editingStories = new LongSparseArray<>();
     public LongSparseIntArray dialogIdToMaxReadId = new LongSparseIntArray();
 
@@ -118,7 +124,7 @@ public class StoriesController {
     private final DraftsController draftsController;
 
 
-    public SparseArray<SelfStoryViewsPage.ViewsModel> selfViewsModel = new SparseArray<>();
+    public LongSparseArray<SparseArray<SelfStoryViewsPage.ViewsModel>> selfViewsModel = new LongSparseArray<>();
     private String stateHidden;
     private boolean hasMoreHidden = true;
     private boolean firstLoad = true;
@@ -252,9 +258,15 @@ public class StoriesController {
     public TL_stories.PeerStories getStoriesFromFullPeer(long dialogId) {
         if (dialogId > 0) {
             TLRPC.UserFull userFull = MessagesController.getInstance(currentAccount).getUserFull(dialogId);
+            if (userFull != null && userFull.stories != null && !userFull.stories.checkedExpired) {
+                checkExpireStories(userFull.stories);
+            }
             return userFull == null ? null : userFull.stories;
         } else {
             TLRPC.ChatFull chatFull = MessagesController.getInstance(currentAccount).getChatFull(-dialogId);
+            if (chatFull != null && chatFull.stories != null && !chatFull.stories.checkedExpired) {
+                checkExpireStories(chatFull.stories);
+            }
             return chatFull == null ? null : chatFull.stories;
         }
     }
@@ -443,18 +455,21 @@ public class StoriesController {
         MessagesController.getInstance(currentAccount).putUsers(storiesResponse.users, fromCache);
         MessagesController.getInstance(currentAccount).putChats(storiesResponse.chats, fromCache);
 
+        final int now = ConnectionsManager.getInstance(currentAccount).getCurrentTime();
         for (int i = 0; i < storiesResponse.peer_stories.size(); i++) {
             TL_stories.PeerStories userStories = storiesResponse.peer_stories.get(i);
-            long dialogId = DialogObject.getPeerDialogId(userStories.peer);
+            final long dialogId = DialogObject.getPeerDialogId(userStories.peer);
             for (int j = 0; j < userStories.stories.size(); j++) {
-                if (userStories.stories.get(j) instanceof TL_stories.TL_storyItemDeleted) {
-                    NotificationsController.getInstance(currentAccount).processDeleteStory(dialogId, userStories.stories.get(j).id);
+                TL_stories.StoryItem story = userStories.stories.get(j);
+                if (story instanceof TL_stories.TL_storyItemDeleted ||
+                    story instanceof TL_stories.TL_storyItem && now > story.expire_date) {
+                    NotificationsController.getInstance(currentAccount).processDeleteStory(dialogId, story.id);
                     userStories.stories.remove(j);
                     j--;
                 }
             }
             if (!userStories.stories.isEmpty()) {
-                allStoriesMap.put(dialogId, userStories);
+                putToAllStories(dialogId, userStories);
                 for (int k = 0; k < 2; k++) {
                     ArrayList<TL_stories.PeerStories> storiesList = k == 0 ? hiddenListStories : dialogListStories;
                     for (int j = 0; j < storiesList.size(); j++) {
@@ -558,17 +573,25 @@ public class StoriesController {
         if (!canPreloadStories) {
             return;
         }
-        boolean isVideo = storyItem.media != null && MessageObject.isVideoDocument(storyItem.media.document);
+        boolean isVideo = storyItem.media != null && MessageObject.isVideoDocument(storyItem.media.getDocument());
         storyItem.dialogId = dialogId;
         if (isVideo) {
-            TLRPC.PhotoSize size = FileLoader.getClosestPhotoSizeWithSize(storyItem.media.document.thumbs, 1000);
-            FileLoader.getInstance(currentAccount).loadFile(storyItem.media.document, storyItem, FileLoader.PRIORITY_LOW, 1);
-            FileLoader.getInstance(currentAccount).loadFile(ImageLocation.getForDocument(size, storyItem.media.document), storyItem, "jpg", FileLoader.PRIORITY_LOW, 1);
+            TLRPC.PhotoSize size = FileLoader.getClosestPhotoSizeWithSize(storyItem.media.getDocument().thumbs, 1000);
+            FileLoader.getInstance(currentAccount).loadFile(storyItem.media.getDocument(), storyItem, FileLoader.PRIORITY_LOW, 1);
+            FileLoader.getInstance(currentAccount).loadFile(ImageLocation.getForDocument(size, storyItem.media.getDocument()), storyItem, "jpg", FileLoader.PRIORITY_LOW, 1);
         } else {
             TLRPC.Photo photo = storyItem.media == null ? null : storyItem.media.photo;
             if (photo != null && photo.sizes != null) {
                 TLRPC.PhotoSize size = FileLoader.getClosestPhotoSizeWithSize(photo.sizes, Integer.MAX_VALUE);
                 FileLoader.getInstance(currentAccount).loadFile(ImageLocation.getForPhoto(size, photo), storyItem, "jpg", FileLoader.PRIORITY_LOW, 1);
+            }
+        }
+        if (storyItem.media_areas != null) {
+            for (int i = 0; i < Math.min(2, storyItem.media_areas.size()); ++i) {
+                if (storyItem.media_areas.get(i) instanceof TL_stories.TL_mediaAreaSuggestedReaction) {
+                    TL_stories.TL_mediaAreaSuggestedReaction r = (TL_stories.TL_mediaAreaSuggestedReaction) storyItem.media_areas.get(i);
+                    ReactionImageHolder.preload(currentAccount, ReactionsLayoutInBubble.VisibleReaction.fromTL(r.reaction));
+                }
             }
         }
     }
@@ -585,9 +608,9 @@ public class StoriesController {
                 }
                 editigStoriesMap.put(entry.editStoryId, uploadingStory);
             } else {
-                addUploadingStoryToList(dialogId, uploadingStory, uploadingStoriesByDialogId);
+                addUploadingStoryToList(dialogId, uploadingStory, uploadingStoriesByDialogId, false);
             }
-            addUploadingStoryToList(dialogId, uploadingStory, uploadingAndEditingStories);
+            addUploadingStoryToList(dialogId, uploadingStory, uploadingAndEditingStories, true);
             if (dialogId != UserConfig.getInstance(currentAccount).clientUserId) {
                 boolean found = false;
                 for (int i = 0; i < dialogListStories.size(); i++) {
@@ -611,7 +634,7 @@ public class StoriesController {
                 if (!found) {
                     TL_stories.PeerStories peerStories = new TL_stories.TL_peerStories();
                     peerStories.peer = MessagesController.getInstance(currentAccount).getPeer(dialogId);
-                    allStoriesMap.put(dialogId, peerStories);
+                    putToAllStories(dialogId, peerStories);
                     dialogListStories.add(0, peerStories);
                     loadAllStoriesForDialog(dialogId);
                 }
@@ -621,8 +644,11 @@ public class StoriesController {
         NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.storiesUpdated);
     }
 
-    private void addUploadingStoryToList(long dialogId, UploadingStory uploadingStory, LongSparseArray<ArrayList<UploadingStory>> sparseArray) {
+    private void addUploadingStoryToList(long dialogId, UploadingStory uploadingStory, LongSparseArray<ArrayList<UploadingStory>> sparseArray, boolean resetUploaded) {
         ArrayList<StoriesController.UploadingStory> arrayList = sparseArray.get(dialogId);
+        if (resetUploaded && (arrayList == null || arrayList.isEmpty())) {
+            uploadedStories = 0;
+        }
         if (arrayList == null) {
             arrayList = new ArrayList<>();
             sparseArray.put(dialogId, arrayList);
@@ -634,7 +660,7 @@ public class StoriesController {
         for (StoryEntry entry : entries) {
             UploadingStory uploadingStory = new UploadingStory(entry);
             long dialogId = uploadingStory.dialogId;
-            addUploadingStoryToList(dialogId, uploadingStory, uploadingStoriesByDialogId);
+            addUploadingStoryToList(dialogId, uploadingStory, uploadingStoriesByDialogId, false);
         }
         NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.storiesUpdated);
     }
@@ -664,7 +690,8 @@ public class StoriesController {
     }
 
     public int getMyStoriesCount() {
-        int count = uploadingAndEditingStories.size();
+        ArrayList<UploadingStory> myUploadingStories = uploadingAndEditingStories.get(getSelfUserId());
+        int count = myUploadingStories == null ? 0 : myUploadingStories.size();
         TL_stories.PeerStories userStories = getStories(getSelfUserId());
         if (userStories != null && userStories.stories != null) {
             count += userStories.stories.size();
@@ -697,7 +724,7 @@ public class StoriesController {
 
     private void applyNewStories(TL_stories.PeerStories stories) {
         long dialogId = DialogObject.getPeerDialogId(stories.peer);
-        allStoriesMap.put(dialogId, stories);
+        putToAllStories(dialogId, stories);
         if (dialogId != UserConfig.getInstance(UserConfig.selectedAccount).clientUserId) {
             TLRPC.User user = MessagesController.getInstance(currentAccount).getUser(dialogId);
             applyToList(stories);
@@ -707,6 +734,28 @@ public class StoriesController {
         }
         FileLog.d("StoriesController applyNewStories " + dialogId);
         updateStoriesInLists(dialogId, stories.stories);
+    }
+
+    private void putToAllStories(long dialogId, TL_stories.PeerStories stories) {
+        TL_stories.PeerStories old = allStoriesMap.get(dialogId);
+        if (
+            old != null && old.stories != null && !old.stories.isEmpty() &&
+            stories != null && stories.stories != null && !stories.stories.isEmpty()
+        ) {
+            // do not override loaded stories with skipped ones
+            for (int i = 0; i < stories.stories.size(); ++i) {
+                if (stories.stories.get(i) instanceof TL_stories.TL_storyItemSkipped) {
+                    int storyId = stories.stories.get(i).id;
+                    for (int j = 0; j < old.stories.size(); ++j) {
+                        if (old.stories.get(j).id == storyId && old.stories.get(j) instanceof TL_stories.TL_storyItem) {
+                            stories.stories.set(i, old.stories.get(j));
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        allStoriesMap.put(dialogId, stories);
     }
 
     public static TL_stories.StoryItem applyStoryUpdate(TL_stories.StoryItem oldStoryItem, TL_stories.StoryItem newStoryItem) {
@@ -760,7 +809,7 @@ public class StoriesController {
         AndroidUtilities.runOnUIThread(() -> {
             FileLog.d("StoriesController update stories for dialog " + dialogId);
             updateStoriesInLists(dialogId, Collections.singletonList(updateStory.story));
-            updateStoriesForFullPeer(dialogId, Collections.singletonList(updateStory.story));
+            updateStoriesForFullPeer(dialogId, Collections.singletonList(updateStory.story), true);
             TL_stories.PeerStories currentUserStory = allStoriesMap.get(dialogId);
             ArrayList<TL_stories.StoryItem> newStoryItems = new ArrayList<>();
             int oldStoriesCount = totalStoriesCount;
@@ -862,7 +911,7 @@ public class StoriesController {
         });
     }
 
-    private void updateStoriesForFullPeer(long dialogId, List<TL_stories.StoryItem> newStories) {
+    private void updateStoriesForFullPeer(long dialogId, List<TL_stories.StoryItem> newStories, boolean addIfNotFound) {
         TL_stories.PeerStories peerStories;
         if (dialogId > 0) {
             TLRPC.UserFull userFull = MessagesController.getInstance(currentAccount).getUserFull(dialogId);
@@ -870,6 +919,7 @@ public class StoriesController {
                 return;
             }
             if (userFull.stories == null) {
+                if (!addIfNotFound) return;
                 userFull.stories = new TL_stories.TL_peerStories();
                 userFull.stories.peer = MessagesController.getInstance(currentAccount).getPeer(dialogId);
                 userFull.stories.max_read_id = getMaxStoriesReadId(dialogId);
@@ -881,6 +931,7 @@ public class StoriesController {
                 return;
             }
             if (chatFull.stories == null) {
+                if (!addIfNotFound) return;
                 chatFull.stories = new TL_stories.TL_peerStories();
                 chatFull.stories.peer = MessagesController.getInstance(currentAccount).getPeer(dialogId);
                 chatFull.stories.max_read_id = getMaxStoriesReadId(dialogId);
@@ -914,7 +965,8 @@ public class StoriesController {
                 if (newStory instanceof TL_stories.TL_storyItemDeleted) {
                     FileLog.d("StoriesController story is not found, but already deleted storyId=" + newStory.id);
                 } else {
-                    FileLog.d(" StoriesController add new story for full peer storyId=" + newStory.id);
+                    if (!addIfNotFound) continue;
+                    FileLog.d("StoriesController add new story for full peer storyId=" + newStory.id);
                     peerStories.stories.add(newStory);
                 }
             }
@@ -1126,6 +1178,31 @@ public class StoriesController {
             }
             req.id.add(storyItem.id);
         }
+        if (dialogId >= 0) {
+            TLRPC.UserFull userFull = MessagesController.getInstance(currentAccount).getUserFull(dialogId);
+            if (userFull != null && userFull.stories != null) {
+                stories = userFull.stories;
+            }
+        } else {
+            TLRPC.ChatFull chatFull = MessagesController.getInstance(currentAccount).getChatFull(-dialogId);
+            if (chatFull != null && chatFull.stories != null) {
+                stories = chatFull.stories;
+            }
+        }
+        for (int i = 0; i < storyItems.size(); ++i) {
+            TL_stories.StoryItem storyItem = storyItems.get(i);
+            if (storyItem instanceof TL_stories.TL_storyItemDeleted) {
+                continue;
+            }
+            if (stories != null) {
+                for (int j = 0; j < stories.stories.size(); j++) {
+                    if (stories.stories.get(j).id == storyItem.id) {
+                        stories.stories.remove(j);
+                        break;
+                    }
+                }
+            }
+        }
         ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> {
             AndroidUtilities.runOnUIThread(this::invalidateStoryLimit);
         });
@@ -1135,7 +1212,7 @@ public class StoriesController {
     }
 
     public void updateStoriesPinned(long dialogId, ArrayList<TL_stories.StoryItem> storyItems, boolean pinned, Utilities.Callback<Boolean> whenDone) {
-        TL_stories.TL_stories_togglePinned req = new TL_stories.TL_stories_togglePinned();
+        TL_stories.togglePinned req = new TL_stories.togglePinned();
         TL_stories.PeerStories peerStories = getStories(dialogId);
         for (int i = 0; i < storyItems.size(); ++i) {
             TL_stories.StoryItem storyItem = storyItems.get(i);
@@ -1156,7 +1233,7 @@ public class StoriesController {
         }
         FileLog.d("StoriesController updateStoriesPinned");
         updateStoriesInLists(dialogId, storyItems);
-        updateStoriesForFullPeer(dialogId, storyItems);
+        updateStoriesForFullPeer(dialogId, storyItems, false);
 
         req.pinned = pinned;
         req.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
@@ -1171,11 +1248,14 @@ public class StoriesController {
         return UserConfig.getInstance(currentAccount).getClientUserId();
     }
 
-    public void updateStoryItem(long dialogId, TL_stories.StoryItem storyItem) {
+    public void updateStoryItem(long dialogId, TL_stories.StoryItem storyItem, boolean edited) {
+        updateStoryItem(dialogId, storyItem, false, edited);
+    }
+    public void updateStoryItem(long dialogId, TL_stories.StoryItem storyItem, boolean force, boolean edited) {
         FileLog.d("StoriesController updateStoryItem " + dialogId + " " + (storyItem == null ? "null" : storyItem.id + "@" + storyItem.dialogId));
+        updateStoriesInLists(dialogId, Collections.singletonList(storyItem), force);
         storiesStorage.updateStoryItem(dialogId, storyItem);
-        updateStoriesInLists(dialogId, Collections.singletonList(storyItem));
-        updateStoriesForFullPeer(dialogId, Collections.singletonList(storyItem));
+        updateStoriesForFullPeer(dialogId, Collections.singletonList(storyItem), !edited);
     }
 
     public boolean markStoryAsRead(long dialogId, TL_stories.StoryItem storyItem) {
@@ -1206,7 +1286,7 @@ public class StoriesController {
             TL_stories.TL_stories_readStories req = new TL_stories.TL_stories_readStories();
             req.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
             req.max_id = storyItem.id;
-            ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> {});
+            ConnectionsManager.getInstance(currentAccount).sendRequest(req, null);
             NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.storiesReadUpdated);
             return true;
         }
@@ -1256,10 +1336,12 @@ public class StoriesController {
             }
         }
         for (int i = 0; i < userStories.stories.size(); i++) {
+            TL_stories.StoryItem storyItem = userStories.stories.get(i);
+            if (storyItem == null) continue;
 //            if (userStories.stories.get(i).justUploaded) {
 //                return true;
 //            }
-            if (userStories.stories.get(i).id > userStories.max_read_id) {
+            if (storyItem.id > userStories.max_read_id) {
                 return true;
             }
         }
@@ -1349,7 +1431,13 @@ public class StoriesController {
     HashSet<Long> loadingAllStories = new HashSet<>();
 
     void loadSkippedStories(long dialogId) {
-        loadSkippedStories(getStories(dialogId), false);
+        boolean profile = false;
+        TL_stories.PeerStories peerStories = getStories(dialogId);
+        if (peerStories == null) {
+            profile = true;
+            peerStories = getStoriesFromFullPeer(dialogId);
+        }
+        loadSkippedStories(peerStories, profile);
     }
 
     void loadSkippedStories(TL_stories.PeerStories userStories, boolean profile) {
@@ -1369,6 +1457,9 @@ public class StoriesController {
                         storyIdsToLoad = new ArrayList<>();
                     }
                     storyIdsToLoad.add(userStories.stories.get(i).id);
+                }
+                if (storyIdsToLoad != null && storyIdsToLoad.size() > 14) {
+                    break;
                 }
             }
             if (storyIdsToLoad != null) {
@@ -1408,8 +1499,8 @@ public class StoriesController {
         }
     }
 
-    public void fillMessagesWithStories(LongSparseArray<ArrayList<MessageObject>> messagesWithUnknownStories, Runnable callback, int classGuid) {
-        storiesStorage.fillMessagesWithStories(messagesWithUnknownStories, callback, classGuid);
+    public void fillMessagesWithStories(LongSparseArray<ArrayList<MessageObject>> messagesWithUnknownStories, Runnable callback, int classGuid, Timer timer) {
+        storiesStorage.fillMessagesWithStories(messagesWithUnknownStories, callback, classGuid, timer);
     }
 
     LongSparseArray<TL_stories.StoryItem> resolvedStories = new LongSparseArray<>();
@@ -1440,6 +1531,8 @@ public class StoriesController {
                     TL_stories.StoryItem storyItem = null;
                     if (res != null) {
                         TL_stories.TL_stories_stories response = (TL_stories.TL_stories_stories) res;
+                        MessagesController.getInstance(currentAccount).putUsers(response.users, false);
+                        MessagesController.getInstance(currentAccount).putChats(response.chats, false);
                         if (response.stories.size() > 0) {
                             storyItem = response.stories.get(0);
                             resolvedStories.put(hash, storyItem);
@@ -1474,18 +1567,16 @@ public class StoriesController {
     }
 
     public void putStories(long dialogId, TL_stories.PeerStories stories) {
-        allStoriesMap.put(dialogId, stories);
+        putToAllStories(dialogId, stories);
         if (dialogId > 0) {
             TLRPC.User user = MessagesController.getInstance(currentAccount).getUser(dialogId);
             if (isContactOrService(user) || user.self) {
                 storiesStorage.putPeerStories(stories);
-                applyToList(stories);
             }
         } else {
             TLRPC.Chat chat = MessagesController.getInstance(currentAccount).getChat(-dialogId);
             if (ChatObject.isInChat(chat)) {
                 storiesStorage.putPeerStories(stories);
-                applyToList(stories);
             }
         }
     }
@@ -1555,6 +1646,19 @@ public class StoriesController {
         }
     }
 
+    private void checkExpireStories(TL_stories.PeerStories stories) {
+        if (stories == null || stories.stories == null) {
+            return;
+        }
+        for (int i = 0; i < stories.stories.size(); i++) {
+            if (StoriesUtilities.isExpired(currentAccount, stories.stories.get(i))) {
+                stories.stories.remove(i);
+                i--;
+            }
+        }
+        stories.checkedExpired = true;
+    }
+
     public void checkExpiredStories(long dialogId) {
         TL_stories.PeerStories userStories = getStories(dialogId);
         if (userStories == null) {
@@ -1613,7 +1717,7 @@ public class StoriesController {
             storyItem.flags |= 32768;
             storyItem.sent_reaction = reactionEmoji;
         }
-        updateStoryItem(dialogId, storyItem);
+        updateStoryItem(dialogId, storyItem, true);
         ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> {
 
         });
@@ -1628,7 +1732,7 @@ public class StoriesController {
             } else {
                 storyItem.flags &= ~32768;
             }
-            updateStoryItem(dialogId, storyItem);
+            updateStoryItem(dialogId, storyItem, true);
         }
     }
 
@@ -1657,8 +1761,19 @@ public class StoriesController {
             return;
         }
         FileLog.d("StoriesController update stories from full peer " + dialogId);
-        peerStories.stories.clear();
-        peerStories.stories.addAll(stories.stories);
+//        peerStories.stories.clear();
+//        peerStories.stories.addAll(stories.stories);
+        for (int i = 0; i < peerStories.stories.size(); ++i) {
+            if (peerStories.stories.get(i) instanceof TL_stories.TL_storyItemSkipped) {
+                int storyId = peerStories.stories.get(i).id;
+                for (int j = 0; j < stories.stories.size(); ++j) {
+                    if (stories.stories.get(j).id == storyId && stories.stories.get(j) instanceof TL_stories.TL_storyItem) {
+                        peerStories.stories.set(i, stories.stories.get(j));
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     public class UploadingStory implements NotificationCenter.NotificationCenterDelegate {
@@ -1666,11 +1781,11 @@ public class StoriesController {
         public final long random_id;
         public final boolean edit;
 
-        final StoryEntry entry;
+        public final StoryEntry entry;
         private boolean entryDestroyed;
         String path;
-        String firstFramePath;
-        float progress;
+        public String firstFramePath;
+        public float progress;
         float convertingProgress, uploadProgress;
         boolean ready;
         boolean isVideo;
@@ -1680,14 +1795,16 @@ public class StoriesController {
         private long firstSecondSize = -1;
         private long duration;
 
-        private MessageObject messageObject;
-        private VideoEditedInfo info;
-        private boolean putMessages;
-        private boolean isCloseFriends;
+        public MessageObject messageObject;
+        public VideoEditedInfo info;
+        public boolean putMessages;
+        public boolean isCloseFriends;
 
         public boolean hadFailed;
         public boolean failed;
         long dialogId;
+
+        public MessageObject sharedMessageObject;
 
         public UploadingStory(StoryEntry entry) {
             this.entry = entry;
@@ -1698,7 +1815,9 @@ public class StoriesController {
             }
             failed = hadFailed = entry.isError;
 
-            if (entry.isEdit) {
+            if (entry.botId != 0) {
+                dialogId = entry.botId;
+            } else if (entry.isEdit) {
                 dialogId = entry.editStoryPeerId;
             } else {
                 if (entry.peer == null || entry.peer instanceof TLRPC.TL_inputPeerSelf) {
@@ -1721,7 +1840,11 @@ public class StoriesController {
         }
 
         public void start() {
-            if (entry.isEdit && !entry.editedMedia) {
+            if (entry.isEditingCover) {
+                TLRPC.TL_inputFileStoryDocument inputFile = new TLRPC.TL_inputFileStoryDocument();
+                inputFile.doc = MessagesController.toInputDocument(entry.editingCoverDocument);
+                sendUploadedRequest(inputFile);
+            } else if ((entry.isEdit || entry.isRepost && entry.repostMedia != null) && (!entry.editedMedia && entry.round == null)) {
                 sendUploadedRequest(null);
                 return;
             }
@@ -1742,7 +1865,7 @@ public class StoriesController {
                     messageObject.videoEditedInfo = info;
                     duration = info.estimatedDuration / 1000L;
                     if (messageObject.videoEditedInfo.needConvert()) {
-                        MediaController.getInstance().scheduleVideoConvert(messageObject, false, false);
+                        MediaController.getInstance().scheduleVideoConvert(messageObject, false, false, false);
                     } else {
                         boolean rename = new File(messageObject.videoEditedInfo.originalPath).renameTo(new File(path));
                         if (rename) {
@@ -1803,12 +1926,33 @@ public class StoriesController {
             ArrayList<UploadingStory> list = uploadingAndEditingStories.get(dialogId);
             if (list != null) {
                 list.remove(UploadingStory.this);
+                if (!list.isEmpty()) {
+                    uploadedStories++;
+                } else {
+                    uploadedStories = 0;
+                }
             }
             if (edit) {
                 HashMap<Integer, UploadingStory> map = editingStories.get(dialogId);
                 if (map != null) {
                     map.remove(entry.editStoryId);
                 }
+            }
+            if (previewMedia != null) {
+                StoriesList storiesList = getStoriesList(dialogId, StoriesList.TYPE_BOTS, false);
+                if (entry != null && entry.isEdit) {
+                    if (storiesList instanceof BotPreviewsList) {
+                        ((BotPreviewsList) storiesList).edit(entry.editingBotPreview, previewMedia);
+                    }
+                    BotPreviewsEditContainer.edit(currentAccount, dialogId, entry.botLang, entry.editingBotPreview, previewMedia);
+                } else {
+                    if (storiesList instanceof BotPreviewsList) {
+                        ((BotPreviewsList) storiesList).push(previewMedia);
+                    }
+                    BotPreviewsEditContainer.push(currentAccount, dialogId, entry.botLang, previewMedia);
+                }
+
+                previewMedia = null;
             }
             NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.storiesUpdated);
             if (entry != null && !entry.isEditSaved && !entryDestroyed) {
@@ -1869,7 +2013,7 @@ public class StoriesController {
             } else if (id == NotificationCenter.fileUploadFailed) {
                 String location = (String) args[0];
                 if (path != null && location.equals(path)) {
-                    NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.showBulletin, Bulletin.TYPE_ERROR, LocaleController.getString("StoryUploadError", R.string.StoryUploadError));
+                    NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.showBulletin, Bulletin.TYPE_ERROR, LocaleController.getString(R.string.StoryUploadError));
                     cleanup();
                 }
             } else if (id == NotificationCenter.fileUploadProgressChanged) {
@@ -1892,17 +2036,53 @@ public class StoriesController {
                 return;
             }
 
+            boolean sendingSameInput = false;
             TLRPC.InputMedia media = null;
-            if (uploadedFile != null) {
+            if (entry.isRepost && !entry.editedMedia && entry.repostMedia != null) {
+                if (entry.repostMedia instanceof TLRPC.TL_messageMediaDocument) {
+                    TLRPC.TL_inputMediaDocument inputMedia = new TLRPC.TL_inputMediaDocument();
+                    TLRPC.TL_inputDocument inputDocument = new TLRPC.TL_inputDocument();
+                    inputDocument.id = entry.repostMedia.document.id;
+                    inputDocument.access_hash = entry.repostMedia.document.access_hash;
+                    inputDocument.file_reference = entry.repostMedia.document.file_reference;
+                    inputMedia.id = inputDocument;
+                    inputMedia.spoiler = entry.repostMedia.spoiler;
+                    media = inputMedia;
+                    sendingSameInput = true;
+                } else if (entry.repostMedia instanceof TLRPC.TL_messageMediaPhoto) {
+                    TLRPC.TL_inputMediaPhoto inputMedia = new TLRPC.TL_inputMediaPhoto();
+                    TLRPC.TL_inputPhoto inputPhoto = new TLRPC.TL_inputPhoto();
+                    inputPhoto.id = entry.repostMedia.photo.id;
+                    inputPhoto.access_hash = entry.repostMedia.photo.access_hash;
+                    inputPhoto.file_reference = entry.repostMedia.photo.file_reference;
+                    inputMedia.id = inputPhoto;
+                    media = inputMedia;
+                    sendingSameInput = true;
+                }
+            }
+            if (media == null && uploadedFile != null) {
                 if (entry.wouldBeVideo()) {
                     TLRPC.TL_inputMediaUploadedDocument inputMediaVideo = new TLRPC.TL_inputMediaUploadedDocument();
                     inputMediaVideo.file = uploadedFile;
                     TLRPC.TL_documentAttributeVideo attributeVideo = new TLRPC.TL_documentAttributeVideo();
-                    SendMessagesHelper.fillVideoAttribute(path, attributeVideo, null);
+                    if (entry.editingCoverDocument != null) {
+                        for (int i = 0; i < entry.editingCoverDocument.attributes.size(); ++i) {
+                            if (entry.editingCoverDocument.attributes.get(i) instanceof TLRPC.TL_documentAttributeVideo) {
+                                attributeVideo = (TLRPC.TL_documentAttributeVideo) entry.editingCoverDocument.attributes.get(i);
+                                break;
+                            }
+                        }
+                    } else {
+                        SendMessagesHelper.fillVideoAttribute(path, attributeVideo, null);
+                    }
+                    inputMediaVideo.attributes.add(attributeVideo);
                     attributeVideo.supports_streaming = true;
                     attributeVideo.flags |= 4;
                     attributeVideo.preload_prefix_size = (int) firstSecondSize;
-                    inputMediaVideo.attributes.add(attributeVideo);
+                    if (entry.cover >= 0) {
+                        attributeVideo.flags |= 16;
+                        attributeVideo.video_start_ts = (entry.cover - entry.left * entry.duration) / 1000.0;
+                    }
                     if (entry.stickers != null && (!entry.stickers.isEmpty() || entry.editStickers != null && !entry.editStickers.isEmpty())) {
                         inputMediaVideo.flags |= 1;
                         inputMediaVideo.stickers = new ArrayList<>(entry.stickers);
@@ -1939,105 +2119,136 @@ public class StoriesController {
 
             final int captionLimit = UserConfig.getInstance(currentAccount).isPremium() ? MessagesController.getInstance(currentAccount).storyCaptionLengthLimitPremium : MessagesController.getInstance(currentAccount).storyCaptionLengthLimitDefault;
             if (edit) {
-                TL_stories.TL_stories_editStory editStory = new TL_stories.TL_stories_editStory();
-                editStory.id = entry.editStoryId;
-                editStory.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
+                if (entry.botId != 0) {
+                    TL_bots.editPreviewMedia editPreviewMedia = new TL_bots.editPreviewMedia();
+                    editPreviewMedia.bot = MessagesController.getInstance(currentAccount).getInputUser(entry.botId);
+                    editPreviewMedia.media = entry.editingBotPreview;
+                    editPreviewMedia.new_media = media;
+                    editPreviewMedia.lang_code = entry.botLang;
 
-                if (media != null && entry.editedMedia) {
-                    editStory.flags |= 1;
-                    editStory.media = media;
-                }
-
-                if (entry.editedCaption && entry.caption != null) {
-                    editStory.flags |= 2;
-                    CharSequence[] caption = new CharSequence[]{ entry.caption };
-                    if (caption[0].length() > captionLimit) {
-                        caption[0] = caption[0].subSequence(0, captionLimit);
-                    }
-                    if (MessagesController.getInstance(currentAccount).storyEntitiesAllowed()) {
-                        editStory.entities = MediaDataController.getInstance(currentAccount).getEntities(caption, true);
-                    } else {
-                        editStory.entities.clear();
-                    }
-                    if (caption[0].length() > captionLimit) {
-                        caption[0] = caption[0].subSequence(0, captionLimit);
-                    }
-                    editStory.caption = caption[0].toString();
-                }
-
-                if (entry.editedPrivacy) {
-                    editStory.flags |= 4;
-                    editStory.privacy_rules.addAll(entry.privacyRules);
-                }
-
-                if (entry.editedMediaAreas != null) {
-                    editStory.media_areas.addAll(entry.editedMediaAreas);
-                }
-                if (entry.mediaEntities != null) {
-                    for (int i = 0; i < entry.mediaEntities.size(); ++i) {
-                        VideoEditedInfo.MediaEntity mediaEntity = entry.mediaEntities.get(i);
-                        if (mediaEntity.mediaArea != null) {
-                            editStory.media_areas.add(mediaEntity.mediaArea);
-                        }
-                    }
-                }
-                if (!editStory.media_areas.isEmpty()) {
-                    editStory.flags |= 8;
-                }
-
-                req = editStory;
-            } else {
-                TL_stories.TL_stories_sendStory sendStory = new TL_stories.TL_stories_sendStory();
-                sendStory.random_id = random_id;
-                sendStory.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
-                sendStory.media = media;
-                sendStory.privacy_rules.addAll(entry.privacyRules);
-                sendStory.pinned = entry.pinned;
-                sendStory.noforwards = !entry.allowScreenshots;
-
-                if (entry.caption != null) {
-                    sendStory.flags |= 3;
-                    CharSequence[] caption = new CharSequence[]{ entry.caption };
-                    if (caption[0].length() > captionLimit) {
-                        caption[0] = caption[0].subSequence(0, captionLimit);
-                    }
-                    if (MessagesController.getInstance(currentAccount).storyEntitiesAllowed()) {
-                        sendStory.entities = MediaDataController.getInstance(currentAccount).getEntities(caption, true);
-                    } else {
-                        sendStory.entities.clear();
-                    }
-                    if (caption[0].length() > captionLimit) {
-                        caption[0] = caption[0].subSequence(0, captionLimit);
-                    }
-                    sendStory.caption = caption[0].toString();
-                }
-
-                if (entry.period == Integer.MAX_VALUE) {
-                    sendStory.pinned = true;
+                    req = editPreviewMedia;
                 } else {
-                    sendStory.flags |= 8;
-                    sendStory.period = entry.period;
-                }
+                    TL_stories.TL_stories_editStory editStory = new TL_stories.TL_stories_editStory();
+                    editStory.id = entry.editStoryId;
+                    editStory.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
 
-                if (entry.mediaEntities != null) {
-                    for (int i = 0; i < entry.mediaEntities.size(); ++i) {
-                        VideoEditedInfo.MediaEntity mediaEntity = entry.mediaEntities.get(i);
-                        if (mediaEntity.mediaArea != null) {
-                            sendStory.media_areas.add(mediaEntity.mediaArea);
+                    if (media != null && entry.editedMedia) {
+                        editStory.flags |= 1;
+                        editStory.media = media;
+                    }
+
+                    if (entry.editedCaption && entry.caption != null) {
+                        editStory.flags |= 2;
+                        CharSequence[] caption = new CharSequence[]{entry.caption};
+                        if (caption[0].length() > captionLimit) {
+                            caption[0] = caption[0].subSequence(0, captionLimit);
+                        }
+                        if (MessagesController.getInstance(currentAccount).storyEntitiesAllowed()) {
+                            editStory.entities = MediaDataController.getInstance(currentAccount).getEntities(caption, true);
+                        } else {
+                            editStory.entities.clear();
+                        }
+                        if (caption[0].length() > captionLimit) {
+                            caption[0] = caption[0].subSequence(0, captionLimit);
+                        }
+                        editStory.caption = caption[0].toString();
+                    }
+
+                    if (entry.editedPrivacy) {
+                        editStory.flags |= 4;
+                        editStory.privacy_rules.addAll(entry.privacyRules);
+                    }
+
+                    if (entry.editedMediaAreas != null) {
+                        editStory.media_areas.addAll(entry.editedMediaAreas);
+                    }
+                    if (entry.mediaEntities != null) {
+                        for (int i = 0; i < entry.mediaEntities.size(); ++i) {
+                            VideoEditedInfo.MediaEntity mediaEntity = entry.mediaEntities.get(i);
+                            if (mediaEntity.mediaArea != null) {
+                                editStory.media_areas.add(mediaEntity.mediaArea);
+                            }
                         }
                     }
-                    if (!sendStory.media_areas.isEmpty()) {
-                        sendStory.flags |= 32;
+                    if (!editStory.media_areas.isEmpty()) {
+                        editStory.flags |= 8;
                     }
-                }
 
-                req = sendStory;
+                    req = editStory;
+                }
+            } else {
+                if (entry.botId != 0) {
+                    TL_bots.addPreviewMedia addPreviewMedia = new TL_bots.addPreviewMedia();
+                    addPreviewMedia.bot = MessagesController.getInstance(currentAccount).getInputUser(entry.botId);
+                    addPreviewMedia.media = media;
+                    addPreviewMedia.lang_code = entry.botLang;
+
+                    req = addPreviewMedia;
+                } else {
+                    TL_stories.TL_stories_sendStory sendStory = new TL_stories.TL_stories_sendStory();
+                    sendStory.random_id = random_id;
+                    sendStory.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
+                    sendStory.media = media;
+                    sendStory.privacy_rules.addAll(entry.privacyRules);
+                    sendStory.pinned = entry.pinned;
+                    sendStory.noforwards = !entry.allowScreenshots;
+
+                    if (entry.caption != null) {
+                        sendStory.flags |= 3;
+                        CharSequence[] caption = new CharSequence[]{entry.caption};
+                        if (caption[0].length() > captionLimit) {
+                            caption[0] = caption[0].subSequence(0, captionLimit);
+                        }
+                        if (MessagesController.getInstance(currentAccount).storyEntitiesAllowed()) {
+                            sendStory.entities = MediaDataController.getInstance(currentAccount).getEntities(caption, true);
+                        } else {
+                            sendStory.entities.clear();
+                        }
+                        if (caption[0].length() > captionLimit) {
+                            caption[0] = caption[0].subSequence(0, captionLimit);
+                        }
+                        sendStory.caption = caption[0].toString();
+                    }
+
+                    if (entry.isRepost) {
+                        sendStory.flags |= 64;
+                        sendStory.fwd_from_id = MessagesController.getInstance(currentAccount).getInputPeer(entry.repostPeer);
+                        sendStory.fwd_from_story = entry.repostStoryId;
+                        sendStory.fwd_modified = !sendingSameInput;
+                    }
+
+                    if (entry.period == Integer.MAX_VALUE) {
+                        sendStory.pinned = true;
+                    } else {
+                        sendStory.flags |= 8;
+                        sendStory.period = entry.period;
+                    }
+
+                    if (entry.mediaEntities != null) {
+                        for (int i = 0; i < entry.mediaEntities.size(); ++i) {
+                            VideoEditedInfo.MediaEntity mediaEntity = entry.mediaEntities.get(i);
+                            if (mediaEntity.mediaArea != null) {
+                                sendStory.media_areas.add(mediaEntity.mediaArea);
+                            }
+                        }
+                        if (!sendStory.media_areas.isEmpty()) {
+                            sendStory.flags |= 32;
+                        }
+                    }
+
+                    req = sendStory;
+                }
             }
 
             final RequestDelegate requestDelegate = (response, error) -> {
-                if (response != null) {
+                if (response instanceof TLRPC.Updates) {
                     failed = false;
                     TLRPC.Updates updates = (TLRPC.Updates) response;
+                    if (entry.isEditingCover) {
+                        MessagesController.getInstance(currentAccount).processUpdates(updates, false);
+                        AndroidUtilities.runOnUIThread(this::cleanup);
+                        return;
+                    }
                     int storyId = 0;
                     TL_stories.StoryItem storyItem = null;
                     for (int i = 0; i < updates.updates.size(); i++) {
@@ -2106,13 +2317,26 @@ public class StoriesController {
                             }
                             entry.isError = false;
                             entry.error = null;
-                            getDraftsController().saveForEdit(entry, did, storyItemFinal);
+                            if (!entry.isEditingCover) {
+                                getDraftsController().saveForEdit(entry, did, storyItemFinal);
+                            }
                             if (!edit) {
                                 invalidateStoryLimit();
                             }
                         });
                         MessagesController.getInstance(currentAccount).processUpdateArray(updates.updates, updates.users, updates.chats, false, updates.date);
                     }
+                } else if (response instanceof TL_bots.botPreviewMedia) {
+                    previewMedia = (TL_bots.botPreviewMedia) response;
+                } else if (error != null && FileRefController.isFileRefError(error.text) && entry.editingCoverDocument != null && entry.updateDocumentRef != null) {
+                    entry.updateDocumentRef.run(newDocument -> {
+                        entry.editingCoverDocument = newDocument;
+                        TLRPC.TL_inputFileStoryDocument inputFile = new TLRPC.TL_inputFileStoryDocument();
+                        inputFile.doc = MessagesController.toInputDocument(entry.editingCoverDocument);
+                        sendUploadedRequest(inputFile);
+                    });
+                    entry.updateDocumentRef = null;
+                    return;
                 } else if (error != null && !edit) {
                     AndroidUtilities.runOnUIThread(() -> {
                         entry.isError = true;
@@ -2136,9 +2360,11 @@ public class StoriesController {
                 error.text = "FORCED_TO_FAIL";
                 requestDelegate.run(null, error);
             } else {
-                currentRequest = ConnectionsManager.getInstance(currentAccount).sendRequest(req, requestDelegate);
+                currentRequest = ConnectionsManager.getInstance(currentAccount).sendRequest(req, requestDelegate, ConnectionsManager.RequestFlagInvokeAfter);
             }
         }
+
+        private TL_bots.botPreviewMedia previewMedia;
 
         private void putMessages() {
             if (entry.shareUserIds == null || putMessages) {
@@ -2150,9 +2376,9 @@ public class StoriesController {
             for (int i = 0; i < count; ++i) {
                 long userId = entry.shareUserIds.get(i);
                 if (entry.wouldBeVideo()) {
-                    SendMessagesHelper.prepareSendingVideo(AccountInstance.getInstance(currentAccount), path, null, userId, null, null, null, null, captionEntities, 0, null, !entry.silent, entry.scheduleDate, false, false, caption);
+                    SendMessagesHelper.prepareSendingVideo(AccountInstance.getInstance(currentAccount), path, null, null, null, userId, null, null, null, null, captionEntities, 0, null, !entry.silent, entry.scheduleDate, false, false, caption, null, 0, 0, 0);
                 } else {
-                    SendMessagesHelper.prepareSendingPhoto(AccountInstance.getInstance(currentAccount), path, null, null, userId, null, null, null, null, captionEntities, null, null, 0, null, null, !entry.silent, entry.scheduleDate, false, caption  /* TODO: */);
+                    SendMessagesHelper.prepareSendingPhoto(AccountInstance.getInstance(currentAccount), path, null, null, userId, null, null, null, null, captionEntities, null, null, 0, null, null, !entry.silent, entry.scheduleDate, 0, false, caption, null, 0, 0, 0);
                 }
             }
             putMessages = true;
@@ -2179,9 +2405,9 @@ public class StoriesController {
         }
     }
 
-    private final HashMap<Long, StoriesList>[] storiesLists = new HashMap[2];
+    private final HashMap<Long, StoriesList>[] storiesLists = new HashMap[5];
 
-    @Nullable
+    @NonNull
     public StoriesList getStoriesList(long dialogId, int type) {
         return getStoriesList(dialogId, type, true);
     }
@@ -2193,7 +2419,11 @@ public class StoriesController {
         }
         StoriesList list = storiesLists[type].get(dialogId);
         if (list == null && createIfNotExist) {
-            storiesLists[type].put(dialogId, list = new StoriesList(currentAccount, dialogId, type, this::destroyStoryList));
+            if (type == StoriesList.TYPE_BOTS) {
+                storiesLists[type].put(dialogId, list = new BotPreviewsList(currentAccount, dialogId, null, this::destroyStoryList));
+            } else {
+                storiesLists[type].put(dialogId, list = new StoriesList(currentAccount, dialogId, type, this::destroyStoryList));
+            }
         }
         return list;
     }
@@ -2234,15 +2464,23 @@ public class StoriesController {
         }
     }
 
+    public final ArrayList<SearchStoriesList> attachedSearchLists = new ArrayList<>();
+
     public void updateStoriesInLists(long dialogId, List<TL_stories.StoryItem> storyItems) {
+        updateStoriesInLists(dialogId, storyItems, false);
+    }
+    public void updateStoriesInLists(long dialogId, List<TL_stories.StoryItem> storyItems, boolean force) {
         FileLog.d("updateStoriesInLists " + dialogId + " storyItems[" + storyItems.size() + "] {" + storyItemIds(storyItems) + "}");
         StoriesList pinned = getStoriesList(dialogId, StoriesList.TYPE_PINNED, false);
         StoriesList archived = getStoriesList(dialogId, StoriesList.TYPE_ARCHIVE, false);
         if (pinned != null) {
-            pinned.updateStories(storyItems);
+            pinned.updateStories(storyItems, force);
         }
         if (archived != null) {
-            archived.updateStories(storyItems);
+            archived.updateStories(storyItems, force);
+        }
+        for (SearchStoriesList list : attachedSearchLists) {
+            list.updateStories(storyItems, force);
         }
     }
 
@@ -2264,6 +2502,474 @@ public class StoriesController {
         }
     }
 
+    public static class BotPreview extends TL_stories.StoryItem {
+        public final BotPreviewsList list;
+        public BotPreview(BotPreviewsList parentList, long dialogId, TL_bots.botPreviewMedia media) {
+            this.list = parentList;
+            this.dialogId = dialogId;
+            this.media = media.media;
+            if (this.media.document != null) {
+                this.media.document.date = media.date;
+            } else if (this.media.photo != null) {
+                this.media.photo.date = media.date;
+            }
+        }
+    }
+
+    public static class BotPreviewsList extends StoriesList {
+
+        public BotPreviewsList(int currentAccount, long botId, String lang_code, Utilities.Callback<StoriesList> destroy) {
+            super(currentAccount, botId, TYPE_BOTS, destroy);
+            this.lang_code = lang_code;
+        }
+
+        @Override
+        public boolean isOnlyCache() {
+            return false;
+        }
+        @Override
+        protected void invalidateCache() {}
+        @Override
+        protected void preloadCache() {}
+        @Override
+        protected void saveCache() {}
+
+        @Override
+        protected boolean markAsRead(int storyId) {
+            return false;
+        }
+
+        private boolean loading, loaded;
+        public final String lang_code;
+        private int reqId;
+
+        public final ArrayList<String> lang_codes = new ArrayList<>();
+        private final ArrayList<ArrayList<Integer>> fakeDays = new ArrayList<>();
+        private int lastId = 0;
+
+        @Override
+        public boolean load(boolean force, int count, List<Integer> ids) {
+            return loadInternal(null);
+        }
+
+        public boolean loadInternal(Runnable callback) {
+            if (loading || loaded) return false;
+
+            TLObject reqObj;
+            if (lang_code != null) {
+                TL_bots.getPreviewInfo req = new TL_bots.getPreviewInfo();
+                req.bot = MessagesController.getInstance(currentAccount).getInputUser(dialogId);
+                req.lang_code = lang_code;
+                reqObj = req;
+            } else {
+                TL_bots.getPreviewMedias req = new TL_bots.getPreviewMedias();
+                req.bot = MessagesController.getInstance(currentAccount).getInputUser(dialogId);
+                reqObj = req;
+            }
+
+            loading = true;
+
+            this.reqId = ConnectionsManager.getInstance(currentAccount).sendRequest(reqObj, (res, err) -> AndroidUtilities.runOnUIThread(() -> {
+                this.reqId = 0;
+                this.loading = false;
+                this.loaded = true;
+                this.done = true;
+
+                final ArrayList<TL_bots.botPreviewMedia> medias = new ArrayList<>();
+                if (res instanceof Vector) {
+                    ArrayList<Object> objects = ((Vector) res).objects;
+                    for (Object o : objects) {
+                        TL_bots.botPreviewMedia media = (TL_bots.botPreviewMedia) o;
+                        medias.add(media);
+                    }
+                } else if (res instanceof TL_bots.previewInfo) {
+                    TL_bots.previewInfo info = (TL_bots.previewInfo) res;
+
+                    lang_codes.clear();
+                    lang_codes.addAll(info.lang_codes);
+
+                    medias.addAll(info.media);
+                } else {
+                    return;
+                }
+
+                ArrayList<MessageObject> oldMessageObjects = new ArrayList<>(messageObjects);
+                messageObjects.clear();
+                fakeDays.clear();
+
+                for (TL_bots.botPreviewMedia media : medias) {
+                    MessageObject msg = new MessageObject(currentAccount, new BotPreview(this, dialogId, media));
+
+                    MessageObject old = null;
+                    for (int i = 0; i < oldMessageObjects.size(); ++i) {
+                        if (MessagesController.equals(oldMessageObjects.get(i).storyItem.media, media.media)) {
+                            old = oldMessageObjects.get(i);
+                            break;
+                        }
+                    }
+
+                    msg.storyItem.id = msg.messageOwner.id = old == null ? lastId++ : old.getId();
+                    msg.parentStoriesList = this;
+                    msg.generateThumbs(false);
+                    if (fakeDays.isEmpty()) {
+                        fakeDays.add(new ArrayList<>());
+                    }
+                    fakeDays.get(0).add(msg.getId());
+                    messageObjects.add(msg);
+                }
+
+                AndroidUtilities.cancelRunOnUIThread(super.notify);
+                AndroidUtilities.runOnUIThread(super.notify);
+
+                if (callback != null) {
+                    AndroidUtilities.runOnUIThread(callback);
+                }
+            }));
+
+            return true;
+        }
+
+        public void push(TL_bots.botPreviewMedia media) {
+            MessageObject msg = new MessageObject(currentAccount, new BotPreview(this, dialogId, media));
+            msg.storyItem.id = msg.messageOwner.id = lastId++;
+            msg.parentStoriesList = this;
+            msg.generateThumbs(false);
+            if (fakeDays.isEmpty()) {
+                fakeDays.add(new ArrayList<>());
+            }
+            fakeDays.get(0).add(0, msg.getId());
+            messageObjects.add(0, msg);
+            notifyUpdate();
+        }
+
+        public void edit(TLRPC.InputMedia old_media, TL_bots.botPreviewMedia new_media) {
+            int index = 0;
+            MessageObject oldmsg = null;
+            for (int i = 0; i < messageObjects.size(); ++i) {
+                MessageObject m = messageObjects.get(i);
+                if (old_media != null && m.storyItem != null && m.storyItem.media != null) {
+                    if (old_media instanceof TLRPC.TL_inputMediaPhoto) {
+                        if (m.storyItem.media.photo == null) continue;
+                        if (m.storyItem.media.photo.id == ((TLRPC.TL_inputMediaPhoto) old_media).id.id) {
+                            index = i;
+                            oldmsg = m;
+                            break;
+                        }
+                    } else if (old_media instanceof TLRPC.TL_inputMediaDocument) {
+                        if (m.storyItem.media.document == null) continue;
+                        if (m.storyItem.media.document.id == ((TLRPC.TL_inputMediaDocument) old_media).id.id) {
+                            index = i;
+                            oldmsg = m;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (oldmsg != null) {
+                messageObjects.remove(oldmsg);
+                if (fakeDays.isEmpty()) {
+                    fakeDays.add(new ArrayList<>());
+                }
+                if (index > 0 && index < fakeDays.get(0).size()) {
+                    fakeDays.get(0).remove(index);
+                }
+            }
+
+            MessageObject msg = new MessageObject(currentAccount, new BotPreview(this, dialogId, new_media));
+            msg.storyItem.id = msg.messageOwner.id = oldmsg == null ? lastId++ : oldmsg.getId();
+            msg.parentStoriesList = this;
+            msg.generateThumbs(false);
+            if (fakeDays.isEmpty()) {
+                fakeDays.add(new ArrayList<>());
+            }
+            fakeDays.get(0).add(index, msg.getId());
+            messageObjects.add(index, msg);
+            notifyUpdate();
+        }
+
+        public void notifyUpdate() {
+            AndroidUtilities.cancelRunOnUIThread(super.notify);
+            AndroidUtilities.runOnUIThread(super.notify);
+        }
+
+        public void reload(Runnable callback) {
+            if (this.reqId != 0) {
+                ConnectionsManager.getInstance(currentAccount).cancelRequest(this.reqId, true);
+                this.reqId = 0;
+            }
+            loading = false;
+            loaded = false;
+            loadInternal(callback);
+        }
+
+        public void requestReference(BotPreview story, Utilities.Callback<BotPreview> whenUpdated) {
+            reload(() -> {
+                for (int i = 0; i < messageObjects.size(); ++i) {
+                    MessageObject msg = messageObjects.get(i);
+                    if (msg == null || msg.storyItem == null || msg.storyItem.media == null) continue;
+                    if (story.media.document != null) {
+                        if (msg.storyItem.media.document == null) continue;
+                        if (msg.storyItem.media.document.id == story.media.document.id) {
+                            whenUpdated.run((BotPreview) msg.storyItem);
+                            return;
+                        }
+                    }
+                    if (story.media.photo != null) {
+                        if (msg.storyItem.media.photo == null) continue;
+                        if (msg.storyItem.media.photo.id == story.media.photo.id) {
+                            whenUpdated.run((BotPreview) msg.storyItem);
+                            return;
+                        }
+                    }
+                }
+                whenUpdated.run(null);
+            });
+        }
+
+        @Override
+        public int getCount() {
+            return messageObjects.size();
+        }
+
+        @Override
+        public int getLoadedCount() {
+            return messageObjects.size();
+        }
+
+        @Override
+        public boolean isLoading() {
+            return loading;
+        }
+
+        @Override
+        protected ArrayList<ArrayList<Integer>> getDays() {
+            return fakeDays;
+        }
+
+        @Override
+        public MessageObject findMessageObject(int id) {
+            for (int i = 0; i < messageObjects.size(); ++i) {
+                if (messageObjects.get(i).getId() == id) {
+                    return messageObjects.get(i);
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public void updatePinnedOrder(ArrayList<Integer> ids, boolean apply) {
+            final ArrayList<MessageObject> newOrder = new ArrayList<>();
+            final ArrayList<Integer> newOrderIds = new ArrayList<>();
+            TL_bots.reorderPreviewMedias req = new TL_bots.reorderPreviewMedias();
+            req.bot = MessagesController.getInstance(currentAccount).getInputUser(dialogId);
+            req.lang_code = lang_code;
+            for (int id : ids) {
+                MessageObject msg = findMessageObject(id);
+                if (msg == null) continue;
+                req.order.add(MessagesController.toInputMedia(msg.storyItem.media));
+                newOrder.add(msg);
+                newOrderIds.add(id);
+            }
+            ConnectionsManager.getInstance(currentAccount).sendRequest(req, null);
+
+            if (fakeDays.isEmpty()) {
+                fakeDays.add(new ArrayList<>());
+            }
+            fakeDays.get(0).clear();
+            fakeDays.get(0).addAll(newOrderIds);
+            messageObjects.clear();
+            messageObjects.addAll(newOrder);
+        }
+
+        public void delete(ArrayList<TLRPC.MessageMedia> medias) {
+            if (medias == null) return;
+            for (int i = 0; i < messageObjects.size(); ++i) {
+                MessageObject msg = messageObjects.get(i);
+                boolean contains = false;
+                for (int j = 0; j < medias.size(); ++j) {
+                    if (MessagesController.equals(msg.storyItem.media, medias.get(j))) {
+                        contains = true;
+                        break;
+                    }
+                }
+                if (contains) {
+                    messageObjects.remove(i);
+                    if (!fakeDays.isEmpty() && msg.getId() < fakeDays.get(0).size()) {
+                        fakeDays.get(0).remove(msg.getId());
+                    }
+                    i--;
+                }
+            }
+            TL_bots.deletePreviewMedia req = new TL_bots.deletePreviewMedia();
+            req.bot = MessagesController.getInstance(currentAccount).getInputUser(dialogId);
+            for (int i = 0; i < medias.size(); ++i) {
+                req.media.add(MessagesController.toInputMedia(medias.get(i)));
+            }
+            ConnectionsManager.getInstance(currentAccount).sendRequest(req, null);
+
+            AndroidUtilities.cancelRunOnUIThread(super.notify);
+            AndroidUtilities.runOnUIThread(super.notify);
+        }
+
+        public void delete(TLRPC.MessageMedia media) {
+            delete(new ArrayList<>(Arrays.asList(media)));
+        }
+
+    }
+
+    public static class SearchStoriesList extends StoriesList {
+
+        public final String query;
+        public final String username;
+        public final TL_stories.MediaArea queryArea;
+
+        public SearchStoriesList(int currentAccount, String username, String query) {
+            super(currentAccount, 0, TYPE_SEARCH, null);
+            this.query = query;
+            this.username = username;
+            this.queryArea = null;
+        }
+
+        public SearchStoriesList(int currentAccount, TL_stories.MediaArea area) {
+            super(currentAccount, 0, TYPE_SEARCH, null);
+            this.query = null;
+            this.username = null;
+            this.queryArea = area;
+        }
+
+        @Override
+        public boolean isOnlyCache() {
+            return false;
+        }
+        @Override
+        protected void invalidateCache() {}
+        @Override
+        protected void preloadCache() {}
+        @Override
+        protected void saveCache() {}
+
+        @Override
+        protected boolean markAsRead(int storyId) {
+            return false;
+        }
+
+        public void cancel() {
+            if (this.reqId != 0) {
+                ConnectionsManager.getInstance(currentAccount).cancelRequest(this.reqId, true);
+                this.reqId = 0;
+            }
+        }
+
+        private final ArrayList<ArrayList<Integer>> fakeDays = new ArrayList<>();
+
+        private boolean loading;
+        private String last_offset = "";
+        private int reqId;
+        private int count;
+
+        @Override
+        public boolean load(boolean force, int count, List<Integer> ids) {
+            if (loading) return false;
+            if (last_offset == null) return false;
+
+            TL_stories.TL_stories_searchPosts req = new TL_stories.TL_stories_searchPosts();
+            req.offset = last_offset;
+            req.limit = count;
+            if (query != null) {
+                req.flags |= 1;
+                req.hashtag = query;
+            }
+            if (queryArea != null) {
+                req.flags |= 2;
+                req.area = queryArea;
+            }
+
+            loading = true;
+
+            TLObject chat = null;
+            if (!TextUtils.isEmpty(username)) {
+                chat = MessagesController.getInstance(currentAccount).getUserOrChat(username);
+                if (chat == null) {
+                    MessagesController.getInstance(currentAccount).getUserNameResolver().resolve(username, resolvedId -> {
+                        TLObject resolvedChat = MessagesController.getInstance(currentAccount).getUserOrChat(username);
+                        loading = false;
+                        if (resolvedChat != null) {
+                            load(force, count, ids);
+                        } else {
+                            this.count = 0;
+                            last_offset = "";
+                            AndroidUtilities.cancelRunOnUIThread(super.notify);
+                            AndroidUtilities.runOnUIThread(super.notify);
+                        }
+                    });
+                    return true;
+                }
+            }
+            if (chat != null) {
+                req.flags |= 4;
+                req.peer = MessagesController.getInputPeer(chat);
+//                if (req.hashtag.startsWith("#") || req.hashtag.startsWith("$"))
+//                    req.hashtag = req.hashtag.substring(1);
+            }
+
+            this.reqId = ConnectionsManager.getInstance(currentAccount).sendRequest(req, (res, err) -> AndroidUtilities.runOnUIThread(() -> {
+                this.reqId = 0;
+                if (res instanceof TL_stories.TL_foundStories) {
+                    TL_stories.TL_foundStories r = (TL_stories.TL_foundStories) res;
+                    MessagesController.getInstance(currentAccount).putUsers(r.users, false);
+                    MessagesController.getInstance(currentAccount).putChats(r.chats, false);
+                    for (TL_stories.TL_foundStory s : r.stories) {
+                        s.storyItem.dialogId = DialogObject.getPeerDialogId(s.peer);
+                        s.storyItem.messageId = messageObjects.size();
+                        MessageObject msg = new MessageObject(currentAccount, s.storyItem);
+                        msg.generateThumbs(false);
+                        ArrayList<Integer> day = new ArrayList<>();
+                        day.add(messageObjects.size());
+                        fakeDays.add(day);
+                        messageObjects.add(msg);
+                    }
+                    this.count = Math.max(messageObjects.size(), r.count);
+                    if (r.stories.isEmpty()) {
+                        this.count = messageObjects.size();
+                    }
+                    last_offset = messageObjects.size() >= r.count || r.stories.isEmpty() ? null : r.next_offset;
+                    this.loading = false;
+
+                    AndroidUtilities.cancelRunOnUIThread(super.notify);
+                    AndroidUtilities.runOnUIThread(super.notify);
+                }
+            }));
+
+            return true;
+        }
+
+        @Override
+        public int getCount() {
+            return count;
+        }
+
+        @Override
+        public int getLoadedCount() {
+            return messageObjects.size();
+        }
+
+        @Override
+        public boolean isLoading() {
+            return loading;
+        }
+
+        @Override
+        protected ArrayList<ArrayList<Integer>> getDays() {
+            return fakeDays;
+        }
+
+        @Override
+        public MessageObject findMessageObject(int id) {
+            if (id < 0 || id >= messageObjects.size()) return null;
+            return messageObjects.get(id);
+        }
+    }
+
     public static class StoriesList {
 
         private static HashMap<Integer, Long> lastLoadTime;
@@ -2273,12 +2979,14 @@ public class StoriesController {
         public int link() {
             final int id = maxLinkId++;
             links.add(id);
-            AndroidUtilities.cancelRunOnUIThread(destroyRunnable);
+            if (destroyRunnable != null) {
+                AndroidUtilities.cancelRunOnUIThread(destroyRunnable);
+            }
             return id;
         }
         public void unlink(int id) {
             links.remove((Integer) id);
-            if (links.isEmpty()) {
+            if (links.isEmpty() && destroyRunnable != null) {
                 AndroidUtilities.cancelRunOnUIThread(destroyRunnable);
                 AndroidUtilities.runOnUIThread(destroyRunnable, 1000 * 60 * 5);
             }
@@ -2286,11 +2994,15 @@ public class StoriesController {
 
         public static final int TYPE_PINNED = 0;
         public static final int TYPE_ARCHIVE = 1;
+        public static final int TYPE_STATISTICS = 2;
+        public static final int TYPE_SEARCH = 3;
+        public static final int TYPE_BOTS = 4;
 
         public final int currentAccount;
         public final long dialogId;
         public final int type;
 
+        public final ArrayList<Integer> pinnedIds = new ArrayList<>();
         public final HashMap<Long, TreeSet<Integer>> groupedByDay = new HashMap<>();
 
         public final ArrayList<MessageObject> messageObjects = new ArrayList<>();
@@ -2298,6 +3010,7 @@ public class StoriesController {
 
         private final SortedSet<Integer> cachedObjects = new TreeSet<>(Comparator.reverseOrder());
         private final SortedSet<Integer> loadedObjects = new TreeSet<>(Comparator.reverseOrder());
+        public final HashSet<Integer> seenStories = new HashSet<>();
 
         private boolean showPhotos = true;
         private boolean showVideos = true;
@@ -2334,11 +3047,21 @@ public class StoriesController {
             }
         }
 
-        private void fill(ArrayList<MessageObject> arrayList, boolean showPhotos, boolean showVideos) {
+        public void fill(ArrayList<MessageObject> arrayList, boolean showPhotos, boolean showVideos) {
             tempArr.clear();
+            if (type == TYPE_PINNED) {
+                for (int id : pinnedIds) {
+                    MessageObject msg = messageObjectsMap.get(id);
+                    if (filter(msg, showPhotos, showVideos)) {
+                        tempArr.add(msg);
+                    }
+                }
+            }
             int minId = Integer.MAX_VALUE;
             for (int id : loadedObjects) {
                 MessageObject msg = messageObjectsMap.get(id);
+                if (type == TYPE_PINNED && pinnedIds.contains(id))
+                    continue;
                 if (filter(msg, showPhotos, showVideos)) {
                     tempArr.add(msg);
                 }
@@ -2350,6 +3073,8 @@ public class StoriesController {
                 Iterator<Integer> i = cachedObjects.iterator();
                 while (i.hasNext() && (totalCount == -1 || tempArr.size() < totalCount)) {
                     int id = i.next();
+                    if (type == TYPE_PINNED && pinnedIds.contains(id))
+                        continue;
                     if (minId == Integer.MAX_VALUE || id < minId) {
                         MessageObject msg = messageObjectsMap.get(id);
                         if (filter(msg, showPhotos, showVideos)) {
@@ -2366,14 +3091,15 @@ public class StoriesController {
             return msg != null && msg.isStory() && (photos && msg.isPhoto() || videos && msg.isVideo() || msg.storyItem.media instanceof TLRPC.TL_messageMediaUnsupported);
         }
 
-        private boolean done;
+        public boolean done;
         private int totalCount = -1;
-        private boolean preloading, loading;
+        protected boolean preloading;
+        private boolean loading;
         private boolean invalidateAfterPreload;
         private boolean error;
-        private Runnable destroyRunnable;
+        private final Runnable destroyRunnable;
 
-        private Utilities.CallbackReturn<Integer, Boolean> toLoad;
+        protected Utilities.CallbackReturn<Integer, Boolean> toLoad;
 
         private StoriesList(int currentAccount, long dialogId, int type, Utilities.Callback<StoriesList> destroy) {
             this.currentAccount = currentAccount;
@@ -2384,7 +3110,7 @@ public class StoriesController {
             preloadCache();
         }
 
-        private void preloadCache() {
+        protected void preloadCache() {
             if (preloading || loading || error) {
                 return;
             }
@@ -2393,12 +3119,16 @@ public class StoriesController {
             final MessagesStorage storage = MessagesStorage.getInstance(currentAccount);
             storage.getStorageQueue().postRunnable(() -> {
                 SQLiteCursor cursor = null;
+                ArrayList<Integer> pins = new ArrayList<>();
+                HashSet<Integer> seen = new HashSet<>();
                 HashSet<Long> loadUserIds = new HashSet<>();
+                HashSet<Long> loadChatIds = new HashSet<>();
                 ArrayList<MessageObject> cacheResult = new ArrayList<>();
                 final ArrayList<TLRPC.User> loadedUsers = new ArrayList<>();
+                final ArrayList<TLRPC.Chat> loadedChats = new ArrayList<>();
                 try {
                     SQLiteDatabase database = storage.getDatabase();
-                    cursor = database.queryFinalized(String.format(Locale.US, "SELECT data FROM profile_stories WHERE dialog_id = %d AND type = %d ORDER BY story_id DESC", dialogId, type));
+                    cursor = database.queryFinalized(String.format(Locale.US, "SELECT data, seen, pin FROM profile_stories WHERE dialog_id = %d AND type = %d ORDER BY story_id DESC", dialogId, type));
                     while (cursor.next()) {
                         NativeByteBuffer data = cursor.byteBufferValue(0);
                         if (data != null) {
@@ -2413,15 +3143,48 @@ public class StoriesController {
                                     loadUserIds.addAll(((TLRPC.TL_privacyValueAllowUsers) rule).users);
                                 }
                             }
+                            if (storyItem.fwd_from != null && storyItem.fwd_from.from != null) {
+                                long did = DialogObject.getPeerDialogId(storyItem.fwd_from.from);
+                                if (did >= 0) {
+                                    loadUserIds.add(did);
+                                } else {
+                                    loadChatIds.add(-did);
+                                }
+                            }
+                            for (int j = 0; j < storyItem.media_areas.size(); ++j) {
+                                if (storyItem.media_areas.get(j) instanceof TL_stories.TL_mediaAreaChannelPost) {
+                                    long channel_id = ((TL_stories.TL_mediaAreaChannelPost) storyItem.media_areas.get(j)).channel_id;
+                                    loadChatIds.add(channel_id);
+                                }
+                            }
+                            if (storyItem.from_id != null) {
+                                long did = DialogObject.getPeerDialogId(storyItem.from_id);
+                                if (did >= 0) {
+                                    loadUserIds.add(did);
+                                } else {
+                                    loadChatIds.add(-did);
+                                }
+                            }
                             msg.generateThumbs(false);
                             cacheResult.add(msg);
                             data.reuse();
+
+                            if (cursor.intValue(1) == 1) {
+                                seen.add(storyItem.id);
+                            }
+                            int pinIndex = cursor.intValue(2);
+                            if (pinIndex > 0) {
+                                pins.add(Utilities.clamp(pinIndex, pins.size() - 1, 0), storyItem.id);
+                            }
                         }
                     }
                     cursor.dispose();
 
                     if (!loadUserIds.isEmpty()) {
-                        storage.getUsersInternal(TextUtils.join(",", loadUserIds), loadedUsers);
+                        storage.getUsersInternal(loadUserIds, loadedUsers);
+                    }
+                    if (!loadChatIds.isEmpty()) {
+                        storage.getChatsInternal(TextUtils.join(",", loadChatIds), loadedChats);
                     }
                 } catch (Throwable e) {
                     storage.checkSQLException(e);
@@ -2434,8 +3197,13 @@ public class StoriesController {
 
                 AndroidUtilities.runOnUIThread(() -> {
                     FileLog.d("StoriesList "+type+"{"+ dialogId +"} preloadCache {" + storyItemMessageIds(cacheResult) + "}");
+
+                    pinnedIds.clear();
+                    pinnedIds.addAll(pins);
+
                     preloading = false;
                     MessagesController.getInstance(currentAccount).putUsers(loadedUsers, true);
+                    MessagesController.getInstance(currentAccount).putChats(loadedChats, true);
                     if (invalidateAfterPreload) {
                         invalidateAfterPreload = false;
                         toLoad = null;
@@ -2443,6 +3211,7 @@ public class StoriesController {
                         return;
                     }
 
+                    seenStories.addAll(seen);
                     cachedObjects.clear();
                     for (int i = 0; i < cacheResult.size(); ++i) {
                         pushObject(cacheResult.get(i), true);
@@ -2480,9 +3249,10 @@ public class StoriesController {
                 cachedObjects.remove(storyId);
             }
             loadedObjects.remove(storyId);
+            pinnedIds.remove((Object) storyId);
             if (messageObject != null) {
                 long id = day(messageObject);
-                SortedSet<Integer> group = groupedByDay.get(id);
+                Collection<Integer> group = groupedByDay.get(id);
                 if (group != null) {
                     group.remove(storyId);
                     if (group.isEmpty()) {
@@ -2507,24 +3277,31 @@ public class StoriesController {
             return year * 10000L + month * 100L + day;
         }
 
-        public SortedSet<Integer> getStoryDayGroup(MessageObject messageObject) {
-            return groupedByDay.get(day(messageObject));
-        }
-
-        public ArrayList<ArrayList<Integer>> getDays() {
+        protected ArrayList<ArrayList<Integer>> getDays() {
             final ArrayList<Long> keys = new ArrayList<>(groupedByDay.keySet());
             Collections.sort(keys, (a, b) -> (int) (b - a));
             final ArrayList<ArrayList<Integer>> days = new ArrayList<>();
+            if (type == TYPE_PINNED && !pinnedIds.isEmpty()) {
+                days.add(new ArrayList<>(pinnedIds));
+            }
             for (Long key : keys) {
                 TreeSet<Integer> storyIds = groupedByDay.get(key);
                 if (storyIds != null) {
-                    days.add(new ArrayList<>(storyIds));
+                    ArrayList<Integer> ids = new ArrayList<>(storyIds);
+                    if (type == TYPE_PINNED && !pinnedIds.isEmpty()) {
+                        for (int id : pinnedIds) {
+                            ids.remove((Object) id);
+                        }
+                    }
+                    if (!ids.isEmpty()) {
+                        days.add(ids);
+                    }
                 }
             }
             return days;
         }
 
-        public void invalidateCache() {
+        protected void invalidateCache() {
             if (preloading) {
                 invalidateAfterPreload = true;
                 return;
@@ -2550,21 +3327,24 @@ public class StoriesController {
 
         private boolean saving;
 
-        private void saveCache() {
+        protected void saveCache() {
             if (saving) {
                 return;
             }
             saving = true;
+
+            final ArrayList<MessageObject> toSave = new ArrayList<>();
+            final ArrayList<Integer> pinnedIds = new ArrayList<>(this.pinnedIds);
+            fill(toSave, true, true);
+
             final MessagesStorage storage = MessagesStorage.getInstance(currentAccount);
             storage.getStorageQueue().postRunnable(() -> {
                 SQLitePreparedStatement state = null;
-                ArrayList<MessageObject> toSave = new ArrayList<>();
-                fill(toSave, true, true);
                 FileLog.d("StoriesList " + type + "{"+ dialogId +"} saveCache {" + storyItemMessageIds(toSave) + "}");
                 try {
                     SQLiteDatabase database = storage.getDatabase();
                     database.executeFast(String.format(Locale.US, "DELETE FROM profile_stories WHERE dialog_id = %d AND type = %d", dialogId, type)).stepThis().dispose();
-                    state = database.executeFast("REPLACE INTO profile_stories VALUES(?, ?, ?, ?)");
+                    state = database.executeFast("REPLACE INTO profile_stories VALUES(?, ?, ?, ?, ?, ?)");
 
                     for (int i = 0; i < toSave.size(); ++i) {
                         MessageObject messageObject = toSave.get(i);
@@ -2581,6 +3361,8 @@ public class StoriesController {
                         state.bindInteger(2, storyItem.id);
                         state.bindByteBuffer(3, data);
                         state.bindInteger(4, type);
+                        state.bindInteger(5, seenStories.contains(storyItem.id) ? 1 : 0);
+                        state.bindInteger(6, 1 + pinnedIds.indexOf(storyItem.id));
                         state.step();
                         data.reuse();
                     }
@@ -2599,7 +3381,19 @@ public class StoriesController {
             });
         }
 
-        private boolean canLoad() {
+        protected boolean markAsRead(int storyId) {
+            if (seenStories.contains(storyId)) return false;
+            seenStories.add(storyId);
+            saveCache();
+            TL_stories.TL_stories_incrementStoryViews req = new TL_stories.TL_stories_incrementStoryViews();
+            req.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
+            req.id.add(storyId);
+            ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> {});
+            NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.storiesReadUpdated);
+            return true;
+        }
+
+        protected boolean canLoad() {
             if (lastLoadTime == null) {
                 return true;
             }
@@ -2611,18 +3405,58 @@ public class StoriesController {
             return System.currentTimeMillis() - time > 1000L * 60 * 2;
         }
 
-        private void resetCanLoad() {
+        protected void resetCanLoad() {
             if (lastLoadTime != null) {
                 lastLoadTime.remove(Objects.hash(currentAccount, type, dialogId));
             }
         }
 
         public boolean load(boolean force, final int count) {
+            return load(force, count, Collections.emptyList());
+        }
+
+        public boolean load(List<Integer> ids) {
+            boolean force = false;
+            for (Integer id : ids) {
+                if (!messageObjectsMap.containsKey(id)) {
+                    force = true;
+                    break;
+                }
+            }
+            return load(force, 0, ids);
+        }
+
+        public int lastLoadedId() {
+            if (loadedObjects.isEmpty())
+                return -1;
+            ArrayList<Integer> array = new ArrayList<>(loadedObjects);
+            for (int i = array.size() - 1; i >= 0; --i) {
+                final int id = array.get(i);
+                if (pinnedIds.contains(id)) continue;
+                return id;
+            }
+            return -1;
+        }
+
+        public int firstLoadedId() {
+            if (loadedObjects.isEmpty())
+                return -1;
+            ArrayList<Integer> array = new ArrayList<>(loadedObjects);
+            for (int i = 0; i < array.size(); ++i) {
+                final int id = array.get(i);
+                if (pinnedIds.contains(id)) continue;
+                return id;
+            }
+            return -1;
+        }
+
+        private int reqId = -1;
+        public boolean load(boolean force, final int count, List<Integer> ids) {
             if (loading || (done || error || !canLoad()) && !force) {
                 return false;
             }
             if (preloading) {
-                toLoad = i -> load(force, count);
+                toLoad = i -> load(force, count, ids);
                 return false;
             }
 
@@ -2631,39 +3465,43 @@ public class StoriesController {
             if (type == TYPE_PINNED) {
                 TL_stories.TL_stories_getPinnedStories req = new TL_stories.TL_stories_getPinnedStories();
                 req.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
-                if (!loadedObjects.isEmpty()) {
-                    req.offset_id = offset_id = loadedObjects.last();
-                } else {
-                    offset_id = -1;
-                }
+                req.offset_id = offset_id = lastLoadedId();
                 req.limit = count;
                 request = req;
+            } else if (type == TYPE_STATISTICS) {
+                TL_stories.TL_stories_getStoriesByID req = new TL_stories.TL_stories_getStoriesByID();
+                req.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
+                req.id.addAll(ids);
+                request = req;
+                offset_id = -1;
             } else {
                 TL_stories.TL_stories_getStoriesArchive req = new TL_stories.TL_stories_getStoriesArchive();
                 req.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
-                if (!loadedObjects.isEmpty()) {
-                    req.offset_id = offset_id = loadedObjects.last();
-                } else {
-                    offset_id = -1;
-                }
+                req.offset_id = offset_id = lastLoadedId();
                 req.limit = count;
                 request = req;
             }
             FileLog.d("StoriesList " + type + "{"+ dialogId +"} load");
 
             loading = true;
-            ConnectionsManager.getInstance(currentAccount).sendRequest(request, (response, err) -> {
+            reqId = ConnectionsManager.getInstance(currentAccount).sendRequest(request, (response, err) -> {
                 if (response instanceof TL_stories.TL_stories_stories) {
                     ArrayList<MessageObject> newMessageObjects = new ArrayList<>();
                     TL_stories.TL_stories_stories stories = (TL_stories.TL_stories_stories) response;
                     for (int i = 0; i < stories.stories.size(); ++i) {
                         TL_stories.StoryItem storyItem = stories.stories.get(i);
-                        newMessageObjects.add(toMessageObject(storyItem));
+                        newMessageObjects.add(toMessageObject(storyItem, stories));
                     }
                     AndroidUtilities.runOnUIThread(() -> {
+                        reqId = -1;
                         FileLog.d("StoriesList " + type + "{"+ dialogId +"} loaded {" + storyItemMessageIds(newMessageObjects) + "}");
 
+                        pinnedIds.clear();
+                        pinnedIds.addAll(stories.pinned_to_top);
+
                         MessagesController.getInstance(currentAccount).putUsers(stories.users, false);
+                        MessagesController.getInstance(currentAccount).putChats(stories.chats, false);
+                        MessagesStorage.getInstance(currentAccount).putUsersAndChats(stories.users, stories.chats, true, true);
                         loading = false;
 
                         totalCount = stories.count;
@@ -2672,8 +3510,8 @@ public class StoriesController {
                         }
                         done = loadedObjects.size() >= totalCount;
                         if (!done) {
-                            final int loadedFromId = offset_id == -1 ? loadedObjects.first() : offset_id;
-                            final int loadedToId = !loadedObjects.isEmpty() ? loadedObjects.last() : 0;
+                            final int loadedFromId = offset_id == -1 ? firstLoadedId() : offset_id;
+                            final int loadedToId = lastLoadedId();
                             Iterator<Integer> i = cachedObjects.iterator();
                             while (i.hasNext()) {
                                 int cachedId = i.next();
@@ -2717,17 +3555,21 @@ public class StoriesController {
             return true;
         }
 
-//        public void invalidate() {
-//            resetCanLoad();
-//            final int wasCount = messageObjects.size();
-//            messageObjectsMap.clear();
-//            loadedObjects.clear();
-//            cachedObjects.clear();
-//            invalidateCache();
-//            done = false;
-//            error = false;
-//            load(true, Utilities.clamp(wasCount, 50, 10));
-//        }
+        public void reload() {
+            if (reqId != -1) {
+                ConnectionsManager.getInstance(currentAccount).cancelRequest(reqId, true);
+                reqId = -1;
+            }
+            resetCanLoad();
+            final int wasCount = messageObjects.size();
+            messageObjectsMap.clear();
+            loadedObjects.clear();
+            cachedObjects.clear();
+            invalidateCache();
+            done = false;
+            error = false;
+            load(true, Utilities.clamp(wasCount, 50, 10));
+        }
 
         public void updateDeletedStories(List<TL_stories.StoryItem> storyItems) {
             FileLog.d("StoriesList " + type + "{"+ dialogId +"} updateDeletedStories {" + storyItemIds(storyItems) + "}");
@@ -2778,7 +3620,7 @@ public class StoriesController {
             }
         }
 
-        public void updateStories(List<TL_stories.StoryItem> storyItems) {
+        public void updateStories(List<TL_stories.StoryItem> storyItems, boolean force) {
             FileLog.d("StoriesList " + type + "{"+ dialogId +"} updateStories {" + storyItemIds(storyItems) + "}");
             if (storyItems == null) {
                 return;
@@ -2803,17 +3645,22 @@ public class StoriesController {
                             totalCount--;
                         }
                     } else {
-                        FileLog.d("StoriesList put story " + storyItem.id);
-                        pushObject(toMessageObject(storyItem), false);
-                        if (totalCount != -1) {
-                            totalCount++;
+                        if (done) {
+                            FileLog.d("StoriesList put story " + storyItem.id);
+                            pushObject(toMessageObject(storyItem, null), false);
+                            if (totalCount != -1) {
+                                totalCount++;
+                            }
+                        } else if (!loading) {
+                            FileLog.d("StoriesList cannot put story " + storyItem.id + " -> reload");
+                            reload();
                         }
                     }
                 } else if (contains && shouldContain) {
                     MessageObject messageObject = messageObjectsMap.get(storyItem.id);
-                    if (messageObject == null || !equal(messageObject.storyItem, storyItem)) {
+                    if (messageObject == null || force || !equal(messageObject.storyItem, storyItem)) {
                         FileLog.d("StoriesList update story " + storyItem.id);
-                        messageObjectsMap.put(storyItem.id, toMessageObject(storyItem));
+                        messageObjectsMap.put(storyItem.id, toMessageObject(storyItem, null));
                         changed = true;
                     }
                 }
@@ -2843,7 +3690,7 @@ public class StoriesController {
             );
         }
 
-        private MessageObject toMessageObject(TL_stories.StoryItem storyItem) {
+        private MessageObject toMessageObject(TL_stories.StoryItem storyItem, TL_stories.TL_stories_stories stories) {
             storyItem.dialogId = dialogId;
             storyItem.messageId = storyItem.id;
             MessageObject msg = new MessageObject(currentAccount, storyItem);
@@ -2875,6 +3722,86 @@ public class StoriesController {
                 return Math.max(messageObjects.size(), totalCount);
             } else {
                 return messageObjects.size();
+            }
+        }
+
+        public boolean isPinned(int storyId) {
+            if (type != TYPE_PINNED) return false;
+            return pinnedIds.contains(storyId);
+        }
+
+        public boolean updatePinned(ArrayList<Integer> ids, boolean pin) {
+            ArrayList<Integer> newPinnedOrder = new ArrayList<>(pinnedIds);
+            for (int i = ids.size() - 1; i >= 0; --i) {
+                int id = ids.get(i);
+                if (pin && !newPinnedOrder.contains(id))
+                    newPinnedOrder.add(0, id);
+                else if (!pin && newPinnedOrder.contains(id))
+                    newPinnedOrder.remove((Object) id);
+            }
+
+            final int limit = MessagesController.getInstance(currentAccount).storiesPinnedToTopCountMax;
+            boolean hitLimit = newPinnedOrder.size() > limit;
+            if (hitLimit) {
+                return true;
+//                newPinnedOrder.subList(limit, newPinnedOrder.size()).clear();
+            }
+
+            boolean changed = pinnedIds.size() != newPinnedOrder.size();
+            if (!changed) {
+                for (int i = 0; i < pinnedIds.size(); ++i) {
+                    if (pinnedIds.get(i) != newPinnedOrder.get(i)) {
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+
+            if (changed) {
+                pinnedIds.clear();
+                pinnedIds.addAll(newPinnedOrder);
+                fill(true);
+                TL_stories.TL_togglePinnedToTop req = new TL_stories.TL_togglePinnedToTop();
+                req.id.addAll(pinnedIds);
+                req.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
+                ConnectionsManager.getInstance(currentAccount).sendRequest(req, (res, err) -> AndroidUtilities.runOnUIThread(() -> {
+
+                }));
+            }
+
+            return hitLimit;
+        }
+
+        public void updatePinnedOrder(ArrayList<Integer> ids, boolean apply) {
+            ArrayList<Integer> newPinnedOrder = new ArrayList<>(ids);
+
+            final int limit = MessagesController.getInstance(currentAccount).storiesPinnedToTopCountMax;
+            boolean hitLimit = newPinnedOrder.size() > limit;
+            if (hitLimit) {
+                newPinnedOrder.subList(limit, newPinnedOrder.size()).clear();
+            }
+
+            boolean changed = pinnedIds.size() != newPinnedOrder.size();
+            if (!changed) {
+                for (int i = 0; i < pinnedIds.size(); ++i) {
+                    if (pinnedIds.get(i) != newPinnedOrder.get(i)) {
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+
+            pinnedIds.clear();
+            pinnedIds.addAll(newPinnedOrder);
+            fill(false);
+
+            if (apply) {
+                TL_stories.TL_togglePinnedToTop req = new TL_stories.TL_togglePinnedToTop();
+                req.id.addAll(pinnedIds);
+                req.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
+                ConnectionsManager.getInstance(currentAccount).sendRequest(req, (res, err) -> AndroidUtilities.runOnUIThread(() -> {
+
+                }));
             }
         }
     }
@@ -3050,7 +3977,7 @@ public class StoriesController {
         }));
     }
 
-    public boolean isBlocked(TL_stories.TL_storyView storyView) {
+    public boolean isBlocked(TL_stories.StoryView storyView) {
         if (storyView == null) {
             return false;
         }
@@ -3073,12 +4000,12 @@ public class StoriesController {
         return blocklist.contains(did);
     }
 
-    public void applyStoryViewsBlocked(TL_stories.TL_stories_storyViewsList res) {
+    public void applyStoryViewsBlocked(TL_stories.StoryViewsList res) {
         if (res == null || res.views == null) {
             return;
         }
         for (int i = 0; i < res.views.size(); ++i) {
-            TL_stories.TL_storyView view = res.views.get(i);
+            TL_stories.StoryView view = res.views.get(i);
             if (blockedOverride.containsKey(view.user_id)) {
                 blockedOverride.put(view.user_id, view.blocked_my_stories_from);
             }
@@ -3134,7 +4061,7 @@ public class StoriesController {
             MessagesController.getInstance(currentAccount).storyExpiringLimitDefault;
 
         if (getMyStoriesCount() >= countLimit) {
-            return new StoryLimit(StoryLimit.LIMIT_COUNT, 0);
+            return new StoryLimit(StoryLimit.LIMIT_COUNT, 0, 0);
         }
 
         if (storyLimitFetched) {
@@ -3147,6 +4074,10 @@ public class StoriesController {
             storyLimitFetched = true;
             if (res instanceof TLRPC.TL_boolTrue) {
                 storyLimitCached = null;
+                NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.storiesLimitUpdate);
+            } else if (res instanceof TL_stories.canSendStoryCount) {
+                final TL_stories.canSendStoryCount r = (TL_stories.canSendStoryCount) res;
+                storyLimitCached = new StoryLimit(StoryLimit.LIMIT_COUNT, r.count_remains, -1);
                 NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.storiesLimitUpdate);
             } else {
                 checkStoryError(err);
@@ -3168,32 +4099,32 @@ public class StoriesController {
                                 consumer.accept(false);
                                 return;
                             }
-                            BaseFragment lastFragment = LaunchActivity.getLastFragment();
-                            LimitReachedBottomSheet limitReachedBottomSheet = new LimitReachedBottomSheet(lastFragment, lastFragment.getContext(), LimitReachedBottomSheet.TYPE_BOOSTS_FOR_POSTING, currentAccount, resourcesProvider);
-                            limitReachedBottomSheet.setBoostsStats(boostsStatus, false);
-                            limitReachedBottomSheet.setDialogId(dialogId);
-                            if (canPostStories(dialogId)) {
-                                limitReachedBottomSheet.showStatisticButtonInLink(() -> {
-                                    TLRPC.Chat chat = MessagesController.getInstance(currentAccount).getChat(-dialogId);
-                                    Bundle args = new Bundle();
-                                    args.putLong("chat_id", -dialogId);
-                                    args.putBoolean("is_megagroup", chat.megagroup);
-                                    args.putBoolean("start_from_boosts", true);
-                                    args.putBoolean("only_boosts", true);
-                                    StatisticActivity fragment = new StatisticActivity(args);
-                                    BaseFragment lastFragment1 = LaunchActivity.getLastFragment();
-                                    if (lastFragment1 != null) {
-                                        if (StoryRecorder.isVisible()) {
-                                            BaseFragment.BottomSheetParams params = new BaseFragment.BottomSheetParams();
-                                            params.transitionFromLeft = true;
-                                            lastFragment1.showAsSheet(fragment, params);
-                                        } else {
-                                            lastFragment1.presentFragment(fragment);
+                            messagesController.getBoostsController().userCanBoostChannel(dialogId, boostsStatus, canApplyBoost -> {
+                                if (canApplyBoost == null) {
+                                    consumer.accept(false);
+                                    return;
+                                }
+                                BaseFragment lastFragment = LaunchActivity.getLastFragment();
+                                Runnable runnable = null;
+                                if (canPostStories(dialogId)) {
+                                    runnable = () -> {
+                                        TLRPC.Chat chat = MessagesController.getInstance(currentAccount).getChat(-dialogId);
+                                        BaseFragment fragment = StatisticActivity.create(chat);
+                                        BaseFragment lastFragment1 = LaunchActivity.getLastFragment();
+                                        if (lastFragment1 != null) {
+                                            if (StoryRecorder.isVisible()) {
+                                                BaseFragment.BottomSheetParams params = new BaseFragment.BottomSheetParams();
+                                                params.transitionFromLeft = true;
+                                                lastFragment1.showAsSheet(fragment, params);
+                                            } else {
+                                                lastFragment1.presentFragment(fragment);
+                                            }
                                         }
-                                    }
-                                });
-                            }
-                            limitReachedBottomSheet.show();
+                                    };
+                                }
+                                LimitReachedBottomSheet.openBoostsForPostingStories(lastFragment, dialogId, canApplyBoost, boostsStatus, runnable);
+                                consumer.accept(false);
+                            });
                             consumer.accept(false);
                         });
                     } else {
@@ -3220,17 +4151,17 @@ public class StoriesController {
                 try {
                     until = Long.parseLong(err.text.substring("STORY_SEND_FLOOD_WEEKLY_".length()));
                 } catch (Exception ignore) {}
-                storyLimitCached = new StoryLimit(StoryLimit.LIMIT_WEEK, until);
+                storyLimitCached = new StoryLimit(StoryLimit.LIMIT_WEEK, 0, until);
                 limitUpdate = true;
             } else if (err.text.startsWith("STORY_SEND_FLOOD_MONTHLY_")) {
                 long until = 0;
                 try {
                     until = Long.parseLong(err.text.substring("STORY_SEND_FLOOD_MONTHLY_".length()));
                 } catch (Exception ignore) {}
-                storyLimitCached = new StoryLimit(StoryLimit.LIMIT_MONTH, until);
+                storyLimitCached = new StoryLimit(StoryLimit.LIMIT_MONTH, 0, until);
                 limitUpdate = true;
             } else if (err.text.equals("STORIES_TOO_MUCH")) {
-                storyLimitCached = new StoryLimit(StoryLimit.LIMIT_COUNT, 0);
+                storyLimitCached = new StoryLimit(StoryLimit.LIMIT_COUNT, 0, 0);
                 limitUpdate = true;
             } else if (err.text.equals("PREMIUM_ACCOUNT_REQUIRED")) {
                 MessagesController mc = MessagesController.getInstance(currentAccount);
@@ -3252,6 +4183,11 @@ public class StoriesController {
         return storyLimit != null && storyLimit.active(currentAccount);
     }
 
+    public boolean hasStoryLimit(int count) {
+        StoryLimit storyLimit = checkStoryLimit();
+        return storyLimit != null && storyLimit.active(currentAccount, count);
+    }
+
     public void invalidateStoryLimit() {
         storyLimitFetched = false;
         storyLimitCached = null;
@@ -3263,12 +4199,14 @@ public class StoriesController {
         public static final int LIMIT_WEEK = 2;
         public static final int LIMIT_MONTH = 3;
 
+        public int remains_count;
         public int type;
         public long until;
 
-        public StoryLimit(int type, long until) {
+        public StoryLimit(int type, int remains_count, long until) {
             this.type = type;
             this.until = until;
+            this.remains_count = remains_count;
         }
 
         public int getLimitReachedType() {
@@ -3284,11 +4222,16 @@ public class StoriesController {
         }
 
         public boolean active(int currentAccount) {
+            return active(currentAccount, 1);
+        }
+
+        public boolean active(int currentAccount, int count) {
             switch (type) {
                 case LIMIT_WEEK:
                 case LIMIT_MONTH:
                     return ConnectionsManager.getInstance(currentAccount).getCurrentTime() < until;
                 case LIMIT_COUNT:
+                    return remains_count < count;
                 default:
                     return true;
             }
@@ -3341,10 +4284,15 @@ public class StoriesController {
     public boolean canPostStories(long dialogId) {
         if (dialogId < 0) {
             TLRPC.Chat chat = MessagesController.getInstance(currentAccount).getChat(-dialogId);
-            if (chat == null || !ChatObject.isChannelAndNotMegaGroup(chat)) {
+            if (chat == null || !ChatObject.isBoostSupported(chat)) {
                 return false;
             }
             return chat.creator || chat.admin_rights != null && chat.admin_rights.post_stories;
+        } else if (dialogId > 0) {
+            TLRPC.User user = MessagesController.getInstance(currentAccount).getUser(dialogId);
+            if (user != null && user.bot && user.bot_can_edit) {
+                return true;
+            }
         }
         return false;
     }
@@ -3355,6 +4303,12 @@ public class StoriesController {
         }
         if (storyItem.dialogId == getSelfUserId()) {
             return false;
+        }
+        if (storyItem.dialogId > 0) {
+            TLRPC.User user = MessagesController.getInstance(currentAccount).getUser(storyItem.dialogId);
+            if (user != null && user.bot && user.bot_can_edit) {
+                return true;
+            }
         }
         if (storyItem.dialogId < 0) {
             TLRPC.Chat chat = MessagesController.getInstance(currentAccount).getChat(-storyItem.dialogId);
@@ -3380,6 +4334,12 @@ public class StoriesController {
         }
         if (storyItem.dialogId == getSelfUserId()) {
             return false;
+        }
+        if (storyItem.dialogId > 0) {
+            TLRPC.User user = MessagesController.getInstance(currentAccount).getUser(storyItem.dialogId);
+            if (user != null && user.bot && user.bot_can_edit) {
+                return true;
+            }
         }
         if (storyItem.dialogId < 0) {
             TLRPC.Chat chat = MessagesController.getInstance(currentAccount).getChat(-storyItem.dialogId);

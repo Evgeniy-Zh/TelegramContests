@@ -1,5 +1,7 @@
 package org.telegram.ui.Components.Paint.Views;
 
+import static org.telegram.messenger.AndroidUtilities.dp;
+
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
@@ -7,6 +9,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
@@ -14,6 +17,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.SweepGradient;
 import android.graphics.drawable.GradientDrawable;
@@ -23,7 +27,7 @@ import android.text.Layout;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.TextUtils;
-import android.util.Log;
+import android.util.Pair;
 import android.util.SparseArray;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -31,6 +35,7 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.WindowManager;
 import android.view.animation.OvershootInterpolator;
 import android.widget.FrameLayout;
@@ -71,9 +76,12 @@ import org.telegram.ui.ActionBar.AdjustPanLayoutHelper;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.BubbleActivity;
+import org.telegram.ui.ChatActivity;
 import org.telegram.ui.Components.AnimatedEmojiDrawable;
 import org.telegram.ui.Components.AnimatedEmojiSpan;
+import org.telegram.ui.Components.AnimatedFloat;
 import org.telegram.ui.Components.ChatActivityEnterViewAnimatedIconView;
+import org.telegram.ui.Components.ChatAttachAlert;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.EmojiView;
 import org.telegram.ui.Components.IPhotoPaintView;
@@ -92,13 +100,15 @@ import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.Size;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
 import org.telegram.ui.Components.SizeNotifierFrameLayoutPhoto;
-import org.telegram.ui.Components.StickerMasksAlert;
+import org.telegram.ui.Components.ThanosEffect;
 import org.telegram.ui.PhotoViewer;
 import org.telegram.ui.Stories.recorder.EmojiBottomSheet;
 
+import java.io.File;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPhotoPaintView, PaintToolsView.Delegate, EntityView.EntityViewDelegate, PaintTextOptionsView.Delegate, SizeNotifierFrameLayout.SizeNotifierFrameLayoutDelegate, NotificationCenter.NotificationCenterDelegate {
@@ -128,7 +138,8 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
     private RenderView renderView;
     private View renderInputView;
     private FrameLayout selectionContainerView;
-    private EntitiesContainerView entitiesView;
+    public EntitiesContainerView entitiesView;
+    private ThanosEffect thanosEffect;
     private FrameLayout topLayout;
     public FrameLayout bottomLayout;
     public FrameLayout overlayLayout;
@@ -234,8 +245,6 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                 return -9539985;
             } else if (key == Theme.key_chat_emojiPanelIcon) {
                 return -9539985;
-//                } else if (key == Theme.key_chat_emojiPanelIconSelected) {
-//                    return -10177041;
             } else if (key == Theme.key_windowBackgroundWhiteBlackText) {
                 return -1;
             } else if (key == Theme.key_featuredStickers_addedIcon) {
@@ -256,6 +265,16 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                 return 0x2E878787;
             } else if (key == Theme.key_windowBackgroundGray) {
                 return 0xFF0D0D0D;
+            } else if (key == Theme.key_fastScrollInactive) {
+                return -12500671;
+            } else if (key == Theme.key_fastScrollActive) {
+                return -13133079;
+            } else if (key == Theme.key_fastScrollText) {
+                return 0xffffffff;
+            } else if (key == Theme.key_windowBackgroundWhite) {
+                return -15198183;
+            } else if (key == Theme.key_divider) {
+                return 0xFF000000;
             }
 
             if (resourcesProvider != null) {
@@ -387,7 +406,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
 
             {
                 setWillNotDraw(false);
-                linePaint.setStrokeWidth(AndroidUtilities.dp(2));
+                linePaint.setStrokeWidth(dp(2));
                 linePaint.setStyle(Paint.Style.STROKE);
                 linePaint.setColor(Color.WHITE);
             }
@@ -440,7 +459,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
             for (int a = 0, N = entities.size(); a < N; a++) {
                 VideoEditedInfo.MediaEntity entity = entities.get(a);
                 EntityView view;
-                if (entity.type == 0) {
+                if (entity.type == VideoEditedInfo.MediaEntity.TYPE_STICKER) {
                     StickerView stickerView = createSticker(entity.parentObject, entity.document, false);
                     if ((entity.subType & 2) != 0) {
                         stickerView.mirror();
@@ -449,7 +468,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                     ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
                     layoutParams.width = entity.viewWidth;
                     layoutParams.height = entity.viewHeight;
-                } else if (entity.type == 1) {
+                } else if (entity.type == VideoEditedInfo.MediaEntity.TYPE_TEXT) {
                     TextPaintView textPaintView = createText(false);
                     textPaintView.setType(entity.subType);
                     textPaintView.setTypeface(entity.textTypeface);
@@ -459,7 +478,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                         text.setSpan(new AnimatedEmojiSpan(e.document_id, textPaintView.getFontMetricsInt()), e.offset, e.offset + e.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                     }
                     CharSequence charSequence = text;
-                    charSequence = Emoji.replaceEmoji(charSequence, textPaintView.getFontMetricsInt(), (int) (textPaintView.getFontSize() * .8f), false);
+                    charSequence = Emoji.replaceEmoji(charSequence, textPaintView.getFontMetricsInt(), false);
                     if (charSequence instanceof Spanned) {
                         Emoji.EmojiSpan[] spans = ((Spanned) charSequence).getSpans(0, charSequence.length(), Emoji.EmojiSpan.class);
                         if (spans != null) {
@@ -474,6 +493,19 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                     swatch.color = entity.color;
                     textPaintView.setSwatch(swatch);
                     view = textPaintView;
+                } else if (entity.type == VideoEditedInfo.MediaEntity.TYPE_PHOTO) {
+                    PhotoView photoView = createPhoto(entity.text, false);
+                    photoView.preloadSegmented(entity.segmentedPath);
+                    if ((entity.subType & 2) != 0) {
+                        photoView.mirror();
+                    }
+                    if ((entity.subType & 16) != 0) {
+                        photoView.toggleSegmented(false);
+                    }
+                    view = photoView;
+                    ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+                    layoutParams.width = entity.viewWidth;
+                    layoutParams.height = entity.viewHeight;
                 } else {
                     continue;
                 }
@@ -496,13 +528,13 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         addView(selectionContainerView);
 
         topLayout = new FrameLayout(context);
-        topLayout.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(12), AndroidUtilities.dp(12), AndroidUtilities.dp(12));
-        topLayout.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int [] {0xff000000, 0x00000000} ));
+        topLayout.setPadding(dp(12), dp(12), dp(12), dp(12));
+        topLayout.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xff000000, 0x00000000}));
         addView(topLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP));
 
         undoButton = new ImageView(context);
         undoButton.setImageResource(R.drawable.photo_undo2);
-        undoButton.setPadding(AndroidUtilities.dp(3), AndroidUtilities.dp(3), AndroidUtilities.dp(3), AndroidUtilities.dp(3));
+        undoButton.setPadding(dp(3), dp(3), dp(3), dp(3));
         undoButton.setBackground(Theme.createSelectorDrawable(Theme.ACTION_BAR_WHITE_SELECTOR_COLOR));
         undoButton.setOnClickListener(v -> {
             if (renderView != null && renderView.getCurrentBrush() instanceof Brush.Shape) {
@@ -520,10 +552,10 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         zoomOutButton = new LinearLayout(context);
         zoomOutButton.setOrientation(LinearLayout.HORIZONTAL);
         zoomOutButton.setBackground(Theme.createSelectorDrawable(0x30ffffff, Theme.RIPPLE_MASK_ROUNDRECT_6DP));
-        zoomOutButton.setPadding(AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8), 0);
+        zoomOutButton.setPadding(dp(8), 0, dp(8), 0);
         zoomOutText = new TextView(context);
         zoomOutText.setTextColor(Color.WHITE);
-        zoomOutText.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_MEDIUM));
+        zoomOutText.setTypeface(AndroidUtilities.bold());
         zoomOutText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
         zoomOutText.setText(LocaleController.getString(R.string.PhotoEditorZoomOut));
         zoomOutImage = new ImageView(context);
@@ -538,11 +570,11 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
 
         undoAllButton = new TextView(context);
         undoAllButton.setBackground(Theme.createSelectorDrawable(0x30ffffff, Theme.RIPPLE_MASK_ROUNDRECT_6DP));
-        undoAllButton.setPadding(AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8), 0);
+        undoAllButton.setPadding(dp(8), 0, dp(8), 0);
         undoAllButton.setText(LocaleController.getString(R.string.PhotoEditorClearAll));
         undoAllButton.setGravity(Gravity.CENTER_VERTICAL);
         undoAllButton.setTextColor(Color.WHITE);
-        undoAllButton.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_MEDIUM));
+        undoAllButton.setTypeface(AndroidUtilities.bold());
         undoAllButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
         undoAllButton.setOnClickListener(v -> {
             if (!undoStore.canUndo()) {
@@ -563,10 +595,10 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         cancelTextButton = new TextView(context);
         cancelTextButton.setBackground(Theme.createSelectorDrawable(0x30ffffff, Theme.RIPPLE_MASK_ROUNDRECT_6DP));
         cancelTextButton.setText(LocaleController.getString(R.string.Clear));
-        cancelTextButton.setPadding(AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8), 0);
+        cancelTextButton.setPadding(dp(8), 0, dp(8), 0);
         cancelTextButton.setGravity(Gravity.CENTER_VERTICAL);
         cancelTextButton.setTextColor(Color.WHITE);
-        cancelTextButton.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_MEDIUM));
+        cancelTextButton.setTypeface(AndroidUtilities.bold());
         cancelTextButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
         cancelTextButton.setOnClickListener(v -> {
             if (currentEntityView instanceof TextPaintView) {
@@ -585,10 +617,10 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         doneTextButton = new TextView(context);
         doneTextButton.setBackground(Theme.createSelectorDrawable(0x30ffffff, Theme.RIPPLE_MASK_ROUNDRECT_6DP));
         doneTextButton.setText(LocaleController.getString(R.string.Done));
-        doneTextButton.setPadding(AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8), 0);
+        doneTextButton.setPadding(dp(8), 0, dp(8), 0);
         doneTextButton.setGravity(Gravity.CENTER_VERTICAL);
         doneTextButton.setTextColor(Color.WHITE);
-        doneTextButton.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_MEDIUM));
+        doneTextButton.setTypeface(AndroidUtilities.bold());
         doneTextButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
         doneTextButton.setOnClickListener(v -> {
             selectEntity(null);
@@ -604,7 +636,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
             {
                 setWillNotDraw(false);
                 colorPickerRainbowPaint.setStyle(Paint.Style.STROKE);
-                colorPickerRainbowPaint.setStrokeWidth(AndroidUtilities.dp(2));
+                colorPickerRainbowPaint.setStrokeWidth(dp(2));
             }
 
             private void checkRainbow(float cx, float cy) {
@@ -640,12 +672,12 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
 
                 ViewGroup barView = getBarView();
                 AndroidUtilities.rectTmp.set(
-                    AndroidUtilities.lerp(barView.getLeft(), colorsListView.getLeft(), toolsTransformProgress),
-                    AndroidUtilities.lerp(barView.getTop(), colorsListView.getTop(), toolsTransformProgress),
-                    AndroidUtilities.lerp(barView.getRight(), colorsListView.getRight(), toolsTransformProgress),
-                    AndroidUtilities.lerp(barView.getBottom(), colorsListView.getBottom(), toolsTransformProgress)
+                        AndroidUtilities.lerp(barView.getLeft(), colorsListView.getLeft(), toolsTransformProgress),
+                        AndroidUtilities.lerp(barView.getTop(), colorsListView.getTop(), toolsTransformProgress),
+                        AndroidUtilities.lerp(barView.getRight(), colorsListView.getRight(), toolsTransformProgress),
+                        AndroidUtilities.lerp(barView.getBottom(), colorsListView.getBottom(), toolsTransformProgress)
                 );
-                final float radius = AndroidUtilities.lerp(AndroidUtilities.dp(32), AndroidUtilities.dp(24), toolsTransformProgress);
+                final float radius = AndroidUtilities.lerp(dp(32), dp(24), toolsTransformProgress);
                 canvas.drawRoundRect(AndroidUtilities.rectTmp, radius, radius, toolsPaint);
 
                 if (barView != null && barView.getChildCount() >= 1 && toolsTransformProgress != 1f) {
@@ -684,10 +716,10 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                         }
                         checkRainbow(cx, cy);
 
-                        float rad = Math.min(childWidth, childHeight) / 2f - AndroidUtilities.dp(0.5f);
+                        float rad = Math.min(childWidth, childHeight) / 2f - dp(0.5f);
                         if (colorsListView != null && colorsListView.getChildCount() > 0) {
                             View animateToView = colorsListView.getChildAt(0);
-                            rad = AndroidUtilities.lerp(rad, Math.min(animateToView.getWidth() - animateToView.getPaddingLeft() - animateToView.getPaddingRight(), animateToView.getHeight() - animateToView.getPaddingTop() - animateToView.getPaddingBottom()) / 2f - AndroidUtilities.dp(2f), toolsTransformProgress);
+                            rad = AndroidUtilities.lerp(rad, Math.min(animateToView.getWidth() - animateToView.getPaddingLeft() - animateToView.getPaddingRight(), animateToView.getHeight() - animateToView.getPaddingTop() - animateToView.getPaddingBottom()) / 2f - dp(2f), toolsTransformProgress);
                         }
                         AndroidUtilities.rectTmp.set(cx - rad, cy - rad, cx + rad, cy + rad);
                         canvas.drawArc(AndroidUtilities.rectTmp, 0, 360, false, colorPickerRainbowPaint);
@@ -697,15 +729,15 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                         colorSwatchOutlinePaint.setColor(colorCircle);
                         colorSwatchOutlinePaint.setAlpha((int) (0xFF * child.getAlpha()));
 
-                        float rad2 = rad - AndroidUtilities.dp(3f);
+                        float rad2 = rad - dp(3f);
                         if (colorsListView != null && colorsListView.getSelectedColorIndex() != 0) {
-                            rad2 = AndroidUtilities.lerp(rad - AndroidUtilities.dp(3f), rad + AndroidUtilities.dp(2), toolsTransformProgress);
+                            rad2 = AndroidUtilities.lerp(rad - dp(3f), rad + dp(2), toolsTransformProgress);
                         }
                         PaintColorsListView.drawColorCircle(canvas, cx, cy, rad2, colorSwatchPaint.getColor());
 
                         if (colorsListView != null && colorsListView.getSelectedColorIndex() == 0) {
                             colorSwatchOutlinePaint.setAlpha((int) (colorSwatchOutlinePaint.getAlpha() * toolsTransformProgress * child.getAlpha()));
-                            canvas.drawCircle(cx, cy, rad - (AndroidUtilities.dp(3f) + colorSwatchOutlinePaint.getStrokeWidth()) * (1f - toolsTransformProgress), colorSwatchOutlinePaint);
+                            canvas.drawCircle(cx, cy, rad - (dp(3f) + colorSwatchOutlinePaint.getStrokeWidth()) * (1f - toolsTransformProgress), colorSwatchOutlinePaint);
                         }
                     }
 
@@ -713,19 +745,19 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                 }
             }
         };
-        bottomLayout.setPadding(AndroidUtilities.dp(8), AndroidUtilities.dp(8), AndroidUtilities.dp(8), 0);
-        bottomLayout.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int [] {0x00000000, 0x80000000} ));
+        bottomLayout.setPadding(dp(8), dp(8), dp(8), 0);
+        bottomLayout.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x00000000, 0x80000000}));
         addView(bottomLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 44 + 60, Gravity.BOTTOM));
 
         paintToolsView = new PaintToolsView(context, originalBitmap != null);
-        paintToolsView.setPadding(AndroidUtilities.dp(16), 0, AndroidUtilities.dp(16), 0);
+        paintToolsView.setPadding(dp(16), 0, dp(16), 0);
         paintToolsView.setDelegate(this);
 //        paintToolsView.setSelectedIndex(MathUtils.clamp(palette.getCurrentBrush(), 0, Brush.BRUSHES_LIST.size()) + 1);
         paintToolsView.setSelectedIndex(1);
         bottomLayout.addView(paintToolsView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48));
 
         textOptionsView = new PaintTextOptionsView(context);
-        textOptionsView.setPadding(AndroidUtilities.dp(16), 0, AndroidUtilities.dp(16), 0);
+        textOptionsView.setPadding(dp(16), 0, dp(16), 0);
         textOptionsView.setVisibility(GONE);
         textOptionsView.setDelegate(this);
         textOptionsView.setAlignment(PersistColorPalette.getInstance(currentAccount).getCurrentAlignment());
@@ -757,7 +789,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                         AndroidUtilities.lerp(yOffset + AndroidUtilities.rectTmp.top, typefaceListView.getTop() - typefaceListView.getTranslationY(), typefaceMenuTransformProgress),
                         AndroidUtilities.lerp(AndroidUtilities.rectTmp.right, typefaceListView.getRight(), typefaceMenuTransformProgress),
                         AndroidUtilities.lerp(yOffset + AndroidUtilities.rectTmp.bottom, typefaceListView.getBottom() - typefaceListView.getTranslationY(), typefaceMenuTransformProgress));
-                float rad = AndroidUtilities.dp(AndroidUtilities.lerp(32, 16, typefaceMenuTransformProgress));
+                float rad = dp(AndroidUtilities.lerp(32, 16, typefaceMenuTransformProgress));
 
                 int alpha = typefaceMenuBackgroundPaint.getAlpha();
                 typefaceMenuBackgroundPaint.setAlpha((int) (alpha * typefaceMenuTransformProgress));
@@ -782,7 +814,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
 
         typefaceMenuOutlinePaint.setStyle(Paint.Style.STROKE);
         typefaceMenuOutlinePaint.setColor(0x66FFFFFF);
-        typefaceMenuOutlinePaint.setStrokeWidth(Math.max(2, AndroidUtilities.dp(1)));
+        typefaceMenuOutlinePaint.setStrokeWidth(Math.max(2, dp(1)));
 
         typefaceMenuBackgroundPaint.setColor(getThemedColor(Theme.key_actionBarDefaultSubmenuBackground));
 
@@ -793,14 +825,14 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
             public void draw(Canvas c) {
                 ViewGroup barView = getBarView();
                 AndroidUtilities.rectTmp.set(
-                    AndroidUtilities.lerp(barView.getLeft() - getLeft(), 0, toolsTransformProgress),
-                    AndroidUtilities.lerp(barView.getTop() - getTop(), 0, toolsTransformProgress),
-                    AndroidUtilities.lerp(barView.getRight() - getLeft(), getWidth(), toolsTransformProgress),
-                    AndroidUtilities.lerp(barView.getBottom() - getTop(), getHeight(), toolsTransformProgress)
+                        AndroidUtilities.lerp(barView.getLeft() - getLeft(), 0, toolsTransformProgress),
+                        AndroidUtilities.lerp(barView.getTop() - getTop(), 0, toolsTransformProgress),
+                        AndroidUtilities.lerp(barView.getRight() - getLeft(), getWidth(), toolsTransformProgress),
+                        AndroidUtilities.lerp(barView.getBottom() - getTop(), getHeight(), toolsTransformProgress)
                 );
 
                 path.rewind();
-                path.addRoundRect(AndroidUtilities.rectTmp, AndroidUtilities.dp(32), AndroidUtilities.dp(32), Path.Direction.CW);
+                path.addRoundRect(AndroidUtilities.rectTmp, dp(32), dp(32), Path.Direction.CW);
 
                 c.save();
                 c.clipPath(path);
@@ -819,12 +851,12 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         setupTabsLayout(context);
 
         cancelButton = new PaintCancelView(context);
-        cancelButton.setPadding(AndroidUtilities.dp(8), AndroidUtilities.dp(8), AndroidUtilities.dp(8), AndroidUtilities.dp(8));
+        cancelButton.setPadding(dp(8), dp(8), dp(8), dp(8));
         cancelButton.setBackground(Theme.createSelectorDrawable(Theme.ACTION_BAR_WHITE_SELECTOR_COLOR));
         bottomLayout.addView(cancelButton, LayoutHelper.createFrame(32, 32, Gravity.BOTTOM | Gravity.LEFT, 12, 0, 0, 4));
 
         doneButton = new PaintDoneView(context);
-        doneButton.setPadding(AndroidUtilities.dp(8), AndroidUtilities.dp(8), AndroidUtilities.dp(8), AndroidUtilities.dp(8));
+        doneButton.setPadding(dp(8), dp(8), dp(8), dp(8));
         doneButton.setBackground(Theme.createSelectorDrawable(Theme.ACTION_BAR_WHITE_SELECTOR_COLOR));
         doneButton.setOnClickListener(v -> {
             if (isColorListShown) {
@@ -903,7 +935,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         weightChooserView.setRenderView(renderView);
         weightChooserView.setValueOverride(weightDefaultValueOverride);
         colorSwatch.brushWeight = weightDefaultValueOverride.get();
-        weightChooserView.setOnUpdate(()-> {
+        weightChooserView.setOnUpdate(() -> {
             setCurrentSwatch(colorSwatch, true);
             PersistColorPalette.getInstance(currentAccount).setCurrentWeight(colorSwatch.brushWeight);
         });
@@ -913,7 +945,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         addView(pipetteContainerLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         colorSwatchOutlinePaint.setStyle(Paint.Style.STROKE);
-        colorSwatchOutlinePaint.setStrokeWidth(AndroidUtilities.dp(2));
+        colorSwatchOutlinePaint.setStrokeWidth(dp(2));
 
         setCurrentSwatch(colorSwatch, true);
 //        onBrushSelected(Brush.BRUSHES_LIST.get(MathUtils.clamp(palette.getCurrentBrush(), 0, Brush.BRUSHES_LIST.size())));
@@ -921,8 +953,16 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         updateColors();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            setSystemGestureExclusionRects(Arrays.asList(new Rect(0, (int) (AndroidUtilities.displaySize.y * .35f), AndroidUtilities.dp(100), (int) (AndroidUtilities.displaySize.y * .65))));
+            setSystemGestureExclusionRects(Arrays.asList(new Rect(0, (int) (AndroidUtilities.displaySize.y * .35f), dp(100), (int) (AndroidUtilities.displaySize.y * .65))));
         }
+    }
+
+    private boolean drawShadow;
+
+    public void setDrawShadow(boolean drawShadow) {
+        this.drawShadow = drawShadow;
+        invalidate();
+        setClipChildren(!drawShadow);
     }
 
     private void setNewColor(int color) {
@@ -1153,10 +1193,29 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         return changed;
     }
 
+    private final AnimatedFloat shadowAlpha = new AnimatedFloat(this, 350, CubicBezierInterpolator.EASE_OUT_QUINT);
+    private final Paint shadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint clearPaint = new Paint(Paint.ANTI_ALIAS_FLAG); {
+        clearPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+    }
+
     @Override
     protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
         boolean restore = false;
-        if ((child == renderView || child == renderInputView || child == entitiesView || child == selectionContainerView) && currentCropState != null) {
+        if (child == entitiesView) {
+            float shadowAlpha = this.shadowAlpha.set(LPhotoPaintView.this.drawShadow);
+            if (shadowAlpha > 0) {
+                shadowPaint.setShadowLayer(dp(24 * shadowAlpha), 0, 0, Theme.multAlpha(0x40FFFFFF, shadowAlpha));
+                shadowPaint.setColor(0);
+                canvas.saveLayerAlpha(0, 0, getWidth(), getHeight(), 0xFF, Canvas.ALL_SAVE_FLAG);
+                canvas.translate(entitiesView.getX(), entitiesView.getY());
+                canvas.scale(entitiesView.getScaleX(), entitiesView.getScaleY(), entitiesView.getWidth() / 2f, entitiesView.getHeight() / 2f);
+                canvas.drawRect(0, 0, entitiesView.getWidth(), entitiesView.getHeight(), shadowPaint);
+                canvas.drawRect(0, 0, entitiesView.getWidth(), entitiesView.getHeight(), clearPaint);
+                canvas.restore();
+            }
+        }
+        if ((child == renderView || child == renderInputView || child == entitiesView && entitiesView.getClipChildren() || child == selectionContainerView && selectionContainerView.getClipChildren()) && currentCropState != null) {
             canvas.save();
 
             int status = (Build.VERSION.SDK_INT >= 21 && !inBubbleMode ? AndroidUtilities.statusBarHeight : 0);
@@ -1175,7 +1234,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
             int w = (int) (vw * currentCropState.cropPw * child.getScaleX() / currentCropState.cropScale);
             int h = (int) (vh * currentCropState.cropPh * child.getScaleY() / currentCropState.cropScale);
             float x = (float) Math.ceil((getMeasuredWidth() - w) / 2f) + transformX;
-            float y = (getMeasuredHeight() - emojiPadding - actionBarHeight2 - AndroidUtilities.dp(48) + getAdditionalBottom() - h) / 2f + AndroidUtilities.dp(8) + status + transformY;
+            float y = (getMeasuredHeight() - emojiPadding - actionBarHeight2 - dp(48) + getAdditionalBottom() - h) / 2f + dp(8) + status + transformY;
 
             canvas.clipRect(Math.max(0, x), Math.max(0, y), Math.min(x + w, getMeasuredWidth()), Math.min(getMeasuredHeight(), y + h));
             restore = true;
@@ -1196,7 +1255,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
             Paint linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
             {
-                linePaint.setStrokeWidth(AndroidUtilities.dp(2));
+                linePaint.setStrokeWidth(dp(2));
                 linePaint.setStyle(Paint.Style.STROKE);
                 linePaint.setStrokeCap(Paint.Cap.ROUND);
 
@@ -1210,7 +1269,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                 TextView selectedTab = (TextView) getChildAt(tabsSelectedIndex);
                 TextView newSelectedTab = tabsNewSelectedIndex != -1 ? (TextView) getChildAt(tabsNewSelectedIndex) : null;
                 linePaint.setColor(selectedTab.getCurrentTextColor());
-                float y = selectedTab.getY() + selectedTab.getHeight() - selectedTab.getPaddingBottom() + AndroidUtilities.dp(3);
+                float y = selectedTab.getY() + selectedTab.getHeight() - selectedTab.getPaddingBottom() + dp(3);
                 Layout layout = selectedTab.getLayout();
                 Layout newLayout = newSelectedTab != null ? newSelectedTab.getLayout() : null;
                 float pr = newLayout == null ? 0 : CubicBezierInterpolator.DEFAULT.getInterpolation(tabsSelectionProgress);
@@ -1226,11 +1285,11 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         drawTab = new TextView(context);
         drawTab.setText(LocaleController.getString(R.string.PhotoEditorDraw).toUpperCase());
         drawTab.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ROUNDRECT_6DP));
-        drawTab.setPadding(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8));
+        drawTab.setPadding(0, dp(8), 0, dp(8));
         drawTab.setTextColor(Color.WHITE);
         drawTab.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
         drawTab.setGravity(Gravity.CENTER_HORIZONTAL);
-        drawTab.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_MEDIUM));
+        drawTab.setTypeface(AndroidUtilities.bold());
         drawTab.setSingleLine();
         drawTab.setOnClickListener(v -> {
             if (editingText) {
@@ -1244,12 +1303,12 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         stickerTab = new TextView(context);
         stickerTab.setText(LocaleController.getString(R.string.PhotoEditorSticker).toUpperCase());
         stickerTab.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ROUNDRECT_6DP));
-        stickerTab.setPadding(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8));
+        stickerTab.setPadding(0, dp(8), 0, dp(8));
         stickerTab.setOnClickListener(v -> openStickersView());
         stickerTab.setTextColor(Color.WHITE);
         stickerTab.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
         stickerTab.setGravity(Gravity.CENTER_HORIZONTAL);
-        stickerTab.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_MEDIUM));
+        stickerTab.setTypeface(AndroidUtilities.bold());
         stickerTab.setAlpha(0.6f);
         stickerTab.setSingleLine();
         tabsLayout.addView(stickerTab, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
@@ -1257,11 +1316,11 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         textTab = new TextView(context);
         textTab.setText(LocaleController.getString(R.string.PhotoEditorText).toUpperCase());
         textTab.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ROUNDRECT_6DP));
-        textTab.setPadding(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8));
+        textTab.setPadding(0, dp(8), 0, dp(8));
         textTab.setTextColor(Color.WHITE);
         textTab.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
         textTab.setGravity(Gravity.CENTER_HORIZONTAL);
-        textTab.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_MEDIUM));
+        textTab.setTypeface(AndroidUtilities.bold());
         textTab.setAlpha(0.6f);
         textTab.setSingleLine();
         textTab.setOnClickListener(v -> {
@@ -1314,13 +1373,13 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                 float scale = 0.6f + 0.4f * (1f - pr);
                 view.setScaleX(scale);
                 view.setScaleY(scale);
-                view.setTranslationY(AndroidUtilities.dp(16) * Math.min(pr, 0.25f) / 0.25f);
+                view.setTranslationY(dp(16) * Math.min(pr, 0.25f) / 0.25f);
                 view.setAlpha(1f - Math.min(pr, 0.25f) / 0.25f);
 
                 scale = 0.6f + 0.4f * pr;
                 newView.setScaleX(scale);
                 newView.setScaleY(scale);
-                newView.setTranslationY(-AndroidUtilities.dp(16) * Math.min(1f - pr, 0.25f) / 0.25f);
+                newView.setTranslationY(-dp(16) * Math.min(1f - pr, 0.25f) / 0.25f);
                 newView.setAlpha(1f - Math.min(1f - pr, 0.25f) / 0.25f);
             }
         });
@@ -1368,10 +1427,10 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                 detectFaces();
             }
         }, 350);
-        EmojiBottomSheet emojiBottomSheet = new EmojiBottomSheet(getContext(), false, resourcesProvider) {
+        EmojiBottomSheet emojiBottomSheet = new EmojiBottomSheet(getContext(), false, resourcesProvider, false) {
             @Override
             public boolean canShowWidget(Integer id) {
-                return false;
+                return id == WIDGET_PHOTO;
             }
         };
         emojiBottomSheet.whenDocumentSelected((parentObject, document, isGif) -> {
@@ -1379,6 +1438,13 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
             if (isGif) {
                 stickerView.setScale(1.5f);
             }
+            return true;
+        });
+        emojiBottomSheet.whenWidgetSelected(widget -> {
+            if (widget == EmojiBottomSheet.WIDGET_PHOTO) {
+                showPhotoAlert();
+            }
+            return true;
         });
         emojiBottomSheet.setOnDismissListener(di -> {
             onOpenCloseStickersAlert(false);
@@ -1386,6 +1452,132 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         });
         emojiBottomSheet.show();
         onOpenCloseStickersAlert(true);
+    }
+
+    private void showPhotoAlert() {
+        ChatAttachAlert chatAttachAlert = new ChatAttachAlert(getContext(), new ChatActivity(null) {
+            @Override
+            public long getDialogId() {
+                return 0;
+            }
+
+            @Override
+            public Theme.ResourcesProvider getResourceProvider() {
+                return resourcesProvider;
+            }
+
+            @Override
+            public boolean isKeyboardVisible() {
+                return false;
+            }
+
+            @Override
+            public Activity getParentActivity() {
+                return AndroidUtilities.findActivity(LPhotoPaintView.this.getContext());
+            }
+
+            @Override
+            public TLRPC.User getCurrentUser() {
+                return UserConfig.getInstance(currentAccount).getCurrentUser();
+            }
+
+            @Override
+            public boolean isLightStatusBar() {
+                return false;
+            }
+
+        }, false, false, false, resourcesProvider);
+        chatAttachAlert.drawNavigationBar = true;
+        chatAttachAlert.setupPhotoPicker(LocaleController.getString(R.string.AddImage));
+        chatAttachAlert.setDelegate(new ChatAttachAlert.ChatAttachViewDelegate() {
+            long start;
+            @Override
+            public boolean selectItemOnClicking() {
+                start = System.currentTimeMillis();
+                return true;
+            }
+
+            @Override
+            public void didPressedButton(int button, boolean arg, boolean notify, int scheduleDate, long effectId, boolean invertMedia, boolean forceDocument, long payStars) {
+                try {
+                    HashMap<Object, Object> photos = chatAttachAlert.getPhotoLayout().getSelectedPhotos();
+                    if (!photos.isEmpty()) {
+                        MediaController.PhotoEntry entry = (MediaController.PhotoEntry) photos.values().iterator().next();
+                        String path;
+                        if (entry.imagePath != null) {
+                            path = entry.imagePath;
+                        } else {
+                            path = entry.path;
+                        }
+                        appearAnimation(createPhoto(path, true));
+                        chatAttachAlert.dismiss();
+                    }
+                } catch (Throwable e) {
+                    FileLog.e(e);
+                }
+            }
+        });
+        chatAttachAlert.setOnDismissListener(dialog -> {
+            MediaController.forceBroadcastNewPhotos = false;
+        });
+        chatAttachAlert.setMaxSelectedPhotos(1, false);
+        chatAttachAlert.init();
+        MediaController.forceBroadcastNewPhotos = true;
+        chatAttachAlert.getPhotoLayout().loadGalleryPhotos();
+        chatAttachAlert.show();
+    }
+
+    public void appearAnimation(View view) {
+        float scaleX = view.getScaleX(), scaleY = view.getScaleY();
+        view.setScaleX(scaleX * .5f);
+        view.setScaleY(scaleY * .5f);
+        view.setAlpha(0f);
+        view.animate().scaleX(scaleX).scaleY(scaleY).alpha(1f).setInterpolator(new OvershootInterpolator(3f)).setDuration(240).withEndAction(() -> {
+            if (view instanceof EntityView) {
+                ((EntityView) view).updateSelectionView();
+                selectEntity((EntityView) view);
+            }
+        }).start();
+    }
+
+    public PhotoView createPhoto(String path, boolean select) {
+        Size size = basePhotoSize(path);
+        Pair<Integer, Integer> orientation = AndroidUtilities.getImageOrientation(path);
+        if ((orientation.first / 90 % 2) == 1) {
+            float w = size.width;
+            size.width = size.height;
+            size.height = w;
+        }
+        PhotoView view = new PhotoView(getContext(), centerPositionForEntity(), 0, 1f, size, path, orientation.first, orientation.second);
+//        view.centerImage.setLayerNum(4 + 8);
+//        view.setHasStickyX(true);
+//        view.setHasStickyY(true);
+        view.setDelegate(this);
+        entitiesView.addView(view);
+        if (select) {
+            registerRemovalUndo(view);
+            selectEntity(view);
+        }
+        return view;
+    }
+
+    private Size basePhotoSize(String path) {
+        float a = 1f;
+        try {
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(path, opts);
+            a = (float) opts.outWidth / opts.outHeight;
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
+        if (a > 1) {
+            float side = (float) Math.floor(entitiesView.getMeasuredWidth() * 0.5);
+            return new Size(side, side / a);
+        } else {
+            float side = (float) Math.floor(entitiesView.getMeasuredHeight() * 0.5);
+            return new Size(side * a, side);
+        }
     }
 
     protected void onOpenCloseStickersAlert(boolean open) {}
@@ -1411,13 +1603,13 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         float bitmapW;
         float bitmapH;
         int fullHeight = AndroidUtilities.displaySize.y - ActionBar.getCurrentActionBarHeight() - getAdditionalTop() - getAdditionalBottom();
-        int maxHeight = fullHeight - AndroidUtilities.dp(48);
+        int maxHeight = fullHeight - dp(48);
         if (bitmapToEdit != null) {
             bitmapW = bitmapToEdit.getWidth();
             bitmapH = bitmapToEdit.getHeight();
         } else {
             bitmapW = width;
-            bitmapH = height - ActionBar.getCurrentActionBarHeight() - AndroidUtilities.dp(48);
+            bitmapH = height - ActionBar.getCurrentActionBarHeight() - dp(48);
         }
 
         float renderWidth = width;
@@ -1434,6 +1626,11 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         entitiesView.setScaleX(baseScale);
         entitiesView.setScaleY(baseScale);
         entitiesView.measure(MeasureSpec.makeMeasureSpec((int) paintingSize.width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec((int) paintingSize.height, MeasureSpec.EXACTLY));
+        if (thanosEffect != null) {
+            thanosEffect.measure(MeasureSpec.makeMeasureSpec((int) paintingSize.width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec((int) paintingSize.height, MeasureSpec.EXACTLY));
+            thanosEffect.setScaleX(baseScale);
+            thanosEffect.setScaleY(baseScale);
+        }
         updateEntitiesSelections();
         selectionContainerView.measure(MeasureSpec.makeMeasureSpec((int) renderWidth, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec((int) renderHeight, MeasureSpec.EXACTLY));
         measureChild(bottomLayout, widthMeasureSpec, heightMeasureSpec);
@@ -1442,18 +1639,18 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         int keyboardPad = Math.max(getPKeyboardHeight(), emojiPadding);
         measureChild(overlayLayout, widthMeasureSpec, MeasureSpec.makeMeasureSpec(height - keyboardPad, MeasureSpec.EXACTLY));
 
-        topLayout.setPadding(topLayout.getPaddingLeft(), AndroidUtilities.dp(12) + AndroidUtilities.statusBarHeight, topLayout.getPaddingRight(), topLayout.getPaddingBottom());
+        topLayout.setPadding(topLayout.getPaddingLeft(), dp(12) + AndroidUtilities.statusBarHeight, topLayout.getPaddingRight(), topLayout.getPaddingBottom());
         measureChild(topLayout, widthMeasureSpec, heightMeasureSpec);
         ignoreLayout = false;
 
         int keyboardSize = 0;
-        if (!waitingForKeyboardOpen && keyboardSize <= AndroidUtilities.dp(20) && !emojiViewVisible && !isAnimatePopupClosing) {
+        if (!waitingForKeyboardOpen && keyboardSize <= dp(20) && !emojiViewVisible && !isAnimatePopupClosing) {
             ignoreLayout = true;
             hideEmojiView();
             ignoreLayout = false;
         }
 
-        if (keyboardSize <= AndroidUtilities.dp(20)) {
+        if (keyboardSize <= dp(20)) {
 
         } else {
             hideEmojiView();
@@ -1490,13 +1687,16 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         int actionBarHeight2 = actionBarHeight + status;
 
         int x = (int) Math.ceil((width - renderView.getMeasuredWidth()) / 2f);
-        int y = (height - actionBarHeight2 - AndroidUtilities.dp(48) - renderView.getMeasuredHeight()) / 2 + AndroidUtilities.dp(8) + status + (getAdditionalTop() - getAdditionalBottom()) / 2;
+        int y = (height - actionBarHeight2 - dp(48) - renderView.getMeasuredHeight()) / 2 + dp(8) + status + (getAdditionalTop() - getAdditionalBottom()) / 2;
 
         renderView.layout(x, y, x + renderView.getMeasuredWidth(), y + renderView.getMeasuredHeight());
         renderInputView.layout(x, y, x + renderInputView.getMeasuredWidth(), y + renderInputView.getMeasuredHeight());
         int x2 = x + (renderView.getMeasuredWidth() - entitiesView.getMeasuredWidth()) / 2;
         int y2 = y + (renderView.getMeasuredHeight() - entitiesView.getMeasuredHeight()) / 2;
         entitiesView.layout(x2, y2, x2 + entitiesView.getMeasuredWidth(), y2 + entitiesView.getMeasuredHeight());
+        if (thanosEffect != null) {
+            thanosEffect.layout(x2, y2, x2 + entitiesView.getMeasuredWidth(), y2 + entitiesView.getMeasuredHeight());
+        }
         selectionContainerView.layout(x, y, x + selectionContainerView.getMeasuredWidth(), y + selectionContainerView.getMeasuredHeight());
     }
 
@@ -1753,6 +1953,23 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                         if (stickerView.isMirrored()) {
                             mediaEntity.subType |= 2;
                         }
+                    } else if (entity instanceof PhotoView) {
+                        PhotoView photoView = (PhotoView) entity;
+                        mediaEntity.type = VideoEditedInfo.MediaEntity.TYPE_PHOTO;
+                        Size size = photoView.getBaseSize();
+                        mediaEntity.width = size.width;
+                        mediaEntity.height = size.height;
+                        mediaEntity.text = photoView.getPath(currentAccount);
+                        if (photoView.isMirrored()) {
+                            mediaEntity.subType |= 2;
+                        }
+                        if (photoView.hasSegmentedImage() && photoView.isSegmented()) {
+                            File segmentedFile = photoView.saveSegmentedImage(currentAccount);
+                            if (segmentedFile != null) {
+                                mediaEntity.subType |= 16;
+                                mediaEntity.segmentedPath = segmentedFile.getPath();
+                            }
+                        }
                     } else {
                         continue;
                     }
@@ -1845,7 +2062,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
             return;
         }
 
-        if (editingText) {
+        if (editingText && currentEntityView != null) {
             selectEntity(null);
             return;
         }
@@ -1855,10 +2072,10 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                 return;
             }
             AlertDialog.Builder builder = new AlertDialog.Builder(parentActivity, resourcesProvider);
-            builder.setMessage(LocaleController.getString("PhotoEditorDiscardAlert", R.string.PhotoEditorDiscardAlert));
-            builder.setTitle(LocaleController.getString("DiscardChanges", R.string.DiscardChanges));
-            builder.setPositiveButton(LocaleController.getString("PassportDiscard", R.string.PassportDiscard), (dialogInterface, i) -> okRunnable.run());
-            builder.setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), null);
+            builder.setMessage(LocaleController.getString(R.string.PhotoEditorDiscardAlert));
+            builder.setTitle(LocaleController.getString(R.string.DiscardChanges));
+            builder.setPositiveButton(LocaleController.getString(R.string.PassportDiscard), (dialogInterface, i) -> okRunnable.run());
+            builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
             photoViewer.showAlertDialog(builder);
         } else {
             okRunnable.run();
@@ -1872,7 +2089,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         }
 
         float x2 = (ev.getX() - renderView.getTranslationX() - getMeasuredWidth() / 2f) / renderView.getScaleX();
-        float y2 = (ev.getY() - renderView.getTranslationY() - getMeasuredHeight() / 2f + AndroidUtilities.dp(32) - (getAdditionalTop() - getAdditionalBottom()) / 2f) / renderView.getScaleY();
+        float y2 = (ev.getY() - renderView.getTranslationY() - getMeasuredHeight() / 2f + dp(32) - (getAdditionalTop() - getAdditionalBottom()) / 2f) / renderView.getScaleY();
         float rotation = (float) Math.toRadians(-renderView.getRotation());
         float x = (float) (x2 * Math.cos(rotation) - y2 * Math.sin(rotation)) + renderView.getMeasuredWidth() / 2f;
         float y = (float) (x2 * Math.sin(rotation) + y2 * Math.cos(rotation)) + renderView.getMeasuredHeight() / 2f;
@@ -1886,12 +2103,12 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
 
     @Override
     public int getAdditionalTop() {
-        return AndroidUtilities.dp(48);
+        return dp(48);
     }
 
     @Override
     public int getAdditionalBottom() {
-        return AndroidUtilities.dp(24);
+        return dp(24);
     }
 
     @Override
@@ -2128,7 +2345,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                 float scale = 0.6f + 0.4f * (1f - toolsTransformProgress);
                 barView.setScaleX(scale);
                 barView.setScaleY(scale);
-                barView.setTranslationY(AndroidUtilities.dp(16) * Math.min(toolsTransformProgress, 0.25f) / 0.25f);
+                barView.setTranslationY(dp(16) * Math.min(toolsTransformProgress, 0.25f) / 0.25f);
                 barView.setAlpha(1f - Math.min(toolsTransformProgress, 0.25f) / 0.25f);
 
                 colorsListView.setProgress(toolsTransformProgress, show);
@@ -2136,13 +2353,13 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                 doneButton.setProgress(toolsTransformProgress);
                 cancelButton.setProgress(toolsTransformProgress);
 
-                tabsLayout.setTranslationY(AndroidUtilities.dp(32) * toolsTransformProgress);
+                tabsLayout.setTranslationY(dp(32) * toolsTransformProgress);
 //                if (adjustPanLayoutHelper.animationInProgress()) {
 //                    moveBottomLayout[0] = false;
 //                }
                 if (moveBottomLayout[0]) {
                     float progress = show ? toolsTransformProgress : 1f - toolsTransformProgress;
-                    bottomLayout.setTranslationY(bottomLayoutTranslationY - AndroidUtilities.dp(40) * progress * (show ? 1 : -1));
+                    bottomLayout.setTranslationY(bottomLayoutTranslationY - dp(40) * progress * (show ? 1 : -1));
                 }
                 bottomLayout.invalidate();
 
@@ -2382,11 +2599,11 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
     private void setTextType(int type) {
         selectedTextType = type;
         if (currentEntityView instanceof TextPaintView) {
-            if (type == 0 && colorSwatch.color == Color.WHITE) {
-                setNewColor(Color.BLACK);
-            } else if ((type == 1 || type == 2) && colorSwatch.color == Color.BLACK) {
-                setNewColor(Color.WHITE);
-            }
+//            if (type == 0 && colorSwatch.color == Color.WHITE) {
+//                setNewColor(Color.BLACK);
+//            } else if ((type == 1 || type == 2) && colorSwatch.color == Color.BLACK) {
+//                setNewColor(Color.WHITE);
+//            }
             ((TextPaintView) currentEntityView).setType(type);
         }
         PersistColorPalette.getInstance(currentAccount).setCurrentTextType(type);
@@ -2491,7 +2708,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
     private void showMenuForEntity(final EntityView entityView) {
         int[] pos = getCenterLocationInWindow(entityView);
         int x = pos[0];
-        int y = pos[1] - AndroidUtilities.dp(32);
+        int y = pos[1] - dp(32);
 
         showPopup(() -> {
             LinearLayout parent = new LinearLayout(getContext());
@@ -2501,10 +2718,10 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
             deleteView.setTextColor(getThemedColor(Theme.key_actionBarDefaultSubmenuItem));
             deleteView.setBackground(Theme.getSelectorDrawable(false));
             deleteView.setGravity(Gravity.CENTER_VERTICAL);
-            deleteView.setPadding(AndroidUtilities.dp(16), 0, AndroidUtilities.dp(14), 0);
+            deleteView.setPadding(dp(16), 0, dp(14), 0);
             deleteView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
             deleteView.setTag(0);
-            deleteView.setText(LocaleController.getString("PaintDelete", R.string.PaintDelete));
+            deleteView.setText(LocaleController.getString(R.string.PaintDelete));
             deleteView.setEllipsize(TextUtils.TruncateAt.END);
             deleteView.setOnClickListener(v -> {
                 removeEntity(entityView);
@@ -2520,11 +2737,11 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                 editView.setTextColor(getThemedColor(Theme.key_actionBarDefaultSubmenuItem));
                 editView.setBackground(Theme.getSelectorDrawable(false));
                 editView.setGravity(Gravity.CENTER_VERTICAL);
-                editView.setPadding(AndroidUtilities.dp(16), 0, AndroidUtilities.dp(16), 0);
+                editView.setPadding(dp(16), 0, dp(16), 0);
                 editView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
                 editView.setEllipsize(TextUtils.TruncateAt.END);
                 editView.setTag(1);
-                editView.setText(LocaleController.getString("PaintEdit", R.string.PaintEdit));
+                editView.setText(LocaleController.getString(R.string.PaintEdit));
                 editView.setOnClickListener(v -> {
                     editSelectedTextEntity();
 
@@ -2541,10 +2758,10 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                 flipView.setBackgroundDrawable(Theme.getSelectorDrawable(false));
                 flipView.setGravity(Gravity.CENTER_VERTICAL);
                 flipView.setEllipsize(TextUtils.TruncateAt.END);
-                flipView.setPadding(AndroidUtilities.dp(14), 0, AndroidUtilities.dp(16), 0);
+                flipView.setPadding(dp(14), 0, dp(16), 0);
                 flipView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
                 flipView.setTag(2);
-                flipView.setText(LocaleController.getString("Flip", R.string.Flip));
+                flipView.setText(LocaleController.getString(R.string.Flip));
                 flipView.setOnClickListener(v -> {
                     ((StickerView) entityView).mirror(true);
 
@@ -2555,23 +2772,49 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                 parent.addView(flipView, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, 48));
             }
 
-            TextView duplicateView = new TextView(getContext());
-            duplicateView.setTextColor(getThemedColor(Theme.key_actionBarDefaultSubmenuItem));
-            duplicateView.setBackgroundDrawable(Theme.getSelectorDrawable(false));
-            duplicateView.setGravity(Gravity.CENTER_VERTICAL);
-            duplicateView.setEllipsize(TextUtils.TruncateAt.END);
-            duplicateView.setPadding(AndroidUtilities.dp(14), 0, AndroidUtilities.dp(16), 0);
-            duplicateView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
-            duplicateView.setTag(2);
-            duplicateView.setText(LocaleController.getString("PaintDuplicate", R.string.PaintDuplicate));
-            duplicateView.setOnClickListener(v -> {
-                duplicateSelectedEntity();
+            if (!(entityView instanceof PhotoView)) {
+                TextView duplicateView = new TextView(getContext());
+                duplicateView.setTextColor(getThemedColor(Theme.key_actionBarDefaultSubmenuItem));
+                duplicateView.setBackgroundDrawable(Theme.getSelectorDrawable(false));
+                duplicateView.setGravity(Gravity.CENTER_VERTICAL);
+                duplicateView.setEllipsize(TextUtils.TruncateAt.END);
+                duplicateView.setPadding(dp(14), 0, dp(16), 0);
+                duplicateView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+                duplicateView.setTag(2);
+                duplicateView.setText(LocaleController.getString(R.string.PaintDuplicate));
+                duplicateView.setOnClickListener(v -> {
+                    duplicateSelectedEntity();
 
-                if (popupWindow != null && popupWindow.isShowing()) {
-                    popupWindow.dismiss(true);
-                }
-            });
-            parent.addView(duplicateView, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, 48));
+                    if (popupWindow != null && popupWindow.isShowing()) {
+                        popupWindow.dismiss(true);
+                    }
+                });
+                parent.addView(duplicateView, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, 48));
+            }
+
+            if (entityView instanceof PhotoView && ((PhotoView) entityView).hasSegmentedImage()) {
+                PhotoView photoView = (PhotoView) entityView;
+                TextView cutView = new TextView(getContext());
+                cutView.setTextColor(getThemedColor(Theme.key_actionBarDefaultSubmenuItem));
+                cutView.setBackgroundDrawable(Theme.getSelectorDrawable(false));
+                cutView.setGravity(Gravity.CENTER_VERTICAL);
+                cutView.setEllipsize(TextUtils.TruncateAt.END);
+                cutView.setPadding(dp(14), 0, dp(16), 0);
+                cutView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+                cutView.setTag(5);
+                cutView.setText(LocaleController.getString(photoView.isSegmented() ? R.string.SegmentationUndoCutOut : R.string.SegmentationCutOut));
+                cutView.setOnClickListener(v -> {
+                    photoView.toggleSegmented(true);
+                    if (photoView.isSegmented()) {
+                        onSwitchSegmentedAnimation(photoView);
+                    }
+                    if (popupWindow != null && popupWindow.isShowing()) {
+                        popupWindow.dismiss(true);
+                    }
+                });
+                parent.addView(cutView, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, 44));
+                photoView.highlightSegmented();
+            }
 
             popupLayout.addView(parent);
 
@@ -2691,7 +2934,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
             popupWindow.setOnDismissListener(() -> popupLayout.removeInnerViews());
         }
 
-        popupLayout.measure(MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(1000), MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(1000), MeasureSpec.AT_MOST));
+        popupLayout.measure(MeasureSpec.makeMeasureSpec(dp(1000), MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(dp(1000), MeasureSpec.AT_MOST));
 
         popupWindow.setFocusable(true);
 
@@ -2883,6 +3126,9 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
     }
 
     private void registerRemovalUndo(final EntityView entityView) {
+        if (entityView == null) {
+            return;
+        }
         undoStore.registerUndo(entityView.getUUID(), () -> removeEntity(entityView));
     }
 
@@ -2913,17 +3159,52 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
         return getCenterLocationInWindow(entityView);
     }
 
-    private int[] pos = new int[2];
+    private Matrix matrix = new Matrix();
+    private float[] position = new float[2];
+    private int[] pos2 = new int[2];
     private int[] getCenterLocationInWindow(View view) {
-        view.getLocationInWindow(pos);
-        float rotation = (float) Math.toRadians(view.getRotation() + (currentCropState != null ? currentCropState.cropRotate + currentCropState.transformRotation : 0));
-        float width = view.getWidth() * view.getScaleX() * entitiesView.getScaleX();
-        float height = view.getHeight() * view.getScaleY() * entitiesView.getScaleY();
-        float px = (float) (width * Math.cos(rotation) - height * Math.sin(rotation));
-        float py = (float) (width * Math.sin(rotation) + height * Math.cos(rotation));
-        pos[0] += px / 2;
-        pos[1] += py / 2;
-        return pos;
+        // code taken from android transformFromViewToWindowSpace source code
+        position[0] = view.getWidth() / 2f;
+        position[1] = view.getHeight() / 2f;
+
+        view.getMatrix().mapPoints(position);
+        position[0] += view.getLeft();
+        position[1] += view.getTop();
+        ViewParent viewParent = view.getParent();
+        while (viewParent instanceof View) {
+            final View nextView = (View) viewParent;
+            position[0] -= nextView.getScrollX();
+            position[1] -= nextView.getScrollY();
+            nextView.getMatrix().mapPoints(position);
+            position[0] += nextView.getLeft();
+            position[1] += nextView.getTop();
+            viewParent = nextView.getParent();
+        }
+
+        pos2[0] = Math.round(position[0]);
+        pos2[1] = Math.round(position[1]);
+
+        float x2 = (pos2[0] - AndroidUtilities.displaySize.x / 2f);
+        float y2 = (pos2[1] - AndroidUtilities.displaySize.y / 2f);
+        float rotation = (float) Math.toRadians(-entitiesView.getRotation());
+        pos2[0] = (int) (x2 * Math.cos(rotation) - y2 * Math.sin(rotation)) + AndroidUtilities.displaySize.x / 2;
+        pos2[1] = (int) (x2 * Math.sin(rotation) + y2 * Math.cos(rotation)) + AndroidUtilities.displaySize.y / 2;
+
+        return pos2;
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        boolean r = false;
+//        if (entitiesView != null && !entitiesView.getClipChildren() && ev.getPointerCount() > 1) {
+//            MotionEvent transformedEvent = MotionEvent.obtain(ev);
+//            transformedEvent.offsetLocation(-entitiesView.getLeft(), -entitiesView.getTop());
+//            entitiesView.getMatrix().invert(matrix);
+//            transformedEvent.transform(matrix);
+//            r = entitiesView.dispatchTouchEvent(transformedEvent) || r;
+//            transformedEvent.recycle();
+//        }
+        return super.dispatchTouchEvent(ev) || r;
     }
 
     @Override
@@ -3011,16 +3292,16 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
 
             if (keyboardHeight <= 0) {
                 if (AndroidUtilities.isTablet()) {
-                    keyboardHeight = AndroidUtilities.dp(150);
+                    keyboardHeight = dp(150);
                 } else {
-                    keyboardHeight = MessagesController.getGlobalEmojiSettings().getInt("kbd_height", AndroidUtilities.dp(200));
+                    keyboardHeight = MessagesController.getGlobalEmojiSettings().getInt("kbd_height", dp(200));
                 }
             }
             if (keyboardHeightLand <= 0) {
                 if (AndroidUtilities.isTablet()) {
-                    keyboardHeightLand = AndroidUtilities.dp(150);
+                    keyboardHeightLand = dp(150);
                 } else {
-                    keyboardHeightLand = MessagesController.getGlobalEmojiSettings().getInt("kbd_height_land3", AndroidUtilities.dp(200));
+                    keyboardHeightLand = MessagesController.getGlobalEmojiSettings().getInt("kbd_height_land3", dp(200));
                 }
             }
             int currentHeight = AndroidUtilities.displaySize.x > AndroidUtilities.displaySize.y ? keyboardHeightLand : keyboardHeight;
@@ -3183,7 +3464,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
 
     @Override
     public void onSizeChanged(int height, boolean isWidthGreater) {
-        if (height > AndroidUtilities.dp(50) && keyboardVisible && !AndroidUtilities.isInMultiwindow && !AndroidUtilities.isTablet()) {
+        if (height > dp(50) && keyboardVisible && !AndroidUtilities.isInMultiwindow && !AndroidUtilities.isTablet()) {
             if (isWidthGreater) {
                 keyboardHeightLand = height;
                 MessagesController.getGlobalEmojiSettings().edit().putInt("kbd_height_land3", keyboardHeightLand).commit();
@@ -3348,7 +3629,7 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                 }
                 try {
                     innerTextChange = 2;
-                    CharSequence localCharSequence = Emoji.replaceEmoji(symbol, textPaintView.getFontMetricsInt(), (int) (textPaintView.getFontSize() * .8f), false);
+                    CharSequence localCharSequence = Emoji.replaceEmoji(symbol, textPaintView.getFontMetricsInt(), false);
                     if (localCharSequence instanceof Spanned) {
                         Emoji.EmojiSpan[] spans = ((Spanned) localCharSequence).getSpans(0, localCharSequence.length(), Emoji.EmojiSpan.class);
                         if (spans != null) {
@@ -3400,10 +3681,10 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
             @Override
             public void onClearEmojiRecent() {
                 AlertDialog.Builder builder = new AlertDialog.Builder(getContext(), resourcesProvider);
-                builder.setTitle(LocaleController.getString("ClearRecentEmojiTitle", R.string.ClearRecentEmojiTitle));
-                builder.setMessage(LocaleController.getString("ClearRecentEmojiText", R.string.ClearRecentEmojiText));
-                builder.setPositiveButton(LocaleController.getString("ClearButton", R.string.ClearButton), (dialogInterface, i) -> emojiView.clearRecentEmoji());
-                builder.setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), null);
+                builder.setTitle(LocaleController.getString(R.string.ClearRecentEmojiTitle));
+                builder.setMessage(LocaleController.getString(R.string.ClearRecentEmojiText));
+                builder.setPositiveButton(LocaleController.getString(R.string.ClearButton), (dialogInterface, i) -> emojiView.clearRecentEmoji());
+                builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
                 builder.show();
             }
         });
@@ -3446,5 +3727,65 @@ public class LPhotoPaintView extends SizeNotifierFrameLayoutPhoto implements IPh
                 }
             }
         }
+    }
+
+    public ThanosEffect getThanosEffect() {
+        if (!ThanosEffect.supports()) {
+            return null;
+        }
+        if (thanosEffect == null) {
+            addView(thanosEffect = new ThanosEffect(getContext(), () -> {
+                ThanosEffect thisThanosEffect = thanosEffect;
+                if (thisThanosEffect != null) {
+                    thanosEffect = null;
+                    removeView(thisThanosEffect);
+                }
+            }));
+        }
+        return thanosEffect;
+    }
+
+    public void onSwitchSegmentedAnimation(PhotoView photoView) {
+        if (photoView == null) {
+            return;
+        }
+        ThanosEffect thanosEffect = getThanosEffect();
+        if (thanosEffect == null) {
+            photoView.onSwitchSegmentedAnimationStarted(false);
+            return;
+        }
+        Bitmap bitmap = photoView.getSegmentedOutBitmap();
+        if (bitmap == null) {
+            photoView.onSwitchSegmentedAnimationStarted(false);
+            return;
+        }
+        Matrix matrix = new Matrix();
+        float w = photoView.getWidth(), h = photoView.getHeight();
+        float tx = 0, ty = 0;
+        if (photoView.getRotation() != 0) {
+            final float bw = bitmap.getWidth();
+            final float bh = bitmap.getHeight();
+            final float r = (float) Math.sqrt((bw / 2f) * (bw / 2f) + (bh / 2f) * (bh / 2f));
+            final float d = 2 * r;
+            Bitmap newBitmap = Bitmap.createBitmap((int) d, (int) d, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(newBitmap);
+            canvas.save();
+            canvas.rotate(photoView.getRotation(), r, r);
+            canvas.drawBitmap(bitmap, (d - bw) / 2, (d - bh) / 2, null);
+            bitmap.recycle();
+            bitmap = newBitmap;
+
+            final float pd = 2 * (float) Math.sqrt((w / 2f) * (w / 2f) + (h / 2f) * (h / 2f));
+            tx = -(pd - w) / 2;
+            ty = -(pd - h) / 2;
+            w = pd;
+            h = pd;
+        }
+        matrix.postScale(w, h);
+        matrix.postScale(photoView.getScaleX(), photoView.getScaleY(), w / 2f, h / 2f);
+        matrix.postTranslate(photoView.getX() + tx, photoView.getY() + ty);
+        thanosEffect.animate(matrix, bitmap, () -> {
+            photoView.onSwitchSegmentedAnimationStarted(true);
+        }, () -> {});
     }
 }

@@ -93,7 +93,7 @@ public class ProfileGalleryView extends CircularViewPager implements Notificatio
     private boolean hasActiveVideo;
     private int customAvatarIndex = -1;
     private int fallbackPhotoIndex = -1;
-    private TLRPC.TL_groupCallParticipant participant;
+    private TLRPC.GroupCallParticipant participant;
 
     private int imagesLayerNum;
 
@@ -446,10 +446,7 @@ public class ProfileGalleryView extends CircularViewPager implements Notificatio
             isDownReleased = false;
         } else if (action == MotionEvent.ACTION_UP) {
             if (!isDownReleased) {
-                int itemsCount = dialogPhotos == null ? 0 : dialogPhotos.getCount();
-                if (currentUploadingImageLocation != null) {
-                    itemsCount++;
-                }
+                int itemsCount = getRealCount();
                 int currentItem = getCurrentItem();
                 if (itemsCount > 1) {
                     if (ev.getX() > getWidth() / 3f) {

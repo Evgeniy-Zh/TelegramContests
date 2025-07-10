@@ -206,6 +206,18 @@ class TL_userStatusLastWeek : public UserStatus {
 public:
     static const uint32_t constructor = 0x7bf09fc;
 
+    uint32_t flags;
+    bool by_me;
+
+    void serializeToStream(NativeByteBuffer *stream);
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+};
+
+class TL_userStatusLastWeek_layer171 : public UserStatus {
+
+public:
+    static const uint32_t constructor = 0x7bf09fc;
+
     void serializeToStream(NativeByteBuffer *stream);
 };
 
@@ -218,6 +230,19 @@ public:
 };
 
 class TL_userStatusLastMonth : public UserStatus {
+
+public:
+    static const uint32_t constructor = 0x65899777;
+
+    uint32_t flags;
+    bool by_me;
+
+    void serializeToStream(NativeByteBuffer *stream);
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+};
+
+class TL_userStatusLastMonth_layer171 : public UserStatus {
 
 public:
     static const uint32_t constructor = 0x77ebc742;
@@ -237,7 +262,27 @@ public:
 class TL_userStatusRecently : public UserStatus {
 
 public:
+    static const uint32_t constructor = 0x7b197dc8;
+
+    uint32_t flags;
+    bool by_me;
+
+    void serializeToStream(NativeByteBuffer *stream);
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+};
+
+class TL_userStatusRecently_layer171 : public UserStatus {
+
+public:
     static const uint32_t constructor = 0xe26f42f1;
+
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_userStatusHidden : public UserStatus {
+
+public:
+    static const uint32_t constructor = 0xcf7d64b1;
 
     void serializeToStream(NativeByteBuffer *stream);
 };
@@ -317,6 +362,85 @@ public:
     void serializeToStream(NativeByteBuffer *stream);
 };
 
+class TL_peerColor : public TLObject {
+public:
+    static const uint32_t constructor = 0xb54b5acf;
+
+    int32_t flags;
+    int32_t color;
+    int64_t background_emoji_id;
+
+    static TL_peerColor *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class EmojiStatus : public TLObject {
+public:
+    static EmojiStatus *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
+};
+
+class TL_emojiStatusEmpty : public EmojiStatus {
+public:
+    static const uint32_t constructor = 0xb54b5acf;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_emojiStatus : public EmojiStatus {
+public:
+    static const uint32_t constructor = 0xe7ff068a;
+
+    int32_t flags;
+    int64_t document_id;
+    int32_t until;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_emojiStatus_layer197 : public EmojiStatus {
+public:
+    static const uint32_t constructor = 0x929b619d;
+
+    int64_t document_id;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_emojiStatusUntil_layer197 : public EmojiStatus {
+public:
+    static const uint32_t constructor = 0xfa30a8c7;
+
+    int64_t document_id;
+    int32_t until;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_emojiStatusCollectible : public EmojiStatus {
+public:
+    static const uint32_t constructor = 0x7184603b;
+
+    int32_t flags;
+    int64_t collectible_id;
+    int64_t document_id;
+    std::string title;
+    std::string slug;
+    int64_t pattern_document_id;
+    int32_t center_color;
+    int32_t edge_color;
+    int32_t pattern_color;
+    int32_t text_color;
+    int32_t until;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
 class User : public TLObject {
 
 public:
@@ -336,11 +460,12 @@ public:
     std::string lang_code;
     std::vector<std::unique_ptr<TL_username>> usernames;
     int32_t stories_max_id;
-    int32_t emojiStatusMagic;
-    int64_t emojiStatusDocumentId;
-    int32_t emojiStatusUntil;
-    int32_t color;
-    int64_t background_emoji_id;
+    std::unique_ptr<EmojiStatus> emoji_status;
+    std::unique_ptr<TL_peerColor> color;
+    std::unique_ptr<TL_peerColor> profile_color;
+    int32_t bot_active_users;
+    int64_t bot_verification_icon;
+    int64_t send_paid_messages_stars;
 
     static User *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
 };
@@ -357,7 +482,16 @@ public:
 class TL_user : public User {
 
 public:
-    static const uint32_t constructor = 0xeb602f25;
+    static const uint32_t constructor = 0x20b1422;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_user_layer199 : public TL_user {
+
+public:
+    static const uint32_t constructor = 0x4b46c37e;
 
     void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
     void serializeToStream(NativeByteBuffer *stream);
@@ -490,6 +624,7 @@ public:
 class MessageEntity : public TLObject {
 
 public:
+    int32_t flags;
     int32_t offset;
     int32_t length;
     std::string url;
@@ -637,6 +772,15 @@ public:
 };
 
 class TL_messageEntityBlockquote : public MessageEntity {
+
+public:
+    static const uint32_t constructor = 0xf1ccaaac;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_messageEntityBlockquote_layer180 : public MessageEntity {
 
 public:
     static const uint32_t constructor = 0x20df5d0;

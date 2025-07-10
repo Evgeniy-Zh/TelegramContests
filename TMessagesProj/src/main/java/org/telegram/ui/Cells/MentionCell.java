@@ -21,7 +21,6 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.Emoji;
 import org.telegram.messenger.MediaDataController;
-import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
 import org.telegram.tgnet.TLRPC;
@@ -33,11 +32,11 @@ import org.telegram.ui.Components.LayoutHelper;
 
 public class MentionCell extends LinearLayout {
 
-    private BackupImageView imageView;
-    private TextView nameTextView;
-    private TextView usernameTextView;
-    private AvatarDrawable avatarDrawable;
-    private Theme.ResourcesProvider resourcesProvider;
+    private final BackupImageView imageView;
+    private final TextView nameTextView;
+    private final TextView usernameTextView;
+    private final AvatarDrawable avatarDrawable;
+    private final Theme.ResourcesProvider resourcesProvider;
 
     private Drawable emojiDrawable;
 
@@ -61,7 +60,6 @@ public class MentionCell extends LinearLayout {
                 super.setText(text, type);
             }
         };
-        NotificationCenter.listenEmojiLoading(nameTextView);
         nameTextView.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
         nameTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
         nameTextView.setSingleLine(true);
@@ -76,6 +74,11 @@ public class MentionCell extends LinearLayout {
         usernameTextView.setGravity(Gravity.LEFT);
         usernameTextView.setEllipsize(TextUtils.TruncateAt.END);
         addView(usernameTextView, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_VERTICAL, 12, 0, 8, 0));
+    }
+
+    public void invalidateEmojis() {
+        nameTextView.invalidate();
+        usernameTextView.invalidate();
     }
 
     @Override
@@ -237,7 +240,7 @@ public class MentionCell extends LinearLayout {
         }
         usernameTextView.setVisibility(VISIBLE);
         nameTextView.setText(command);
-        usernameTextView.setText(Emoji.replaceEmoji(help, usernameTextView.getPaint().getFontMetricsInt(), AndroidUtilities.dp(20), false));
+        usernameTextView.setText(Emoji.replaceEmoji(help, usernameTextView.getPaint().getFontMetricsInt(), false));
     }
 
     public void setIsDarkTheme(boolean isDarkTheme) {

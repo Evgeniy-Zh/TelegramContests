@@ -34,6 +34,7 @@ public class SliderView extends View {
     public static final int TYPE_VOLUME = 0;
     public static final int TYPE_WARMTH = 1;
     public static final int TYPE_INTENSITY = 2;
+    public static final int TYPE_DIMMING = 3;
 
     private final int currentType;
 
@@ -58,7 +59,7 @@ public class SliderView extends View {
 
         currentType = type;
 
-        text.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_MEDIUM));
+        text.setTypeface(AndroidUtilities.bold());
         text.setAnimationProperties(.3f, 0, 40, CubicBezierInterpolator.EASE_OUT_QUINT);
         text.setCallback(this);
         text.setTextColor(0xffffffff);
@@ -79,7 +80,7 @@ public class SliderView extends View {
             text2 = new AnimatedTextView.AnimatedTextDrawable(false, true, true);
             text2.setOverrideFullWidth(AndroidUtilities.displaySize.x);
             text2.setTextSize(dp(14));
-            text2.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_MEDIUM));
+            text2.setTypeface(AndroidUtilities.bold());
             text2.setAnimationProperties(.3f, 0, 40, CubicBezierInterpolator.EASE_OUT_QUINT);
             text2.setCallback(this);
             text2.setTextColor(0xffffffff);
@@ -87,6 +88,8 @@ public class SliderView extends View {
                 text2.setText(LocaleController.getString(R.string.FlashWarmth));
             } else if (currentType == TYPE_INTENSITY) {
                 text2.setText(LocaleController.getString(R.string.FlashIntensity));
+            } else if (currentType == TYPE_DIMMING) {
+                text2.setText(LocaleController.getString(R.string.WallpaperDimming));
             }
         }
         text.setText("");
@@ -103,6 +106,7 @@ public class SliderView extends View {
 
     public SliderView setValue(float volume) {
         this.value = (volume - this.minVolume) / (this.maxVolume - this.minVolume);
+        this.valueAnimated.set(this.value, true);
         updateText(volume);
         return this;
     }
@@ -110,6 +114,12 @@ public class SliderView extends View {
     public SliderView setOnValueChange(Utilities.Callback<Float> listener) {
         onValueChange = listener;
         return this;
+    }
+
+    public void animateValueTo(float volume) {
+        this.valueIsAnimated = true;
+        this.value = (volume - this.minVolume) / (this.maxVolume - this.minVolume);
+        updateText(volume);
     }
 
     private final Path clipPath = new Path();
@@ -205,13 +215,9 @@ public class SliderView extends View {
                 if (volume <= this.minVolume && pastVolume > volume || volume >= this.maxVolume && pastVolume < volume) {
                     try {
                         performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING);
-                    } catch (Exception ignore) {
-                    }
+                    } catch (Exception ignored) {}
                 } else if (Math.floor(pastVolume * 5) != Math.floor(volume * 5)) {
-                    try {
-                        performHapticFeedback(HapticFeedbackConstants.TEXT_HANDLE_MOVE, HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING);
-                    } catch (Exception ignore) {
-                    }
+                    AndroidUtilities.vibrateCursor(this);
                 }
             }
             updateText(volume);
@@ -244,12 +250,21 @@ public class SliderView extends View {
     private int w, h;
     private final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
 
+    public int fixWidth;
+
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        r = dpf2(6.33f);
+        if (currentType == TYPE_DIMMING) {
+            r = dpf2(8);
+        } else {
+            r = dpf2(6.33f);
+        }
         textPaint.setTextSize(dp(16));
         text.setTextSize(dp(15));
-        if (currentType == TYPE_VOLUME) {
+        if (fixWidth > 0) {
+            w = fixWidth;
+            h = dp(48);
+        } else if (currentType == TYPE_VOLUME) {
             // TODO: fix this nonsense
             w = (int) Math.min(textPaint.measureText(LocaleController.getString(R.string.StoryAudioRemove)) + dp(88), MeasureSpec.getSize(widthMeasureSpec));
             h = dp(48);

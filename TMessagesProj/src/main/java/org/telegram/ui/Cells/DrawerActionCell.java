@@ -8,8 +8,6 @@
 
 package org.telegram.ui.Cells;
 
-import static org.telegram.ui.PremiumPreviewFragment.applyNewSpan;
-
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.PorterDuff;
@@ -21,24 +19,22 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.DocumentObject;
+import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.ImageLocation;
-import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MediaDataController;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.R;
+import org.telegram.messenger.SvgHelper;
 import org.telegram.messenger.UserConfig;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.Theme;
-import org.telegram.ui.Components.AnimatedTextView;
 import org.telegram.ui.Components.BackupImageView;
-import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.LayoutHelper;
-import org.telegram.ui.Components.RLottieImageView;
 import org.telegram.ui.FilterCreateActivity;
 
 import java.util.Set;
@@ -49,17 +45,19 @@ public class DrawerActionCell extends FrameLayout {
     private TextView textView;
     private int currentId;
     private RectF rect = new RectF();
+    private boolean currentError;
 
     public DrawerActionCell(Context context) {
         super(context);
 
         imageView = new BackupImageView(context);
         imageView.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_chats_menuItemIcon), PorterDuff.Mode.SRC_IN));
+        imageView.getImageReceiver().setFileLoadingPriority(FileLoader.PRIORITY_HIGH);
 
         textView = new TextView(context);
         textView.setTextColor(Theme.getColor(Theme.key_chats_menuItemText));
         textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
-        textView.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        textView.setTypeface(AndroidUtilities.bold());
         textView.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
         addView(imageView, LayoutHelper.createFrame(24, 24, Gravity.LEFT | Gravity.TOP, 19, 12, 0, 0));
         addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.LEFT | Gravity.TOP, 72, 0, 16, 0));
@@ -71,23 +69,26 @@ public class DrawerActionCell extends FrameLayout {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        if (currentId == 8) {
+        boolean redError = currentError;
+        boolean error = currentError;
+        if (!error && currentId == 8) {
             Set<String> suggestions = MessagesController.getInstance(UserConfig.selectedAccount).pendingSuggestions;
-            if (suggestions.contains("VALIDATE_PHONE_NUMBER") || suggestions.contains("VALIDATE_PASSWORD")) {
-                int countTop = AndroidUtilities.dp(12.5f);
-                int countWidth = AndroidUtilities.dp(9);
-                int countLeft = getMeasuredWidth() - countWidth - AndroidUtilities.dp(25);
+            error = suggestions.contains("VALIDATE_PHONE_NUMBER") || suggestions.contains("VALIDATE_PASSWORD");
+        }
+        if (error) {
+            int countTop = AndroidUtilities.dp(12.5f);
+            int countWidth = AndroidUtilities.dp(9);
+            int countLeft = getMeasuredWidth() - countWidth - AndroidUtilities.dp(25);
 
-                int x = countLeft - AndroidUtilities.dp(5.5f);
-                rect.set(x, countTop, x + countWidth + AndroidUtilities.dp(14), countTop + AndroidUtilities.dp(23));
-                Theme.chat_docBackPaint.setColor(Theme.getColor(Theme.key_chats_archiveBackground));
-                canvas.drawRoundRect(rect, 11.5f * AndroidUtilities.density, 11.5f * AndroidUtilities.density, Theme.chat_docBackPaint);
+            int x = countLeft - AndroidUtilities.dp(5.5f);
+            rect.set(x, countTop, x + countWidth + AndroidUtilities.dp(14), countTop + AndroidUtilities.dp(23));
+            Theme.chat_docBackPaint.setColor(Theme.getColor(redError ? Theme.key_text_RedBold : Theme.key_chats_archiveBackground));
+            canvas.drawRoundRect(rect, 11.5f * AndroidUtilities.density, 11.5f * AndroidUtilities.density, Theme.chat_docBackPaint);
 
-                int w = Theme.dialogs_errorDrawable.getIntrinsicWidth();
-                int h = Theme.dialogs_errorDrawable.getIntrinsicHeight();
-                Theme.dialogs_errorDrawable.setBounds((int) (rect.centerX() - w / 2), (int) (rect.centerY() - h / 2), (int) (rect.centerX() + w / 2), (int) (rect.centerY() + h / 2));
-                Theme.dialogs_errorDrawable.draw(canvas);
-            }
+            int w = Theme.dialogs_errorDrawable.getIntrinsicWidth();
+            int h = Theme.dialogs_errorDrawable.getIntrinsicHeight();
+            Theme.dialogs_errorDrawable.setBounds((int) (rect.centerX() - w / 2), (int) (rect.centerY() - h / 2), (int) (rect.centerX() + w / 2), (int) (rect.centerY() + h / 2));
+            Theme.dialogs_errorDrawable.draw(canvas);
         }
     }
 
@@ -103,6 +104,21 @@ public class DrawerActionCell extends FrameLayout {
     }
 
     public void setTextAndIcon(int id, String text, int resId) {
+        currentId = id;
+        try {
+            textView.setText(text);
+            imageView.setImageResource(resId);
+        } catch (Throwable e) {
+            FileLog.e(e);
+        }
+    }
+
+    public void setError(boolean error) {
+        currentError = error;
+        invalidate();
+    }
+
+    public void setTextAndIcon(int id, CharSequence text, int resId) {
         currentId = id;
         try {
             textView.setText(text);
@@ -145,7 +161,14 @@ public class DrawerActionCell extends FrameLayout {
             }
             TLRPC.TL_attachMenuBotIcon botIcon = MediaDataController.getSideAttachMenuBotIcon(bot);
             if (botIcon != null) {
-                imageView.setImage(ImageLocation.getForDocument(botIcon.icon), "24_24", (Drawable) null, bot);
+                TLRPC.PhotoSize photoSize = FileLoader.getClosestPhotoSizeWithSize(botIcon.icon.thumbs, 24 * 3);
+                SvgHelper.SvgDrawable svgThumb = DocumentObject.getSvgThumb(botIcon.icon.thumbs,  Theme.key_emptyListPlaceholder, 0.2f);
+                imageView.setImage(
+                    ImageLocation.getForDocument(botIcon.icon), "24_24",
+                    ImageLocation.getForDocument(photoSize, botIcon.icon), "24_24",
+                    svgThumb != null ? svgThumb : getContext().getResources().getDrawable(R.drawable.msg_bot).mutate(),
+                    bot
+                );
             } else {
                 imageView.setImageResource(R.drawable.msg_bot);
             }

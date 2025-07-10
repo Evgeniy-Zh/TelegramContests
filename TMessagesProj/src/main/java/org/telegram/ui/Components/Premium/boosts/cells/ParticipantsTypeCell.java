@@ -6,6 +6,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.Emoji;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
@@ -32,19 +33,20 @@ public class ParticipantsTypeCell extends BaseCell {
         return selectedType;
     }
 
-    public void setType(int type, boolean isSelected, boolean needDivider, List<TLRPC.TL_help_country> countries) {
+    public void setType(int type, boolean isSelected, boolean needDivider, List<TLRPC.TL_help_country> countries, TLRPC.Chat chat) {
         selectedType = type;
+        boolean isChannel = ChatObject.isChannelAndNotMegaGroup(chat);
         if (type == TYPE_ALL) {
-            titleTextView.setText(LocaleController.formatString("BoostingAllSubscribers", R.string.BoostingAllSubscribers));
+            titleTextView.setText(LocaleController.formatString(isChannel ? R.string.BoostingAllSubscribers : R.string.BoostingAllMembers));
         } else if (type == TYPE_NEW) {
-            titleTextView.setText(LocaleController.formatString("BoostingNewSubscribers", R.string.BoostingNewSubscribers));
+            titleTextView.setText(LocaleController.formatString(isChannel ? R.string.BoostingNewSubscribers : R.string.BoostingNewMembers));
         }
         radioButton.setChecked(isSelected, false);
         setDivider(needDivider);
         subtitleTextView.setTextColor(Theme.getColor(Theme.key_dialogTextBlue2, resourcesProvider));
 
         if (countries.size() == 0) {
-            setSubtitle(withArrow(LocaleController.getString("BoostingFromAllCountries", R.string.BoostingFromAllCountries)));
+            setSubtitle(withArrow(LocaleController.getString(R.string.BoostingFromAllCountries)));
         } else if (countries.size() <= 3) {
             if (countries.size() == 1) {
                 setSubtitle(withArrow(LocaleController.formatString("BoostingFromAllCountries1", R.string.BoostingFromAllCountries1, countries.get(0).default_name)));

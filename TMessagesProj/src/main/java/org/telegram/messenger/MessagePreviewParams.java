@@ -196,20 +196,26 @@ public class MessagePreviewParams {
     public boolean webpagePhoto;
 
     public boolean noforwards;
+    public boolean monoforum;
+    public boolean hasSecretMessages;
 
     public TLRPC.WebPage webpage;
     public CharacterStyle currentLink;
 
-    public MessagePreviewParams(boolean secret, boolean noforwards) {
+    public MessagePreviewParams(boolean secret, boolean noforwards, boolean monoforum) {
         this.isSecret = secret;
         this.noforwards = secret || noforwards;
+        this.monoforum = monoforum;
     }
 
     public void updateReply(MessageObject replyMessageObject, MessageObject.GroupedMessages group, long dialogId, ChatActivity.ReplyQuote replyQuote) {
-        if (isSecret || replyMessageObject == null || replyMessageObject.type == MessageObject.TYPE_DATE || replyMessageObject.type == MessageObject.TYPE_ACTION_PHOTO || replyMessageObject.type == MessageObject.TYPE_ACTION_WALLPAPER || replyMessageObject.type == MessageObject.TYPE_SUGGEST_PHOTO) {
+        if (isSecret || replyMessageObject == null || replyMessageObject.type == MessageObject.TYPE_DATE || replyMessageObject.type == MessageObject.TYPE_ACTION_PHOTO
+                || replyMessageObject.type == MessageObject.TYPE_ACTION_WALLPAPER || replyMessageObject.type == MessageObject.TYPE_SUGGEST_PHOTO
+                || replyMessageObject.type == MessageObject.TYPE_GIFT_PREMIUM || replyMessageObject.type == MessageObject.TYPE_GIFT_PREMIUM_CHANNEL || replyMessageObject.type == MessageObject.TYPE_PHONE_CALL) {
             replyMessageObject = null;
             replyQuote = null;
         }
+        hasSecretMessages = replyMessageObject != null && (replyMessageObject.isVoiceOnce() || replyMessageObject.isRoundOnce() || replyMessageObject.type == MessageObject.TYPE_GIFT_STARS);
         if (replyMessageObject != null || replyQuote != null) {
             if (group != null) {
                 replyMessage = new Messages(null, 1, group.messages, dialogId, null);
@@ -341,18 +347,22 @@ public class MessagePreviewParams {
 
     public boolean hasLink(CharSequence text, String url) {
         if (url != null) {
-            Spannable spanned = SpannableString.valueOf(text);
             try {
-                AndroidUtilities.addLinks(spanned, Linkify.WEB_URLS);
+                Spannable spanned = SpannableString.valueOf(text);
+                try {
+                    AndroidUtilities.addLinksSafe(spanned, Linkify.WEB_URLS, false, true);
+                } catch (Exception e2) {
+                    FileLog.e(e2);
+                }
+                URLSpan[] urlSpans = spanned.getSpans(0, spanned.length(), URLSpan.class);
+
+                for (int i = 0; i < urlSpans.length; ++i) {
+                    if (areUrlsEqual(urlSpans[i].getURL(), url)) {
+                        return true;
+                    }
+                }
             } catch (Exception e) {
                 FileLog.e(e);
-            }
-            URLSpan[] urlSpans = spanned.getSpans(0, spanned.length(), URLSpan.class);
-
-            for (int i = 0; i < urlSpans.length; ++i) {
-                if (areUrlsEqual(urlSpans[i].getURL(), url)) {
-                    return true;
-                }
             }
         }
         return false;
@@ -429,6 +439,11 @@ public class MessagePreviewParams {
         }
     }
 
+    public int getForwardedMessagesCount() {
+        if (forwardMessages == null) return 0;
+        return forwardMessages.selectedIds.size();
+    }
+
     private MessageObject toPreviewMessage(MessageObject messageObject, Boolean out, final int msgtype) {
         TLRPC.Message message = new TLRPC.TL_message();
         if (msgtype != 1) {
@@ -449,6 +464,10 @@ public class MessagePreviewParams {
         }
 
         message.out = out == null ? messageObject.messageOwner.out : out;
+        if (message.out) {
+            message.from_id = new TLRPC.TL_peerUser();
+            message.from_id.user_id = UserConfig.getInstance(messageObject.currentAccount).getClientUserId();
+        }
         message.unread = false;
         message.via_bot_id  =  messageObject.messageOwner.via_bot_id;
         message.reply_markup  =  messageObject.messageOwner.reply_markup;
@@ -464,7 +483,7 @@ public class MessagePreviewParams {
 
         if (msgtype == 0) {
             TLRPC.MessageFwdHeader header = null;
-            long clientUserId = UserConfig.getInstance(messageObject.currentAccount).clientUserId;
+            long clientUserId = UserConfig.getInstance(messageObject.currentAccount).getClientUserId();
             if (!isSecret) {
                 if (messageObject.messageOwner.fwd_from != null) {
                     header = messageObject.messageOwner.fwd_from;

@@ -39,8 +39,8 @@ public class LocationActivitySearchAdapter extends BaseLocationAdapter {
     }
 
     private FlickerLoadingView globalGradientView;
-    public LocationActivitySearchAdapter(Context context, Theme.ResourcesProvider resourcesProvider, boolean stories) {
-        super(stories);
+    public LocationActivitySearchAdapter(Context context, Theme.ResourcesProvider resourcesProvider, boolean stories, boolean biz) {
+        super(stories, biz);
 
         mContext = context;
         this.resourcesProvider = resourcesProvider;
@@ -109,9 +109,9 @@ public class LocationActivitySearchAdapter extends BaseLocationAdapter {
             locationCell.setLocation(place, p, oposition != getItemCount() - 1 && (searchingLocations || locations.isEmpty() || oposition != (locations.size())));
         } else if (holder.getItemViewType() == VIEW_TYPE_SECTION) {
             if (position == 0 && !locations.isEmpty()) {
-                ((GraySectionCell) holder.itemView).setText(LocaleController.getString("LocationOnMap", R.string.LocationOnMap));
+                ((GraySectionCell) holder.itemView).setText(LocaleController.getString(R.string.LocationOnMap));
             } else {
-                ((GraySectionCell) holder.itemView).setText(LocaleController.getString("NearbyVenue", R.string.NearbyVenue));
+                ((GraySectionCell) holder.itemView).setText(LocaleController.getString(R.string.NearbyVenue));
             }
         }
     }

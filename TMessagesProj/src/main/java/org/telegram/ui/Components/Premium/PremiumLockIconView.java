@@ -8,6 +8,7 @@ import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Shader;
+import android.util.Log;
 import android.widget.ImageView;
 
 import androidx.annotation.Nullable;
@@ -17,12 +18,16 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Components.AnimatedEmojiDrawable;
 import org.telegram.ui.Components.voip.CellFlickerDrawable;
 
 public class PremiumLockIconView extends ImageView {
 
     public static int TYPE_REACTIONS = 0;
     public static int TYPE_STICKERS_PREMIUM_LOCKED = 1;
+    public static int TYPE_REACTIONS_LOCK = 2;
+    public static int TYPE_GIFT_LOCK = 3;
+    public static int TYPE_GIFT_PIN = 4;
 
     private final int type;
     public boolean isEnter;
@@ -31,6 +36,7 @@ public class PremiumLockIconView extends ImageView {
     private boolean locked;
     private Theme.ResourcesProvider resourcesProvider;
     boolean attachedToWindow;
+    private float iconScale = 1f;
 
     public PremiumLockIconView(Context context, int type) {
         this(context, type, null);
@@ -49,18 +55,28 @@ public class PremiumLockIconView extends ImageView {
             starParticles.size1 = 2;
             starParticles.speedScale = 0.1f;
             starParticles.init();
+        } else if (type == TYPE_REACTIONS_LOCK) {
+            iconScale = .8f;
+            paint.setColor(Theme.getColor(Theme.key_windowBackgroundGray));
+        } else if (type == TYPE_GIFT_LOCK) {
+            setScaleType(ScaleType.CENTER);
+            setImageResource(R.drawable.msg_archive_hide);
+        } else if (type == TYPE_GIFT_PIN) {
+            setScaleType(ScaleType.CENTER);
+            setImageResource(R.drawable.msg_limit_pin);
         }
     }
 
     boolean colorRetrieved = false;
-    int currentColor = Color.WHITE;
+    public int currentColor = Color.WHITE;
     int color1, color2;
     Shader shader = null;
 
     Path path = new Path();
-    Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    public Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     Paint oldShaderPaint;
     ImageReceiver imageReceiver;
+    AnimatedEmojiDrawable emojiDrawable;
     float shaderCrossfadeProgress = 1f;
     boolean waitingImage;
     boolean wasDrawn;
@@ -88,14 +104,27 @@ public class PremiumLockIconView extends ImageView {
 
     public void setColor(int color) {
         colorRetrieved = true;
+        if (blendColor != null) {
+            color = Theme.blendOver(color, blendColor);
+        }
         if (currentColor != color) {
             currentColor = color;
-            if (type == TYPE_REACTIONS) {
-                paint.setColor(color);
+            if (type == TYPE_REACTIONS || type == TYPE_REACTIONS_LOCK) {
+                if (paint != null) {
+                    paint.setColor(color);
+                }
             } else {
                 updateGradient();
             }
             invalidate();
+        }
+    }
+
+    public void resetColor() {
+        colorRetrieved = false;
+        currentColor = Color.WHITE;
+        if (type == TYPE_REACTIONS_LOCK && paint != null) {
+            paint.setColor(Theme.getColor(Theme.key_windowBackgroundGray));
         }
     }
 
@@ -106,12 +135,24 @@ public class PremiumLockIconView extends ImageView {
             if (imageReceiver != null && imageReceiver.getBitmap() != null) {
                 waitingImage = false;
                 setColor(AndroidUtilities.getDominantColor(imageReceiver.getBitmap()));
+            } else if (emojiDrawable != null) {
+                int color = AnimatedEmojiDrawable.getDominantColor(emojiDrawable);
+                if (color != 0) {
+                    waitingImage = false;
+                    setColor(color);
+                } else {
+                    invalidate();
+                }
             } else {
                 invalidate();
             }
         }
         if (paint != null) {
-            if (type == TYPE_REACTIONS) {
+            if (type == TYPE_REACTIONS_LOCK) {
+                float cx = getMeasuredWidth() / 2f;
+                float cy = getMeasuredHeight() / 2f;
+                canvas.drawCircle(cx, cy, cx, paint);
+            } else if (type == TYPE_REACTIONS) {
                 if (currentColor != 0) {
                     canvas.drawPath(path, paint);
                 } else {
@@ -151,13 +192,29 @@ public class PremiumLockIconView extends ImageView {
                 }
             }
         }
+        boolean restore = iconScale != 1f;
+        if (restore) {
+            canvas.save();
+            canvas.scale(iconScale, iconScale, getMeasuredWidth() / 2f, getMeasuredHeight() / 2f);
+        }
         super.onDraw(canvas);
+        if (restore) {
+            canvas.restore();
+        }
         wasDrawn = true;
     }
 
     public void setImageReceiver(ImageReceiver imageReceiver) {
         this.imageReceiver = imageReceiver;
         if (imageReceiver != null) {
+            waitingImage = true;
+            invalidate();
+        }
+    }
+
+    public void setAnimatedEmojiDrawable(AnimatedEmojiDrawable emojiDrawable) {
+        this.emojiDrawable = emojiDrawable;
+        if (emojiDrawable != null) {
             waitingImage = true;
             invalidate();
         }
@@ -211,7 +268,7 @@ public class PremiumLockIconView extends ImageView {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         attachedToWindow = false;
-        if (paint != null) {
+        if (paint != null && type != TYPE_REACTIONS_LOCK) {
             paint.setShader(null);
             paint = null;
         }
@@ -225,7 +282,12 @@ public class PremiumLockIconView extends ImageView {
         invalidate();
     }
 
-    public boolean ready() {
+    private Integer blendColor;
+    public void setBlendWithColor(Integer color) {
+        blendColor = color;
+    }
+
+    public boolean done() {
         return colorRetrieved;
     }
 

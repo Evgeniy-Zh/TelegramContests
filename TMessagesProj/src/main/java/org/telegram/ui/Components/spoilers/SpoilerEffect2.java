@@ -1,37 +1,31 @@
 package org.telegram.ui.Components.spoilers;
 
-import static org.telegram.messenger.AndroidUtilities.dpf2;
-
 import android.app.Activity;
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.SurfaceTexture;
-import android.hardware.HardwareBuffer;
 import android.opengl.EGL14;
 import android.opengl.EGLExt;
 import android.opengl.GLES20;
 import android.opengl.GLES31;
 import android.os.Build;
-import android.util.Log;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
-import androidx.collection.LongSparseArray;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.Utilities;
-import org.telegram.ui.Components.RLottieDrawable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Objects;
 
 import javax.microedition.khronos.egl.EGL10;
 import javax.microedition.khronos.egl.EGLConfig;
@@ -45,25 +39,41 @@ public class SpoilerEffect2 {
     private final double MIN_DELTA;
     private final double MAX_DELTA;
 
+    public static final int TYPE_DEFAULT = 0;
+    public static final int TYPE_PREVIEW = 1;
+
+    public final int type;
+
     public static boolean supports() {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP;
     }
 
-    private static SpoilerEffect2 instance;
+    private static HashMap<Integer, SpoilerEffect2> instance;
     public static SpoilerEffect2 getInstance(View view) {
+        return getInstance(TYPE_DEFAULT, view);
+    }
+
+    public static SpoilerEffect2 getInstance(int type, View view) {
+        return getInstance(type, view, getRootView(view));
+    }
+
+    public static SpoilerEffect2 getInstance(int type, View view, ViewGroup rootView) {
         if (view == null || !supports()) {
             return null;
         }
         if (instance == null) {
+            instance = new HashMap<>();
+        }
+        SpoilerEffect2 e = instance.get(type);
+        if (e == null) {
             final int sz = getSize();
-            ViewGroup rootView = getRootView(view);
             if (rootView == null) {
                 return null;
             }
-            instance = new SpoilerEffect2(makeTextureViewContainer(rootView), sz, sz);
+            instance.put(type, e = new SpoilerEffect2(type, makeTextureViewContainer(rootView), sz, sz));
         }
-        instance.attach(view);
-        return instance;
+        e.attach(view);
+        return e;
     }
 
     private static ViewGroup getRootView(View view) {
@@ -79,20 +89,28 @@ public class SpoilerEffect2 {
     }
 
     public static void pause(boolean pause) {
-        if (instance != null && instance.thread != null) {
-            instance.thread.pause(pause);
+        if (instance == null) return;
+        for (SpoilerEffect2 s : instance.values()) {
+            if (s.thread != null) s.thread.pause(pause);
+        }
+    }
+
+    public static void pause(int type, boolean pause) {
+        if (instance == null) return;
+        for (SpoilerEffect2 s : instance.values()) {
+            if (s.type == type && s.thread != null) s.thread.pause(pause);
         }
     }
 
     private static int getSize() {
         switch (SharedConfig.getDevicePerformanceClass()) {
             case SharedConfig.PERFORMANCE_CLASS_HIGH:
-                return Math.min(900, (int) (Math.min(AndroidUtilities.displaySize.x, AndroidUtilities.displaySize.y) * 1.0f));
+                return Math.min(1280, (int) ((AndroidUtilities.displaySize.x + AndroidUtilities.displaySize.y) / 2f * 1.0f));
             case SharedConfig.PERFORMANCE_CLASS_AVERAGE:
-                return Math.min(900, (int) (Math.min(AndroidUtilities.displaySize.x, AndroidUtilities.displaySize.y) * .8f));
+                return Math.min(900, (int) ((AndroidUtilities.displaySize.x + AndroidUtilities.displaySize.y) / 2f * .8f));
             default:
             case SharedConfig.PERFORMANCE_CLASS_LOW:
-                return Math.min(720, (int) (Math.min(AndroidUtilities.displaySize.x, AndroidUtilities.displaySize.y) * .7f));
+                return Math.min(720, (int) ((AndroidUtilities.displaySize.x + AndroidUtilities.displaySize.y) / 2f * .7f));
         }
     }
 
@@ -170,6 +188,10 @@ public class SpoilerEffect2 {
     }
 
     public void draw(Canvas canvas, View view, int w, int h, float alpha) {
+        draw(canvas, view, w, h, alpha, false);
+    }
+
+    public void draw(Canvas canvas, View view, int w, int h, float alpha, boolean toBitmap) {
         if (canvas == null || view == null) {
             return;
         }
@@ -178,10 +200,6 @@ public class SpoilerEffect2 {
         Integer index = holdersToIndex.get(view);
         if (index == null) {
             index = 0;
-        }
-        if (w > ow || h > oh) {
-            final float scale = Math.max(w / (float) ow, h / (float) oh);
-            canvas.scale(scale, scale);
         }
         if ((index % 4) == 1) {
             canvas.rotate(180, ow / 2f, oh / 2f);
@@ -192,8 +210,22 @@ public class SpoilerEffect2 {
         if ((index % 4) == 3) {
             canvas.scale(1, -1, ow / 2f, oh / 2f);
         }
-        textureView.setAlpha(alpha);
-        textureView.draw(canvas);
+        if (w > ow || h > oh) {
+            final float scale = Math.max(w / (float) ow, h / (float) oh);
+            canvas.scale(scale, scale);
+        }
+        if (toBitmap) {
+            Bitmap bitmap = textureView.getBitmap();
+            if (bitmap != null) {
+                Paint paint = new Paint(Paint.DITHER_FLAG | Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+                paint.setColor(Color.WHITE);
+                canvas.drawBitmap(bitmap, 0, 0, paint);
+                bitmap.recycle();
+            }
+        } else {
+            textureView.setAlpha(alpha);
+            textureView.draw(canvas);
+        }
         canvas.restore();
     }
 
@@ -211,11 +243,12 @@ public class SpoilerEffect2 {
         }
     }
 
-    private SpoilerEffect2(ViewGroup container, int width, int height) {
+    private SpoilerEffect2(int type, ViewGroup container, int width, int height) {
         MAX_FPS = (int) AndroidUtilities.screenRefreshRate;
         MIN_DELTA = 1.0 / MAX_FPS;
         MAX_DELTA = MIN_DELTA * 4;
 
+        this.type = type;
         this.width = width;
         this.height = height;
 
@@ -424,7 +457,7 @@ public class SpoilerEffect2 {
                 running = false;
                 return;
             }
-            GLES31.glShaderSource(vertexShader, RLottieDrawable.readRes(null, R.raw.spoiler_vertex) + "\n// " + Math.random());
+            GLES31.glShaderSource(vertexShader, AndroidUtilities.readRes(R.raw.spoiler_vertex) + "\n// " + Math.random());
             GLES31.glCompileShader(vertexShader);
             int[] status = new int[1];
             GLES31.glGetShaderiv(vertexShader, GLES31.GL_COMPILE_STATUS, status, 0);
@@ -434,7 +467,7 @@ public class SpoilerEffect2 {
                 running = false;
                 return;
             }
-            GLES31.glShaderSource(fragmentShader, RLottieDrawable.readRes(null, R.raw.spoiler_fragment) + "\n// " + Math.random());
+            GLES31.glShaderSource(fragmentShader, AndroidUtilities.readRes(R.raw.spoiler_fragment) + "\n// " + Math.random());
             GLES31.glCompileShader(fragmentShader);
             GLES31.glGetShaderiv(fragmentShader, GLES31.GL_COMPILE_STATUS, status, 0);
             if (status[0] == 0) {
@@ -478,15 +511,6 @@ public class SpoilerEffect2 {
             GLES31.glUniform1f(resetHandle, reset ? 1 : 0);
             GLES31.glUniform1f(radiusHandle, radius);
             GLES31.glUniform1f(seedHandle, Utilities.fastRandom.nextInt(256) / 256f);
-
-            GLES31.glUniform1f(GLES31.glGetUniformLocation(drawProgram, "noiseScale"), 6);
-            GLES31.glUniform1f(GLES31.glGetUniformLocation(drawProgram, "noiseSpeed"), 0.6f);
-            GLES31.glUniform1f(GLES31.glGetUniformLocation(drawProgram, "noiseMovement"), 4f);
-            GLES31.glUniform1f(GLES31.glGetUniformLocation(drawProgram, "longevity"), 1.4f);
-            GLES31.glUniform1f(GLES31.glGetUniformLocation(drawProgram, "dampingMult"), .9999f);
-            GLES31.glUniform1f(GLES31.glGetUniformLocation(drawProgram, "maxVelocity"), 6.f);
-            GLES31.glUniform1f(GLES31.glGetUniformLocation(drawProgram, "velocityMult"), 1.0f);
-            GLES31.glUniform1f(GLES31.glGetUniformLocation(drawProgram, "forceMult"), 0.6f);
         }
 
         private float t;

@@ -16,6 +16,8 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.view.View;
 
+import androidx.annotation.Keep;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.ImageReceiver;
@@ -26,7 +28,7 @@ import java.util.Locale;
 
 public class RadialProgress2 {
 
-    private RectF progressRect = new RectF();
+    public RectF progressRect = new RectF();
     private View parent;
 
     private boolean previousCheckDrawable;
@@ -36,23 +38,23 @@ public class RadialProgress2 {
     private Paint miniProgressBackgroundPaint;
 
     private Paint overlayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private Paint circlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    public Paint circlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private Paint circleMiniPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private MediaActionDrawable mediaActionDrawable;
+    public MediaActionDrawable mediaActionDrawable;
     private MediaActionDrawable miniMediaActionDrawable;
     private float miniIconScale = 1.0f;
     private int circleColor;
     private int circlePressedColor;
-    private int iconColor;
+    public int iconColor;
     private int iconPressedColor;
     private int circleColorKey = -1;
     private int circleCrossfadeColorKey = -1;
     private float circleCrossfadeColorProgress;
     private float circleCheckProgress = 1.0f;
     private int circlePressedColorKey = -1;
-    private int iconColorKey = -1;
+    public int iconColorKey = -1;
     private int iconPressedColorKey = -1;
-    private ImageReceiver overlayImageView;
+    public ImageReceiver overlayImageView;
     private int circleRadius;
     private boolean isPressed;
     private boolean isPressedMini;
@@ -69,6 +71,8 @@ public class RadialProgress2 {
     private Theme.ResourcesProvider resourcesProvider;
     private int maxIconSize;
     private float overlayImageAlpha = 1f;
+
+    public float iconScale = 1f;
 
     public RadialProgress2(View parentView) {
         this(parentView, null);
@@ -101,10 +105,12 @@ public class RadialProgress2 {
         this.resourcesProvider = resourcesProvider;
     }
 
+    @Keep
     public void setAsMini() {
         mediaActionDrawable.setMini(true);
     }
 
+    @Keep
     public void setCircleRadius(int value) {
         circleRadius = value;
         overlayImageView.setRoundRadius(circleRadius);
@@ -126,13 +132,20 @@ public class RadialProgress2 {
         miniMediaActionDrawable.setBackgroundDrawable(drawable);
     }
 
+    @Keep
     public void setBackgroundGradientDrawable(LinearGradient drawable) {
         mediaActionDrawable.setBackgroundGradientDrawable(drawable);
         miniMediaActionDrawable.setBackgroundGradientDrawable(drawable);
     }
 
     public void setImageOverlay(TLRPC.PhotoSize image, TLRPC.Document document, Object parentObject) {
+        final String filter = String.format(Locale.US, "%d_%d", circleRadius * 2, circleRadius * 2);
         overlayImageView.setImage(ImageLocation.getForDocument(image, document), String.format(Locale.US, "%d_%d", circleRadius * 2, circleRadius * 2), null, null, parentObject, 1);
+    }
+
+    public void setImageOverlay(TLRPC.PhotoSize image, TLRPC.PhotoSize thumb, TLRPC.Document document, Object parentObject) {
+        final String filter = String.format(Locale.US, "%d_%d", circleRadius * 2, circleRadius * 2);
+        overlayImageView.setImage(image == null ? null : ImageLocation.getForDocument(image, document), filter, thumb == null ? null : ImageLocation.getForDocument(thumb, document), filter, null, 0, null, parentObject, 1);
     }
 
     public void setImageOverlay(String url) {
@@ -154,6 +167,7 @@ public class RadialProgress2 {
         iconPressedColorKey = iconPressed;
     }
 
+    @Keep
     public void setColors(int circle, int circlePressed, int icon, int iconPressed) {
         circleColor = circle;
         circlePressedColor = circlePressed;
@@ -224,6 +238,7 @@ public class RadialProgress2 {
         return miniMediaActionDrawable.getCurrentIcon();
     }
 
+    @Keep
     public void setIcon(int icon, boolean ifSame, boolean animated) {
         if (ifSame && icon == mediaActionDrawable.getCurrentIcon()) {
             return;
@@ -294,6 +309,7 @@ public class RadialProgress2 {
         return overrideAlpha;
     }
 
+    @Keep
     public void draw(Canvas canvas) {
         if (mediaActionDrawable.getCurrentIcon() == MediaActionDrawable.ICON_NONE && mediaActionDrawable.getTransitionProgress() >= 1.0f || progressRect.isEmpty()) {
             return;
@@ -452,6 +468,10 @@ public class RadialProgress2 {
         if (maxIconSize > 0 && iconSize > maxIconSize) {
             iconSize = maxIconSize;
         }
+        if (iconScale != 1f) {
+            canvas.save();
+            canvas.scale(iconScale, iconScale, centerX, centerY);
+        }
         mediaActionDrawable.setBounds(centerX - iconSize, centerY - iconSize, centerX + iconSize, centerY + iconSize);
         mediaActionDrawable.setHasOverlayImage(overlayImageView.hasBitmapImage());
         if ((drawMiniIcon || circleCrossfadeColorKey >= 0)) {
@@ -521,6 +541,9 @@ public class RadialProgress2 {
             if (restore != Integer.MIN_VALUE) {
                 canvas.restoreToCount(restore);
             }
+        }
+        if (iconScale != 1f) {
+            canvas.restore();
         }
     }
 

@@ -64,6 +64,9 @@ public class EntityView extends FrameLayout {
         default void onEntityDragEnd(boolean delete) {}
         default void onEntityDragTrash(boolean enter) {}
         default void onEntityHandleTouched() {}
+        default boolean isEntityDeletable() {
+            return true;
+        }
     }
 
     private float previousLocationX,  previousLocationY;
@@ -81,12 +84,14 @@ public class EntityView extends FrameLayout {
     private EntityViewDelegate delegate;
 
     private Point position;
-    protected SelectionView selectionView;
+    public SelectionView selectionView;
 
     private final Runnable longPressRunnable = () -> {
         recognizedLongPress = true;
         if (delegate != null) {
-            performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+            try {
+                performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+            } catch (Exception ignored) {}
             delegate.onEntityLongClicked(EntityView.this);
         }
     };
@@ -134,6 +139,8 @@ public class EntityView extends FrameLayout {
         position = value;
         updatePosition();
     }
+
+    public void setIsVideo(boolean isVideo) {}
 
     protected float getMaxScale() {
         return 100f;
@@ -184,7 +191,7 @@ public class EntityView extends FrameLayout {
                     scale(d / pd);
                 }
                 double angleDiff = Math.atan2(y1 - y2, x1 - x2) - Math.atan2(previousLocationY - previousLocationY2, previousLocationX - previousLocationX2);
-                rotate(this.angle + (float) Math.toDegrees(angleDiff) - delegate.getCropRotation());
+                rotate(this.angle + (float) Math.toDegrees(angleDiff));
             }
 
             previousLocationX = x1;
@@ -223,7 +230,11 @@ public class EntityView extends FrameLayout {
                 delegate.onEntityDraggedBottom(position.y + getHeight() / 2f * scale > ((View) getParent()).getHeight() - dp(64 + 50));
             }
 
-            updateTrash(!multitouch && MathUtils.distance(x, y,  ((View) getParent()).getWidth() / 2f, ((View) getParent()).getHeight() - dp(76)) < dp(32));
+            updateTrash(
+                (delegate == null || delegate.isEntityDeletable()) &&
+                    !multitouch &&
+                    MathUtils.distance(x, y,  ((View) getParent()).getWidth() / 2f, ((View) getParent()).getHeight() - dp(76)) < dp(32)
+            );
 
             bounce.setPressed(false);
 
@@ -585,14 +596,14 @@ public class EntityView extends FrameLayout {
     private float scale = 1f;
 
     public void scale(float scale) {
+        float oldScale = this.scale;
         this.scale *= scale;
         float newScale = Math.max(this.scale, 0.1f);
         newScale = Utilities.clamp(newScale, getMaxScale(), getMinScale());
-        if (allowHaptic() && (newScale >= getMaxScale() || newScale <= getMinScale())) {
+        if (allowHaptic() && (newScale >= getMaxScale() || newScale <= getMinScale()) != (oldScale >= getMaxScale() || oldScale <= getMinScale())) {
             try {
                 performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING);
-            } catch (Exception ignore) {
-            }
+            } catch (Exception ignore) {}
         }
         setScaleX(newScale);
         setScaleY(newScale);
@@ -709,7 +720,7 @@ public class EntityView extends FrameLayout {
         updateSelectionView();
     }
 
-    protected Rect getSelectionBounds() {
+    public Rect getSelectionBounds() {
         return new Rect(0, 0, 0, 0);
     }
 
@@ -824,7 +835,7 @@ public class EntityView extends FrameLayout {
             dotStrokePaint.setShadowLayer(AndroidUtilities.dpf2(0.75f), 0, 0, 0x50000000);
         }
 
-        protected void updatePosition() {
+        public void updatePosition() {
             Rect bounds = getSelectionBounds();
             LayoutParams layoutParams = (LayoutParams) getLayoutParams();
             layoutParams.leftMargin = (int) bounds.x;
@@ -929,7 +940,7 @@ public class EntityView extends FrameLayout {
                                 angle = (float) Math.atan2(y - pos[1], x - pos[0]);
                             }
 
-                            rotate((float) Math.toDegrees(angle) - delegate.getCropRotation());
+                            rotate((float) Math.toDegrees(angle));
 
                             previousLocationX = x;
                             previousLocationY = y;
@@ -1002,16 +1013,28 @@ public class EntityView extends FrameLayout {
         }
     }
 
+    public boolean trashCenter() {
+        return false;
+    }
+
+    protected float getBounceScale() {
+        return .04f;
+    }
+
     @Override
     protected void dispatchDraw(Canvas canvas) {
-        final float scale = bounce.getScale(.05f);
+        final float scale = bounce.getScale(getBounceScale());
         canvas.save();
         canvas.scale(scale, scale, getWidth() / 2f, getHeight() / 2f);
         if (getParent() instanceof View) {
             View p = (View) getParent();
-            float px = p.getWidth() / 2f - getX();
-            float py = p.getHeight() - dp(76) - getY();
-            canvas.scale(trashScale, trashScale, px, py);
+            if (trashCenter()) {
+                canvas.scale(trashScale, trashScale, getWidth() / 2f, getHeight() / 2f);
+            } else {
+                float px = p.getWidth() / 2f - getX();
+                float py = p.getHeight() - dp(76) - getY();
+                canvas.scale(trashScale, trashScale, px, py);
+            }
         }
         super.dispatchDraw(canvas);
         canvas.restore();

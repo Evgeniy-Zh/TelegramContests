@@ -10,9 +10,9 @@ import java.util.ArrayList;
 public class ChatMessagesMetadataController {
 
     final ChatActivity chatActivity;
-    private ArrayList<MessageObject> reactionsToCheck = new ArrayList<>(10);
-    private ArrayList<MessageObject> extendedMediaToCheck = new ArrayList<>(10);
-    private ArrayList<MessageObject> storiesToCheck = new ArrayList<>(10);
+    private final ArrayList<MessageObject> reactionsToCheck = new ArrayList<>(10);
+    private final ArrayList<MessageObject> extendedMediaToCheck = new ArrayList<>(10);
+    private final ArrayList<MessageObject> storiesToCheck = new ArrayList<>(10);
 
     ArrayList<Integer> reactionsRequests = new ArrayList<>();
     ArrayList<Integer> extendedMediaRequests = new ArrayList<>();
@@ -23,7 +23,7 @@ public class ChatMessagesMetadataController {
     }
 
     public void checkMessages(ChatActivity.ChatActivityAdapter chatAdapter, int maxAdapterPosition, int minAdapterPosition, long currentTime) {
-        ArrayList<MessageObject> messages = chatActivity.messages;
+        ArrayList<MessageObject> messages = chatAdapter.getMessages();
         if (!chatActivity.isInScheduleMode() && maxAdapterPosition >= 0 && minAdapterPosition >= 0) {
             int from = minAdapterPosition - chatAdapter.messagesStartRow - 10;
             int to = maxAdapterPosition - chatAdapter.messagesStartRow + 10;
@@ -38,11 +38,11 @@ public class ChatMessagesMetadataController {
             storiesToCheck.clear();
             for (int i = from; i < to; i++) {
                 MessageObject messageObject = messages.get(i);
-                if (chatActivity.getThreadMessage() != messageObject && messageObject.getId() > 0 && messageObject.messageOwner.action == null && (currentTime - messageObject.reactionsLastCheckTime) > 15000L) {
+                if (chatActivity.getThreadMessage() != messageObject && messageObject.getId() > 0 && (messageObject.messageOwner.action == null || messageObject.canSetReaction()) && (currentTime - messageObject.reactionsLastCheckTime) > 15000L) {
                     messageObject.reactionsLastCheckTime = currentTime;
                     reactionsToCheck.add(messageObject);
                 }
-                if (chatActivity.getThreadMessage() != messageObject && messageObject.getId() > 0 && messageObject.hasExtendedMediaPreview() && (currentTime - messageObject.extendedMediaLastCheckTime) > 30000L) {
+                if (chatActivity.getThreadMessage() != messageObject && messageObject.getId() > 0 && (messageObject.hasExtendedMediaPreview() || messageObject.hasPaidMediaPreview()) && (currentTime - messageObject.extendedMediaLastCheckTime) > 30000L) {
                     messageObject.extendedMediaLastCheckTime = currentTime;
                     extendedMediaToCheck.add(messageObject);
                 }
@@ -76,7 +76,7 @@ public class ChatMessagesMetadataController {
                 storyItem.dialogId = messageObject.messageOwner.media.user_id;
             } else if (messageObject.messageOwner.reply_to != null) {
                 storyItem = messageObject.messageOwner.replyStory;
-                storyItem.dialogId = messageObject.messageOwner.reply_to.user_id;
+                storyItem.dialogId = DialogObject.getPeerDialogId(messageObject.messageOwner.reply_to.peer);
             } else {
                 continue;
             }

@@ -2,6 +2,7 @@ package org.telegram.ui.Components.Premium;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.ColorFilter;
 import android.graphics.LinearGradient;
 import android.graphics.Matrix;
@@ -9,6 +10,8 @@ import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.PorterDuffXfermode;
+import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -24,6 +27,7 @@ import org.telegram.ui.ActionBar.Theme;
 public class PremiumGradient {
 
     private final PremiumGradientTools mainGradient = new PremiumGradientTools(Theme.key_premiumGradient1, Theme.key_premiumGradient2, Theme.key_premiumGradient3, Theme.key_premiumGradient4);
+    private final PremiumGradientTools goldGradient = new PremiumGradientTools(Theme.key_starsGradient1, Theme.key_starsGradient2, -1);
 //    private final GradientTools grayGradient = new GradientTools(Theme.key_windowBackgroundWhiteGrayText7, Theme.key_windowBackgroundWhiteGrayText7, Theme.key_windowBackgroundWhiteGrayText7);
     private final Paint mainGradientPaint = mainGradient.paint;
     Paint lockedPremiumPaint;
@@ -38,6 +42,7 @@ public class PremiumGradient {
     public InternalDrawable premiumStarMenuDrawable;
     public InternalDrawable premiumStarMenuDrawable2;
     public InternalDrawable premiumStarMenuDrawableGray;
+    public InternalDrawable goldenStarMenuDrawable;
 
     private int lastStarColor;
 
@@ -51,6 +56,7 @@ public class PremiumGradient {
     private PremiumGradient() {
         premiumStarDrawableMini = ContextCompat.getDrawable(ApplicationLoader.applicationContext, R.drawable.msg_premium_liststar).mutate();
         premiumStarMenuDrawable = createGradientDrawable(ContextCompat.getDrawable(ApplicationLoader.applicationContext, R.drawable.msg_settings_premium));
+        goldenStarMenuDrawable = createGradientDrawable(ContextCompat.getDrawable(ApplicationLoader.applicationContext, R.drawable.msg_settings_premium), goldGradient);
         premiumStarMenuDrawable2 = createGradientDrawable(ContextCompat.getDrawable(ApplicationLoader.applicationContext, R.drawable.msg_premium_normal));
 //        premiumStarMenuDrawableGray = createGradientDrawable(ContextCompat.getDrawable(ApplicationLoader.applicationContext, R.drawable.msg_settings_premium), grayGradient);
         premiumStarColoredDrawable = ContextCompat.getDrawable(ApplicationLoader.applicationContext, R.drawable.msg_premium_liststar).mutate();
@@ -133,7 +139,7 @@ public class PremiumGradient {
     }
 
     public Paint getMainGradientPaint() {
-        if (MessagesController.getInstance(UserConfig.selectedAccount).premiumLocked) {
+        if (MessagesController.getInstance(UserConfig.selectedAccount).premiumFeaturesBlocked()) {
             if (lockedPremiumPaint == null) {
                 lockedPremiumPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             }
@@ -158,6 +164,7 @@ public class PremiumGradient {
         final int colorKey1, colorKey2, colorKey3, colorKey4, colorKey5;
         final int colors[] = new int[5];
         public boolean exactly;
+        public boolean darkColors;
 
         public float x1 = 0f, y1 = 1f, x2 = 1.5f, y2 = 0f;
 
@@ -180,6 +187,14 @@ public class PremiumGradient {
             this.colorKey3 = colorKey3;
             this.colorKey4 = colorKey4;
             this.colorKey5 = colorKey5;
+        }
+
+        public void gradientMatrix(Rect rect) {
+            gradientMatrix(rect.left, rect.top, rect.right, rect.bottom, 0, 0);
+        }
+
+        public void gradientMatrix(RectF rect) {
+            gradientMatrix((int) rect.left, (int) rect.top, (int) rect.right, (int) rect.bottom, 0, 0);
         }
 
         public void gradientMatrix(int x, int y, int x1, int y1, float xOffset, float yOffset) {
@@ -207,12 +222,28 @@ public class PremiumGradient {
             }
         }
 
+        protected int getThemeColorByKey(int key) {
+            return Theme.getColor(key, resourcesProvider);
+        }
+
+        private int getColor(int key) {
+            int color = getThemeColorByKey(key);
+            if (darkColors) {
+                float a = Color.alpha(color);
+                float r = Color.red(color) - 15;
+                float g = Color.green(color) - 15;
+                float b = Color.blue(color) - 15;
+                return Color.argb((int) a, (int) r, (int) g, (int) b);
+            }
+            return color;
+        }
+
         private void chekColors() {
-            int c1 = Theme.getColor(colorKey1, resourcesProvider);
-            int c2 = Theme.getColor(colorKey2, resourcesProvider);
-            int c3 = colorKey3 < 0 ? 0 : Theme.getColor(colorKey3, resourcesProvider);
-            int c4 = colorKey4 < 0 ? 0 : Theme.getColor(colorKey4, resourcesProvider);
-            int c5 = colorKey5 < 0 ? 0 : Theme.getColor(colorKey5, resourcesProvider);
+            int c1 = getColor(colorKey1);
+            int c2 = getColor(colorKey2);
+            int c3 = colorKey3 < 0 ? 0 : getColor(colorKey3);
+            int c4 = colorKey4 < 0 ? 0 : getColor(colorKey4);
+            int c5 = colorKey5 < 0 ? 0 : getColor(colorKey5);
             if (colors[0] != c1 || colors[1] != c2 || colors[2] != c3 || colors[3] != c4 || colors[4] != c5) {
                 colors[0] = c1;
                 colors[1] = c2;

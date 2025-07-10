@@ -26,11 +26,20 @@ public class ButtonBounce {
         this.overshoot = overshoot;
     }
 
+    public View getView() {
+        return view;
+    }
+
     public ButtonBounce(View viewToInvalidate, float durationPressMultiplier, float durationReleaseMultiplier, float overshoot) {
         view = viewToInvalidate;
         this.durationPressMultiplier = durationPressMultiplier;
         this.durationReleaseMultiplier = durationReleaseMultiplier;
         this.overshoot = overshoot;
+    }
+
+    private Runnable additionalInvalidate;
+    public void setAdditionalInvalidate(Runnable additionalInvalidate) {
+        this.additionalInvalidate = additionalInvalidate;
     }
 
     public ButtonBounce setReleaseDelay(long releaseDelay) {
@@ -94,9 +103,12 @@ public class ButtonBounce {
         return isPressed;
     }
 
-    private void invalidate() {
+    public void invalidate() {
         if (view != null) {
             view.invalidate();
+        }
+        if (additionalInvalidate != null) {
+            additionalInvalidate.run();
         }
     }
 

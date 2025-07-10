@@ -11,7 +11,7 @@
 
     <!--THEMES-->
 
-    <style name="Theme.TMessages.Start" parent="@android:style/Theme.Material">
+    <style name="Theme.TMessages.Start" parent="Theme.AppCompat.Light">
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:actionBarStyle">@style/ActionBar.Transparent.TMessages.Start</item>
@@ -25,7 +25,7 @@
         <item name="android:forceDarkAllowed">false</item>
     </style>
 
-    <style name="Theme.TMessages" parent="@android:style/Theme.Material.Light">
+    <style name="Theme.TMessages" parent="Theme.AppCompat.Light">
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBarOverlay">false</item>
@@ -52,7 +52,7 @@
         <item name="android:forceDarkAllowed">false</item>
     </style>
 
-    <style name="Theme.TMessages.Dark" parent="@android:style/Theme.Material">
+    <style name="Theme.TMessages.Dark" parent="Theme.AppCompat.DayNight">
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBarOverlay">false</item>
@@ -93,6 +93,18 @@
         <item name="android:colorAccent">#4991cc</item>
         <item name="android:colorPrimary">#527da3</item>
         <item name="android:colorControlActivated">#808080</item>
+    </style>
+
+    <style name="Theme.CastDialog" parent="Theme.TMessages.Dark.Dialog.Alert">
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="colorPrimary">#222222</item>
+        <item name="android:colorBackground">#222222</item>
+        <item name="android:windowBackground">#222222</item>
+        <item name="android:panelBackground">#222222</item>
+        <item name="colorAccent">#4991cc</item>
+        <item name="android:textColorPrimary">#FFFFFF</item>
+        <item name="android:backgroundDimAmount">0.5</item>
+        <item name="dialogCornerRadius">16dp</item>
     </style>
 
     <style name="Theme.TMessages.Dark.Dialog.Alert" parent="android:style/Theme.Material.Dialog.Alert">
