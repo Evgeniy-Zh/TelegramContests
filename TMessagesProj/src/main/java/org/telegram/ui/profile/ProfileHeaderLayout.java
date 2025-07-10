@@ -217,8 +217,8 @@ public class ProfileHeaderLayout {
 //                canvas.drawLine(0, dp(headerHeight) + statusBarHeight + ActionBar.getCurrentActionBarHeight(), canvas.getWidth(), dp(headerHeight)  + statusBarHeight + ActionBar.getCurrentActionBarHeight(), paint);
 
 
-                paint.setColor(Color.BLUE);
-                canvas.drawLine(0, dp(expandedHeaderHeight), canvas.getWidth(), dp(expandedHeaderHeight), paint);
+//                paint.setColor(Color.BLUE);
+//                canvas.drawLine(0, dp(expandedHeaderHeight), canvas.getWidth(), dp(expandedHeaderHeight), paint);
 
 
                 if (transitionOnlineText != null) {

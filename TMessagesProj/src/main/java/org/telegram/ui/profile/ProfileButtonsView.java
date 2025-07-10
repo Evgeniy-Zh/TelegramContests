@@ -26,13 +26,13 @@ import java.util.List;
 
 public class ProfileButtonsView extends LinearLayout {
 
-    public static int buttonCount= 0;
-    public static final int MESSAGE_BUTTON = buttonCount++;
-    public static final int MUTE_BUTTON = buttonCount++;
-    public static final int UNMUTE_BUTTON = buttonCount++;
-    public static final int CALL_BUTTON = buttonCount++;
-    public static final int VIDEO_BUTTON = buttonCount++;
-    public static final int GIFT_BUTTON = buttonCount++;
+    public static int statrId = 43042;
+    public static final int MESSAGE_BUTTON = statrId++;
+    public static final int MUTE_BUTTON = statrId++;
+    public static final int UNMUTE_BUTTON = statrId++;
+    public static final int CALL_BUTTON = statrId++;
+    public static final int VIDEO_BUTTON = statrId++;
+    public static final int GIFT_BUTTON = statrId++;
     private final int verticalMargin;
     private OnClickListener buttonsListener;
 
@@ -95,7 +95,6 @@ public class ProfileButtonsView extends LinearLayout {
 
     public void setButtonsCLickListener(OnClickListener listener){
         buttonsListener = listener;
-        AndroidUtilities.forEachViews(this, view -> view.setOnClickListener(listener));
     }
 
     public Animator getAnimator(float value){

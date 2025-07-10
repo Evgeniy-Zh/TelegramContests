@@ -354,11 +354,9 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
     }
 
     private float calculateTimeFraction(float x, int index){
-//        index = gifts.size() - index;
         float c = index < 3 ? (1 + index) : index * 1.5f;
         double exp = Math.pow(x, c);
         float y  = (float) ( (2*exp) / (exp + Math.pow (1 - x, c)) );
-        Log.d("EXP", "x = " + x + "; y = " + y);
         return y;
     }
 

@@ -811,6 +811,12 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
         return topicId;
     }
 
+    public int getPlayProfileAnimation() {
+        Log.d("animTypeTAG", "" + playProfileAnimation);
+        //TODO: fix animation types
+        return 1;
+    }
+
 
     class OverlaysView extends View implements ProfileGalleryView.Callback {
 
@@ -1836,8 +1842,11 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
         profileHeaderLayout.extraHeight = dp(profileHeaderLayout.headerHeight); //TODO: remove
 
         profileHeaderLayout.profileButtonsView.setButtonsCLickListener(v -> {
+            //TODO: remove actions from actionbar listener
             actionBar.getActionBarMenuOnItemClick().onItemClick(v.getId());
         });
+
+        profileHeaderLayout.profileButtonsView.get(ProfileButtonsView.MESSAGE_BUTTON).setOnClickListener(v -> onWriteButtonClick());
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(final int id) {
@@ -4540,14 +4549,6 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
             profileHeaderLayout.messageButton.setContentDescription(getString(R.string.ViewDiscussion));
         }
 
-        profileHeaderLayout.messageButton.setOnClickListener(v -> {
-            if (profileHeaderLayout.messageButton.getTag() != null) {
-                return;
-            }
-            onWriteButtonClick();
-        });
-
-
         needLayout(false);
 
         listView.setOnScrollListener(new RecyclerView.OnScrollListener() {
@@ -5206,7 +5207,12 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                     setAvatarCell.getImageView().playAnimation();
                 }
             } else {
-                if (playProfileAnimation != 0 && parentLayout != null && parentLayout.getFragmentStack() != null && parentLayout.getFragmentStack().size() >= 2 && parentLayout.getFragmentStack().get(parentLayout.getFragmentStack().size() - 2) instanceof ChatActivity) {
+                boolean containsChatInBackStack = false;
+                if( parentLayout.getFragmentStack().size() >= 2 && parentLayout.getFragmentStack().get(parentLayout.getFragmentStack().size() - 2) instanceof ChatActivity){
+                    ChatActivity chatActivity = (ChatActivity) parentLayout.getFragmentStack().get(parentLayout.getFragmentStack().size() - 2);
+                    containsChatInBackStack = (getUserInfo().id == chatActivity.getCurrentUserInfo().id);
+                }
+                if (getPlayProfileAnimation() != 0 && parentLayout != null && parentLayout.getFragmentStack() != null && containsChatInBackStack) {
                     finishFragment();
                 } else {
                     TLRPC.User user = getMessagesController().getUser(userId);
@@ -6284,7 +6290,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
         if (profileHeaderLayout.extraHeight != newOffset && !transitionAnimationInProress) {
             profileHeaderLayout.extraHeight = newOffset;
             topView.invalidate();
-            if (playProfileAnimation != 0) {
+            if (getPlayProfileAnimation() != 0) {
                 allowProfileAnimation = profileHeaderLayout.extraHeight != 0;
             }
             needLayout(true);
@@ -6907,7 +6913,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
 
     @Override
     public boolean needDelayOpenAnimation() {
-        if (playProfileAnimation == 0) {
+        if (getPlayProfileAnimation() == 0) {
             return true;
         }
         return false;
@@ -7068,7 +7074,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
     public void onTransitionAnimationStart(boolean isOpen, boolean backward) {
         super.onTransitionAnimationStart(isOpen, backward);
         isFragmentOpened = isOpen;
-        if ((!isOpen && backward || isOpen && !backward) && playProfileAnimation != 0 && allowProfileAnimation && !profileHeaderLayout.isPulledDown()) {
+        if ((!isOpen && backward || isOpen && !backward) && getPlayProfileAnimation() != 0 && allowProfileAnimation && !profileHeaderLayout.isPulledDown()) {
             openAnimationInProgress = true;
             profileHeaderLayout.openAnimationInProgress = true;
         }
@@ -7090,8 +7096,8 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
     public void onTransitionAnimationEnd(boolean isOpen, boolean backward) {
         if (isOpen) {
             if (!backward) {
-                if (playProfileAnimation != 0 && allowProfileAnimation) {
-                    if (playProfileAnimation == 1) {
+                if (getPlayProfileAnimation() != 0 && allowProfileAnimation) {
+                    if (getPlayProfileAnimation() == 1) {
                         profileHeaderLayout.currentExpandAnimatorValue = 0f;
                     }
                     openAnimationInProgress = false;
@@ -7131,7 +7137,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
         profileHeaderLayout.setAvatarAnimationProgress(progress);
         profileHeaderLayout.currentExpandAnimatorValue = progress;
         checkPhotoDescriptionAlpha();
-        if (playProfileAnimation == 2) {
+        if (getPlayProfileAnimation() == 2) {
             avatarImage.setProgressToExpand(progress);
         }
 
@@ -7140,7 +7146,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
         listView.setTranslationX(AndroidUtilities.dp(48) - AndroidUtilities.dp(48) * progress);
 
         int color;
-        if (playProfileAnimation == 2 && avatarColor != 0) {
+        if (getPlayProfileAnimation() == 2 && avatarColor != 0) {
             color = avatarColor;
         } else {
             color = AvatarDrawable.getProfileBackColorForId(userId != 0 || ChatObject.isChannel(chatId, currentAccount) && !currentChat.megagroup ? 5 : chatId, resourcesProvider);
@@ -7161,7 +7167,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
         color = getThemedColor(Theme.key_profile_title);
         int titleColor = getThemedColor(Theme.key_actionBarDefaultTitle);
         for (int i = 0; i < 2; i++) {
-            if (profileHeaderLayout.nameTextView[i] == null || i == 1 && playProfileAnimation == 2) {
+            if (profileHeaderLayout.nameTextView[i] == null || i == 1 && getPlayProfileAnimation() == 2) {
                 continue;
             }
             profileHeaderLayout.nameTextView[i].setTextColor(ColorUtils.blendARGB(titleColor, color, progress));
@@ -7170,7 +7176,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
         color = isOnline[0] ? getThemedColor(Theme.key_profile_status) : AvatarDrawable.getProfileTextColorForId(userId != 0 || ChatObject.isChannel(chatId, currentAccount) && !currentChat.megagroup ? 5 : chatId, resourcesProvider);
         int subtitleColor = getThemedColor(isOnline[0] ? Theme.key_chat_status : Theme.key_actionBarDefaultSubtitle);
         for (int i = 0; i < 3; i++) {
-            if (profileHeaderLayout.onlineTextView[i] == null || i == 1 || i == 2 && playProfileAnimation == 2) {
+            if (profileHeaderLayout.onlineTextView[i] == null || i == 1 || i == 2 && getPlayProfileAnimation() == 2) {
                 continue;
             }
             profileHeaderLayout.onlineTextView[i].setTextColor(ColorUtils.blendARGB(i == 0 ? subtitleColor : applyPeerColor(subtitleColor, true, isOnline[0]), i == 0 ? color : applyPeerColor(color, true, isOnline[0]), progress));
@@ -7216,7 +7222,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
 
     @Override
     public AnimatorSet onCustomTransitionAnimation(final boolean isOpen, final Runnable callback) {
-        if (playProfileAnimation != 0 && allowProfileAnimation && !profileHeaderLayout.isPulledDown() && !disableProfileAnimation) {
+        if (getPlayProfileAnimation() != 0 && allowProfileAnimation && !profileHeaderLayout.isPulledDown() && !disableProfileAnimation) {
             if (timeItem != null) {
                 timeItem.setAlpha(1.0f);
             }
@@ -7252,7 +7258,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                 updateStar();
             }
             final AnimatorSet animatorSet = new AnimatorSet();
-            animatorSet.setDuration(playProfileAnimation == 2 ? 250 : 180);
+            animatorSet.setDuration(getPlayProfileAnimation() == 2 ? 250 : 180);
             listView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
             ActionBarMenu menu = actionBar.createMenu();
             if (menu.getItem(10) == null) {
@@ -7262,7 +7268,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
             }
             if (isOpen) {
 
-                if (playProfileAnimation != 2) {
+                if (getPlayProfileAnimation() != 2) {
                     int width = (int) Math.ceil(AndroidUtilities.displaySize.x - dp(118 + 8) + 21 * AndroidUtilities.density);
                     float width2 = profileHeaderLayout.nameTextView[1].getPaint().measureText(profileHeaderLayout.nameTextView[1].getText().toString()) * 1.12f + profileHeaderLayout.nameTextView[1].getSideDrawablesSize();
                     FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) profileHeaderLayout.nameTextView[1].getLayoutParams();
@@ -7284,7 +7290,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                 ArrayList<Animator> animators = new ArrayList<>();
                 animators.add(ObjectAnimator.ofFloat(this, "avatarAnimationProgress", 0.0f, 1.0f));
 
-                if (playProfileAnimation == 2) {
+                if (getPlayProfileAnimation() == 2) {
                     avatarColor = getAverageColor(avatarImage.getImageReceiver());
                     profileHeaderLayout.nameTextView[1].setTextColor(Color.WHITE);
                     profileHeaderLayout.onlineTextView[1].setTextColor(0xB3FFFFFF);
@@ -7471,7 +7477,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                         animatingItem = null;
                     }
                     callback.run();
-                    if (playProfileAnimation == 2) {
+                    if (getPlayProfileAnimation() == 2) {
                         playProfileAnimation = 0;
                         avatarImage.setForegroundAlpha(1.0f);
                         profileHeaderLayout.innerAvatarContainer.setVisibility(View.GONE);
@@ -7487,7 +7493,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                     fragmentView.invalidate();
                 }
             });
-            animatorSet.setInterpolator(playProfileAnimation == 2 ? CubicBezierInterpolator.DEFAULT : new DecelerateInterpolator());
+            animatorSet.setInterpolator(getPlayProfileAnimation() == 2 ? CubicBezierInterpolator.DEFAULT : new DecelerateInterpolator());
 
             AndroidUtilities.runOnUIThread(animatorSet::start, 50);
             return animatorSet;
@@ -12512,9 +12518,9 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
     private void checkPhotoDescriptionAlpha() {
         float photoDescriptionProgress = profileHeaderLayout.photoDescriptionProgress;
         float p = photoDescriptionProgress;
-        if (playProfileAnimation == 1 && (!fragmentOpened || openAnimationInProgress)) {
+        if (getPlayProfileAnimation() == 1 && (!fragmentOpened || openAnimationInProgress)) {
             photoDescriptionProgress = 0;
-        } else if (playProfileAnimation == 2 && (!fragmentOpened || openAnimationInProgress)) {
+        } else if (getPlayProfileAnimation() == 2 && (!fragmentOpened || openAnimationInProgress)) {
             photoDescriptionProgress = profileHeaderLayout.onlineTextView[1] == null ? 0 : profileHeaderLayout.onlineTextView[1].getAlpha();
         } else {
             if (userId == UserConfig.getInstance(currentAccount).clientUserId) {
