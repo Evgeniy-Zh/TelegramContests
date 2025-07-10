@@ -167,6 +167,7 @@ public class ProfileHeaderLayout {
     public boolean isInLandscapeMode;
     private float nameActionBarX;
     private float nameActionBarY;
+    private DropView dropView;
 
 
     public ProfileHeaderLayout(BaseFragment currentFragment) {
@@ -344,6 +345,9 @@ public class ProfileHeaderLayout {
 
         avatarContainer.addView(profileButtonsView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 60, Gravity.CENTER_HORIZONTAL, 4, 0, 4, 0));
 
+        dropView = new DropView(context);
+        avatarContainer.addView(dropView, LayoutHelper.createFrame(90, 60, Gravity.CENTER_HORIZONTAL));
+
         setUpOnlineText();
 
         setUpNameText();
@@ -429,12 +433,18 @@ public class ProfileHeaderLayout {
         buttonsTranslationAnim.setStartDelay(100);
         buttonsTranslationAnim.setDuration(800);
 
+        Animator dropViewAnimator = dropView.animator;
+
+        dropViewAnimator.setStartDelay(100);
+        dropViewAnimator.setDuration(600);
+
         avatarCollapseAnimator.playTogether(
                 giftsAnimator,
                 topViewAnimator,
                 avSet,
                 textAnimator,
-                buttonsTranslationAnim
+                buttonsTranslationAnim,
+                dropViewAnimator
         );
 
 
