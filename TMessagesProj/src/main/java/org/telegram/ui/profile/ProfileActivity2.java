@@ -814,7 +814,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
     public int getPlayProfileAnimation() {
         Log.d("animTypeTAG", "" + playProfileAnimation);
         //TODO: fix animation types
-        return 1;
+        return playProfileAnimation;
     }
 
 
@@ -3094,14 +3094,14 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
             }
         }
 
-        videoCallItem = profileHeaderLayout.profileButtonsView.addButton(video_call_item, R.drawable.profile_video, R.string.Video);
+        videoCallItem = profileHeaderLayout.profileButtonsView.addButton(video_call_item, R.drawable.profile_video, "Video"); //TODO: str id
         videoCallItem.setVisibility(videoCallItemVisible ? View.VISIBLE : View.GONE);
         videoCallItem.setContentDescription(getString(R.string.VideoCall));
 
         if (chatId != 0) {
-            callItem = profileHeaderLayout.profileButtonsView.addButton(call_item, R.drawable.msg_voicechat2, R.string.VoipChannelVoiceChat);
+            callItem = profileHeaderLayout.profileButtonsView.addButton(call_item, R.drawable.msg_voicechat2, "Live Stream"); //TODO: str id
         } else {
-            callItem = profileHeaderLayout.profileButtonsView.addButton(call_item, R.drawable.ic_call, R.string.Call);
+            callItem = profileHeaderLayout.profileButtonsView.addButton(call_item, R.drawable.ic_call, "Call"); //TODO: str id
         }
         callItem.setVisibility(callItemVisible? View.VISIBLE : View.GONE);
         if (myProfile) {
@@ -6290,9 +6290,9 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
         if (profileHeaderLayout.extraHeight != newOffset && !transitionAnimationInProress) {
             profileHeaderLayout.extraHeight = newOffset;
             topView.invalidate();
-            if (getPlayProfileAnimation() != 0) {
-                allowProfileAnimation = profileHeaderLayout.extraHeight != 0;
-            }
+
+            allowProfileAnimation = profileHeaderLayout.extraHeight != 0;
+
             needLayout(true);
         }
     }
@@ -7074,7 +7074,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
     public void onTransitionAnimationStart(boolean isOpen, boolean backward) {
         super.onTransitionAnimationStart(isOpen, backward);
         isFragmentOpened = isOpen;
-        if ((!isOpen && backward || isOpen && !backward) && getPlayProfileAnimation() != 0 && allowProfileAnimation && !profileHeaderLayout.isPulledDown()) {
+        if ((!isOpen && backward || isOpen && !backward) && allowProfileAnimation && !profileHeaderLayout.isPulledDown()) {
             openAnimationInProgress = true;
             profileHeaderLayout.openAnimationInProgress = true;
         }
@@ -7096,7 +7096,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
     public void onTransitionAnimationEnd(boolean isOpen, boolean backward) {
         if (isOpen) {
             if (!backward) {
-                if (getPlayProfileAnimation() != 0 && allowProfileAnimation) {
+                if (allowProfileAnimation) {
                     if (getPlayProfileAnimation() == 1) {
                         profileHeaderLayout.currentExpandAnimatorValue = 0f;
                     }
@@ -7140,10 +7140,6 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
         if (getPlayProfileAnimation() == 2) {
             avatarImage.setProgressToExpand(progress);
         }
-
-        listView.setAlpha(progress);
-
-        listView.setTranslationX(AndroidUtilities.dp(48) - AndroidUtilities.dp(48) * progress);
 
         int color;
         if (getPlayProfileAnimation() == 2 && avatarColor != 0) {
@@ -7222,7 +7218,8 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
 
     @Override
     public AnimatorSet onCustomTransitionAnimation(final boolean isOpen, final Runnable callback) {
-        if (getPlayProfileAnimation() != 0 && allowProfileAnimation && !profileHeaderLayout.isPulledDown() && !disableProfileAnimation) {
+        Log.d("onCustomTransition", "isOpen: " + isOpen);
+        if (!profileHeaderLayout.isPulledDown()) {
             if (timeItem != null) {
                 timeItem.setAlpha(1.0f);
             }
@@ -7286,7 +7283,6 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                     profileHeaderLayout.nameTextView[1].setLayoutParams(layoutParams);
                 }
                 fragmentView.setBackgroundColor(0);
-                setAvatarAnimationProgress(0);
                 ArrayList<Animator> animators = new ArrayList<>();
                 animators.add(ObjectAnimator.ofFloat(this, "avatarAnimationProgress", 0.0f, 1.0f));
 
@@ -7300,10 +7296,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                     }
                     overlaysView.setOverlaysVisible();
                 }
-                for (int a = 0; a < 2; a++) {
-                    profileHeaderLayout.nameTextView[a].setAlpha(a == 0 ? 1.0f : 0.0f);
-                    animators.add(ObjectAnimator.ofFloat(profileHeaderLayout.nameTextView[a], View.ALPHA, a == 0 ? 0.0f : 1.0f));
-                }
+
                 if (storyView != null) {
                     if (getDialogId() > 0) {
                         storyView.setAlpha(0f);
@@ -7362,27 +7355,15 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                         profileHeaderLayout.setTransitionOnlineText(avatarContainer.getSubtitleTextView());
                         this.profileHeaderLayout.avatarContainer.invalidate();
                         onlineTextCrosafade = true;
-                        profileHeaderLayout.onlineTextView[0].setAlpha(0f);
-                        profileHeaderLayout.onlineTextView[1].setAlpha(0f);
-                        animators.add(ObjectAnimator.ofFloat(profileHeaderLayout.onlineTextView[1], View.ALPHA, 1.0f));
-                    }
-                }
 
-                if (!onlineTextCrosafade) {
-                    for (int a = 0; a < 2; a++) {
-                        profileHeaderLayout.onlineTextView[a].setAlpha(a == 0 ? 1.0f : 0.0f);
-                        animators.add(ObjectAnimator.ofFloat(profileHeaderLayout.onlineTextView[a], View.ALPHA, a == 0 ? 0.0f : 1.0f));
                     }
                 }
                 animatorSet.playTogether(animators);
             } else {
-                initialAnimationExtraHeight = profileHeaderLayout.extraHeight;
+                initialAnimationExtraHeight = dp(profileHeaderLayout.extraHeight);
                 ArrayList<Animator> animators = new ArrayList<>();
-                animators.add(ObjectAnimator.ofFloat(this, "avatarAnimationProgress", 1.0f, 0.0f));
 
-                for (int a = 0; a < 2; a++) {
-                    animators.add(ObjectAnimator.ofFloat(profileHeaderLayout.nameTextView[a], View.ALPHA, a == 0 ? 1.0f : 0.0f));
-                }
+
                 if (storyView != null) {
                     if (dialogId > 0) {
                         animators.add(ObjectAnimator.ofFloat(storyView, View.ALPHA, 0.0f));
@@ -7438,15 +7419,9 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                         profileHeaderLayout.setTransitionOnlineText(avatarContainer.getSubtitleTextView());
                         this.profileHeaderLayout.avatarContainer.invalidate();
                         crossfadeOnlineText = true;
-                        animators.add(ObjectAnimator.ofFloat(profileHeaderLayout.onlineTextView[0], View.ALPHA, 0.0f));
-                        animators.add(ObjectAnimator.ofFloat(profileHeaderLayout.onlineTextView[1], View.ALPHA, 0.0f));
                     }
                 }
-                if (!crossfadeOnlineText) {
-                    for (int a = 0; a < 2; a++) {
-                        animators.add(ObjectAnimator.ofFloat(profileHeaderLayout.onlineTextView[a], View.ALPHA, a == 0 ? 1.0f : 0.0f));
-                    }
-                }
+
                 animatorSet.playTogether(animators);
                 if (birthdayEffect != null) {
                     birthdayEffect.hide();
@@ -7496,7 +7471,6 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
             animatorSet.setInterpolator(getPlayProfileAnimation() == 2 ? CubicBezierInterpolator.DEFAULT : new DecelerateInterpolator());
 
             AndroidUtilities.runOnUIThread(animatorSet::start, 50);
-            return animatorSet;
         }
         return null;
     }
@@ -9163,7 +9137,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                         }
                         otherItem.addSubItem(add_shortcut, R.drawable.msg_home, LocaleController.getString(R.string.AddShortcut));
                         if (isBot) {
-                            profileHeaderLayout.profileButtonsView.addButton(share, R.drawable.profile_share,R.string.Share);
+                            profileHeaderLayout.profileButtonsView.addButton(share, R.drawable.profile_share, "Share"); //TODO: str id
                         } else {
                             otherItem.addSubItem(add_contact, R.drawable.msg_addcontact, LocaleController.getString(R.string.AddContact));
                         }
@@ -9177,11 +9151,11 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                             } else {
                                 otherItem.hideSubItem(bot_privacy);
                             }
-                            profileHeaderLayout.profileButtonsView.addButton(report, R.drawable.profile_report, LocaleController.getString(R.string.ReportBot));
+                            otherItem.addSubItem(report, R.drawable.msg_report, LocaleController.getString(R.string.ReportBot)).setColors(getThemedColor(Theme.key_text_RedRegular), getThemedColor(Theme.key_text_RedRegular));
                             if (!userBlocked) {
-                                otherItem.addSubItem(block_contact, R.drawable.msg_block2, LocaleController.getString(R.string.DeleteAndBlock)).setColors(getThemedColor(Theme.key_text_RedRegular), getThemedColor(Theme.key_text_RedRegular));
+                                profileHeaderLayout.profileButtonsView.addButton(block_contact, R.drawable.profile_block, "Stop"); //TODO: str id
                             } else {
-                                otherItem.addSubItem(block_contact, R.drawable.msg_retry, LocaleController.getString(R.string.BotRestart));
+                                profileHeaderLayout.profileButtonsView.addButton(block_contact, R.drawable.msg_retry, "Restart"); //TODO: str id
                             }
                         } else {
                             otherItem.addSubItem(block_contact, !userBlocked ? R.drawable.msg_block : R.drawable.msg_block, !userBlocked ? LocaleController.getString(R.string.BlockContact) : LocaleController.getString(R.string.Unblock));
@@ -9201,7 +9175,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                 if (!UserObject.isDeleted(user) && !isBot && currentEncryptedChat == null && !userBlocked && userId != 333000 && userId != 777000 && userId != 42777) {
                     if (!BuildVars.IS_BILLING_UNAVAILABLE && !user.self && !user.bot && !MessagesController.isSupportUser(user) && !getMessagesController().premiumPurchaseBlocked()) {
                         StarsController.getInstance(currentAccount).loadStarGifts();
-                        profileHeaderLayout.profileButtonsView.addButton(gift_premium, R.drawable.profile_gift, LocaleController.getString(R.string.Gift));
+                        profileHeaderLayout.profileButtonsView.addButton(gift_premium, R.drawable.profile_gift, "Gift"); //TODO: str id
                     }
                     otherItem.addSubItem(start_secret_chat, R.drawable.msg_secret, LocaleController.getString(R.string.StartEncryptedChat));
                     otherItem.setSubItemShown(start_secret_chat, DialogObject.isEmpty(getMessagesController().isUserContactBlocked(userId)));
@@ -9244,7 +9218,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                         otherItem.addSubItem(search_members, R.drawable.msg_search, LocaleController.getString(R.string.SearchMembers));
                     }
                     if (!chat.creator && !chat.left && !chat.kicked && !isTopic) {
-                        profileHeaderLayout.profileButtonsView.addButton(leave_group, R.drawable.profile_leave, LocaleController.getString(R.string.Leave));
+                        profileHeaderLayout.profileButtonsView.addButton(leave_group, R.drawable.profile_leave, "Leave"); //TODO: str id
 
                     }
                     if (isTopic && ChatObject.canDeleteTopic(currentAccount, chat, topicId)) {
@@ -9255,13 +9229,13 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                         otherItem.addSubItem(channel_stories, R.drawable.msg_archive, LocaleController.getString(R.string.OpenChannelArchiveStories));
                     }
                     if (ChatObject.isPublic(chat)) {
-                        profileHeaderLayout.profileButtonsView.addButton(share, R.drawable.profile_share, LocaleController.getString(R.string.Share));
+                        profileHeaderLayout.profileButtonsView.addButton(share, R.drawable.profile_share, "Share"); //TODO: str id
                     }
                     if (!BuildVars.IS_BILLING_UNAVAILABLE && !getMessagesController().premiumPurchaseBlocked()) {
                         StarsController.getInstance(currentAccount).loadStarGifts();
 
                         ProfileButtonsView.ProfileButton button =
-                            profileHeaderLayout.profileButtonsView.addButton(gift_premium, R.drawable.profile_gift, LocaleController.getString(R.string.Gift));
+                            profileHeaderLayout.profileButtonsView.addButton(gift_premium, R.drawable.profile_gift, "Gift"); //TODO: str id
                         boolean show = chatInfo != null && chatInfo.stargifts_available;
                         if(button != null)
                             button.setVisibility(show ? View.VISIBLE : View.GONE);
@@ -9271,7 +9245,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                         otherItem.addSubItem(view_discussion, R.drawable.msg_discussion, LocaleController.getString(R.string.ViewDiscussion));
                     }
                     if (!currentChat.creator && !currentChat.left && !currentChat.kicked) {
-                        profileHeaderLayout.profileButtonsView.addButton(leave_group, R.drawable.profile_leave, LocaleController.getString(R.string.Leave));
+                        profileHeaderLayout.profileButtonsView.addButton(leave_group, R.drawable.profile_leave, "Leave"); //TODO: str id
                     }
                 }
             } else {
@@ -9292,7 +9266,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                         otherItem.addSubItem(search_members, R.drawable.msg_search, LocaleController.getString(R.string.SearchMembers));
                     }
                 }
-                profileHeaderLayout.profileButtonsView.addButton(leave_group, R.drawable.profile_leave, LocaleController.getString(R.string.Leave));
+                profileHeaderLayout.profileButtonsView.addButton(leave_group, R.drawable.profile_leave, "Leave"); //TODO: str id
             }
             if (topicId == 0) {
                 otherItem.addSubItem(add_shortcut, R.drawable.msg_home, LocaleController.getString(R.string.AddShortcut));

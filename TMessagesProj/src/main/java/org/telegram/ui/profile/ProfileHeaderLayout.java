@@ -848,7 +848,7 @@ public class ProfileHeaderLayout {
             float collapseProgress = (dp(headerHeight) / h) - 1f;
 
             if(h <= dp(headerHeight)) {
-                if(h < 400) {
+                if(h < dp(headerHeight) / 2f) {
                     if(!avatarCollapseAnimator.isRunning() && !avatarCollapsed) { // collapse
                         avatarCollapseAnimator.start();
                         avatarCollapsed = true;
@@ -860,7 +860,6 @@ public class ProfileHeaderLayout {
                         avatarCollapsed = false;
                     }
                 }
-            } else {
             }
 
             Log.d(TAG, "avatarCollapsed = " + avatarCollapsed);
