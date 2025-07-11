@@ -51,9 +51,9 @@ public class ProfileButtonsView extends LinearLayout {
 
         verticalMargin = dp(3);
 
-        ProfileButton messageButton = new ProfileButton(context, R.drawable.profile_message, "Message"); //TODO: str id
+        ProfileButton messageButton = new ProfileButton(context, R.drawable.profile_message, R.string.Message);
         messageButton.setId(MESSAGE_BUTTON);
-        ProfileButton muteButton = new ProfileButton(context, R.drawable.profile_mute, "Mute"); // TODO: str id
+        ProfileButton muteButton = new ProfileButton(context, R.drawable.profile_mute, R.string.Mute);
         muteButton.setId(MUTE_BUTTON);
 
         LayoutParams layoutParams = LayoutHelper.createLinear(0, LayoutHelper.MATCH_PARENT, 1f);
@@ -150,8 +150,7 @@ public class ProfileButtonsView extends LinearLayout {
             textView.setGravity(Gravity.CENTER);
 
             textView.setTextColor(contentColor);
-            textView.setMaxLines(1);
-            textView.setText(string);
+            textView.setText(LocaleController.getString(string));
 
             addView(iconView, LayoutHelper.createLinear(30, 30));
             addView(textView);

@@ -834,7 +834,7 @@ public class ProfileHeaderLayout {
             Log.d(TAG, "h = " + h);
 
             if(h <= dp(headerHeight)) {
-                if(h < dp(headerHeight) / 2f) {
+                if(h < 400) {
                     if(!avatarCollapseAnimator.isRunning() && !avatarCollapsed) { // collapse
                         try {
                         avatarCollapseAnimator.start();
@@ -854,6 +854,7 @@ public class ProfileHeaderLayout {
                         avatarCollapsed = false;
                     }
                 }
+            } else {
             }
 
             Log.d(TAG, "avatarCollapsed = " + avatarCollapsed);
