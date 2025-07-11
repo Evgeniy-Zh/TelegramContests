@@ -758,8 +758,6 @@ public class ProfileHeaderLayout {
         } else {
             statusColor = currentFragment.getThemedColor(Theme.key_avatar_subtitleInProfileBlue);
         }
-        int color = statusColor;
-        onlineTextView[1].setTextColor(ColorUtils.blendARGB(color, 0xB3FFFFFF, value));
 
         //TODO:
 //        if (showStatusButton != null) {

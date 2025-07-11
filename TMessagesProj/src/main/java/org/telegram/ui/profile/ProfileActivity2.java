@@ -4346,7 +4346,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
             @Override
             protected TextView createTextView() {
                 TextView textView = new TextView(context);
-                textView.setTextColor(getThemedColor(Theme.key_player_actionBarSubtitle));
+                textView.setTextColor(getThemedColor(Theme.key_profile_title));
                 textView.setTextSize(TypedValue.COMPLEX_UNIT_PX, dp(14));
                 textView.setSingleLine(true);
                 textView.setEllipsize(TextUtils.TruncateAt.END);
@@ -5982,78 +5982,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
     private Property<ActionBar, Float> ACTIONBAR_HEADER_PROGRESS = new AnimationProperties.FloatProperty<ActionBar>("avatarAnimationProgress") {
         @Override
         public void setValue(ActionBar object, float value) {
-            mediaHeaderAnimationProgress = value;
-            if (storyView != null) {
-                storyView.setActionBarActionMode(value);
-            }
-            if (giftsView != null) {
-                giftsView.setActionBarActionMode(value);
-            }
-            topView.invalidate();
-
-            int color1 = getThemedColor(Theme.key_profile_title);
-            int color2 = getThemedColor(Theme.key_player_actionBarTitle);
-            int c = AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f);
-            profileHeaderLayout.nameTextView[1].setTextColor(c);
-            if (lockIconDrawable != null) {
-                lockIconDrawable.setColorFilter(c, PorterDuff.Mode.MULTIPLY);
-            }
-            if (scamDrawable != null) {
-                color1 = getThemedColor(Theme.key_avatar_subtitleInProfileBlue);
-                scamDrawable.setColor(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f));
-            }
-
-            color1 = peerColor != null ? Color.WHITE : getThemedColor(Theme.key_actionBarDefaultIcon);
-            color2 = getThemedColor(Theme.key_actionBarActionModeDefaultIcon);
-            actionBar.setItemsColor(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f), false);
-
-            color1 = peerColor != null ? Theme.ACTION_BAR_WHITE_SELECTOR_COLOR : peerColor != null ? 0x20ffffff : getThemedColor(Theme.key_avatar_actionBarSelectorBlue);
-            color2 = getThemedColor(Theme.key_actionBarActionModeDefaultSelector);
-            actionBar.setItemsBackgroundColor(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f), false);
-
-            topView.invalidate();
-            //TODO: need to set colors???
-//            otherItem.setIconColor(peerColor != null ? Color.WHITE : getThemedColor(Theme.key_actionBarDefaultIcon));
-//            callItem.setIconColor(peerColor != null ? Color.WHITE : getThemedColor(Theme.key_actionBarDefaultIcon));
-//            videoCallItem.setIconColor(peerColor != null ? Color.WHITE : getThemedColor(Theme.key_actionBarDefaultIcon));
-//            editItem.setIconColor(peerColor != null ? Color.WHITE : getThemedColor(Theme.key_actionBarDefaultIcon));
-
-            if (verifiedDrawable[0] != null) {
-                color1 = getThemedColor(Theme.key_profile_verifiedBackground);
-                color2 = getThemedColor(Theme.key_player_actionBarTitle);
-                verifiedDrawable[0].setColorFilter(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f), PorterDuff.Mode.MULTIPLY);
-            }
-            if (verifiedDrawable[1] != null) {
-                color1 = peerColor != null ? Theme.adaptHSV(ColorUtils.blendARGB(peerColor.getColor2(), peerColor.hasColor6(Theme.isCurrentThemeDark()) ? peerColor.getColor5() : peerColor.getColor3(), .4f), +.1f, Theme.isCurrentThemeDark() ? -.1f : -.08f) : getThemedColor(Theme.key_profile_verifiedBackground);
-                color2 = getThemedColor(Theme.key_player_actionBarTitle);
-                verifiedDrawable[1].setColorFilter(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f), PorterDuff.Mode.MULTIPLY);
-            }
-
-            if (verifiedCheckDrawable[0] != null) {
-                color1 = getThemedColor(Theme.key_profile_verifiedCheck);
-                color2 = getThemedColor(Theme.key_windowBackgroundWhite);
-                verifiedCheckDrawable[0].setColorFilter(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f), PorterDuff.Mode.MULTIPLY);
-            }
-            if (verifiedCheckDrawable[1] != null) {
-                color1 = peerColor != null ? Color.WHITE : dontApplyPeerColor(getThemedColor(Theme.key_profile_verifiedCheck));
-                color2 = getThemedColor(Theme.key_windowBackgroundWhite);
-                verifiedCheckDrawable[1].setColorFilter(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f), PorterDuff.Mode.MULTIPLY);
-            }
-
-
-            if (premiumStarDrawable[0] != null) {
-                color1 = getThemedColor(Theme.key_profile_verifiedBackground);
-                color2 = getThemedColor(Theme.key_player_actionBarTitle);
-                premiumStarDrawable[0].setColorFilter(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f), PorterDuff.Mode.MULTIPLY);
-            }
-            if (premiumStarDrawable[1] != null) {
-                color1 = dontApplyPeerColor(getThemedColor(Theme.key_profile_verifiedBackground));
-                color2 = dontApplyPeerColor(getThemedColor(Theme.key_player_actionBarTitle));
-                premiumStarDrawable[1].setColorFilter(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f), PorterDuff.Mode.MULTIPLY);
-            }
-
-            updateEmojiStatusDrawableColor();
-
+            //TODO: updateActionBarContentColors
         }
 
         @Override
@@ -6061,6 +5990,78 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
             return mediaHeaderAnimationProgress;
         }
     };
+
+    private void updateActionBarContentColors(ActionBar object, float value) {
+        mediaHeaderAnimationProgress = value;
+        if (storyView != null) {
+            storyView.setActionBarActionMode(value);
+        }
+        if (giftsView != null) {
+            giftsView.setActionBarActionMode(value);
+        }
+        topView.invalidate();
+
+        int color1 = getThemedColor(Theme.key_profile_title);
+        int color2 = getThemedColor(Theme.key_player_actionBarTitle);
+        int c = AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f);
+        profileHeaderLayout.nameTextView[1].setTextColor(c);
+        if (lockIconDrawable != null) {
+            lockIconDrawable.setColorFilter(c, PorterDuff.Mode.MULTIPLY);
+        }
+        if (scamDrawable != null) {
+            color1 = getThemedColor(Theme.key_avatar_subtitleInProfileBlue);
+            scamDrawable.setColor(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f));
+        }
+
+        color1 = peerColor != null ? Color.WHITE : getThemedColor(Theme.key_actionBarDefaultIcon);
+        color2 = getThemedColor(Theme.key_actionBarActionModeDefaultIcon);
+        actionBar.setItemsColor(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f), false);
+
+        color1 = peerColor != null ? Theme.ACTION_BAR_WHITE_SELECTOR_COLOR : peerColor != null ? 0x20ffffff : getThemedColor(Theme.key_avatar_actionBarSelectorBlue);
+        color2 = getThemedColor(Theme.key_actionBarActionModeDefaultSelector);
+        actionBar.setItemsBackgroundColor(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f), false);
+
+        topView.invalidate();
+        otherItem.setIconColor(peerColor != null ? Color.WHITE : getThemedColor(Theme.key_actionBarDefaultIcon));
+        editItem.setIconColor(peerColor != null ? Color.WHITE : getThemedColor(Theme.key_actionBarDefaultIcon));
+
+        if (verifiedDrawable[0] != null) {
+            color1 = getThemedColor(Theme.key_profile_verifiedBackground);
+            color2 = getThemedColor(Theme.key_player_actionBarTitle);
+            verifiedDrawable[0].setColorFilter(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f), PorterDuff.Mode.MULTIPLY);
+        }
+        if (verifiedDrawable[1] != null) {
+            color1 = peerColor != null ? Theme.adaptHSV(ColorUtils.blendARGB(peerColor.getColor2(), peerColor.hasColor6(Theme.isCurrentThemeDark()) ? peerColor.getColor5() : peerColor.getColor3(), .4f), +.1f, Theme.isCurrentThemeDark() ? -.1f : -.08f) : getThemedColor(Theme.key_profile_verifiedBackground);
+            color2 = getThemedColor(Theme.key_player_actionBarTitle);
+            verifiedDrawable[1].setColorFilter(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f), PorterDuff.Mode.MULTIPLY);
+        }
+
+        if (verifiedCheckDrawable[0] != null) {
+            color1 = getThemedColor(Theme.key_profile_verifiedCheck);
+            color2 = getThemedColor(Theme.key_windowBackgroundWhite);
+            verifiedCheckDrawable[0].setColorFilter(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f), PorterDuff.Mode.MULTIPLY);
+        }
+        if (verifiedCheckDrawable[1] != null) {
+            color1 = peerColor != null ? Color.WHITE : dontApplyPeerColor(getThemedColor(Theme.key_profile_verifiedCheck));
+            color2 = getThemedColor(Theme.key_windowBackgroundWhite);
+            verifiedCheckDrawable[1].setColorFilter(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f), PorterDuff.Mode.MULTIPLY);
+        }
+
+
+        if (premiumStarDrawable[0] != null) {
+            color1 = getThemedColor(Theme.key_profile_verifiedBackground);
+            color2 = getThemedColor(Theme.key_player_actionBarTitle);
+            premiumStarDrawable[0].setColorFilter(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f), PorterDuff.Mode.MULTIPLY);
+        }
+        if (premiumStarDrawable[1] != null) {
+            color1 = dontApplyPeerColor(getThemedColor(Theme.key_profile_verifiedBackground));
+            color2 = dontApplyPeerColor(getThemedColor(Theme.key_player_actionBarTitle));
+            premiumStarDrawable[1].setColorFilter(AndroidUtilities.getOffsetColor(color1, color2, value, 1.0f), PorterDuff.Mode.MULTIPLY);
+        }
+
+        updateEmojiStatusDrawableColor();
+
+    }
 
     private void setMediaHeaderVisible(boolean visible) {
         if (mediaHeaderVisible == visible) {
@@ -12370,20 +12371,8 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
 
     @Override
     public boolean isLightStatusBar() {
-        int color;
-        if (profileHeaderLayout.isPulledDown()) {
-            return false;
-        }
-        if (actionBar.isActionModeShowed()) {
-            color = getThemedColor(Theme.key_actionBarActionModeDefault);
-        } else if (mediaHeaderVisible) {
-            color = getThemedColor(Theme.key_windowBackgroundWhite);
-        } else if (peerColor != null) {
-            color = peerColor.getBgColor2(Theme.isCurrentThemeDark());
-        } else {
-            color = getThemedColor(Theme.key_actionBarDefault);
-        }
-        return ColorUtils.calculateLuminance(color) > 0.7f;
+        //TODO: fix actionBar transitions
+       return false;
     }
 
     public String getLink(String username, int topicId) {
