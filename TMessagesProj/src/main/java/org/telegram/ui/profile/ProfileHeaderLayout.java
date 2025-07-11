@@ -421,13 +421,21 @@ public class ProfileHeaderLayout {
         profileButtonsView.setPivotY(0f);
         buttonsTranslationAnim.addUpdateListener(animation -> {
             profileButtonsView.setTranslationY(textContainer.getY() + profileButtonsView.getHeight());
+        });
 
-            if(profileButtonsView.getTranslationY() < dp(headerHeight) / 2f) {
-                profileButtonsView.animate().setDuration(300).scaleY(0f).setUpdateListener(a -> topView.invalidate()).start();
-            } else {
-                profileButtonsView.animate().setDuration(300).scaleY(1f).setUpdateListener(a -> topView.invalidate()).start();
+        buttonsTranslationAnim.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationStart(@NonNull Animator animation, boolean isReverse) {
+                if(isReverse) {
+                    profileButtonsView.animate().setDuration(300).scaleY(1f).setUpdateListener(a -> topView.invalidate()).start();
+                }
             }
-
+            @Override
+            public void onAnimationEnd(@NonNull Animator animation, boolean isReverse) {
+                if(!isReverse) {
+                    profileButtonsView.animate().setDuration(300).scaleY(0f).setUpdateListener(a -> topView.invalidate()).start();
+                }
+            }
         });
 
         buttonsTranslationAnim.setStartDelay(100);
@@ -457,23 +465,7 @@ public class ProfileHeaderLayout {
             }
         });
 
-
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-//            ((AnimatorSet)animator).setCurrentPlayTime(0);
-        }
-
         avatarContainer.invalidate();
-
-        listView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-
-            @Override
-            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                Log.d(TAG, "isPulledDown = " + isPulledDown);
-
-            }
-        });
-
     }
     
     private void setUpNameText() {
