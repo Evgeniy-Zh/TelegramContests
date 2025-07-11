@@ -12137,7 +12137,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
             Bundle args = new Bundle();
             args.putLong("chat_id", chatId);
             args.putLong("user_id", userId);
-            presentFragment(new QrActivity(args));
+            presentFragment(new QrActivity(args), false, true); //TODO: fix animation
         } else if (parent.getTag() != null && ((int) parent.getTag()) == birthdayRow) {
             if (userId == getUserConfig().getClientUserId()) {
                 presentFragment(new PremiumPreviewFragment("my_profile_gift"));
