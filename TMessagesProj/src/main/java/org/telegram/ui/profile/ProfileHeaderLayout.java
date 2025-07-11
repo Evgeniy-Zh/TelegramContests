@@ -296,7 +296,6 @@ public class ProfileHeaderLayout {
             }
         };
 
-        // TODO: move back to ProfileActivity
         fallbackImage = new ImageReceiver(avatarContainer);
 
         profileButtonsView = new ProfileButtonsView(context);
@@ -568,7 +567,7 @@ public class ProfileHeaderLayout {
             }
 
             onlineTextView[a].setEllipsizeByGradient(true);
-            onlineTextView[a].setTextColor(  currentFragment.getThemedColor(Theme.key_avatar_subtitleInProfileBlue)); //TODO: applyPeerColor
+            onlineTextView[a].setTextColor(currentFragment.getThemedColor(Theme.key_profile_title)); //TODO: applyPeerColor
             onlineTextView[a].setTextSize(14);
             onlineTextView[a].setGravity(Gravity.LEFT);
             onlineTextView[a].setAlpha(a == 0 ? 0.0f : 1.0f);

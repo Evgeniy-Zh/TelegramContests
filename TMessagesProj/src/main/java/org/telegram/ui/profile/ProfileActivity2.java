@@ -951,8 +951,8 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
             final float k = 0.5f;
             topOverlayRect.set(0, 0, w, (int) (actionBarHeight * k));
             bottomOverlayRect.set(0, (int) (h - AndroidUtilities.dp(72f) * k), w, h);
-            topOverlayGradient.setBounds(0, topOverlayRect.bottom, w, actionBarHeight + AndroidUtilities.dp(16f));
-            bottomOverlayGradient.setBounds(0, h - AndroidUtilities.dp(72f) - AndroidUtilities.dp(24f), w, bottomOverlayRect.top);
+            topOverlayGradient.setBounds(0, topOverlayRect.bottom, w, actionBarHeight);
+            bottomOverlayGradient.setBounds(0, h - AndroidUtilities.dp(180f), w, bottomOverlayRect.top);
             pressedOverlayGradient[0].setBounds(0, 0, w / 5, h);
             pressedOverlayGradient[1].setBounds(w - (w / 5), 0, w, h);
         }
@@ -7167,7 +7167,6 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
             if (profileHeaderLayout.onlineTextView[i] == null || i == 1 || i == 2 && getPlayProfileAnimation() == 2) {
                 continue;
             }
-            profileHeaderLayout.onlineTextView[i].setTextColor(ColorUtils.blendARGB(i == 0 ? subtitleColor : applyPeerColor(subtitleColor, true, isOnline[0]), i == 0 ? color : applyPeerColor(color, true, isOnline[0]), progress));
         }
         profileHeaderLayout.extraHeight = initialAnimationExtraHeight * progress;
         color = AvatarDrawable.getProfileColorForId(userId != 0 ? userId : chatId, resourcesProvider);
@@ -7280,8 +7279,6 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
 
                 if (getPlayProfileAnimation() == 2) {
                     avatarColor = getAverageColor(avatarImage.getImageReceiver());
-                    profileHeaderLayout.nameTextView[1].setTextColor(Color.WHITE);
-                    profileHeaderLayout.onlineTextView[1].setTextColor(0xB3FFFFFF);
                     actionBar.setItemsBackgroundColor(Theme.ACTION_BAR_WHITE_SELECTOR_COLOR, false);
                     if (showStatusButton != null) {
                         showStatusButton.setBackgroundColor(0x23ffffff);
@@ -8438,9 +8435,7 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
                 if (profileHeaderLayout.onlineTextView[1] != null && !mediaHeaderVisible) {
                     int key = isOnline[0] && peerColor == null ? Theme.key_profile_status : Theme.key_avatar_subtitleInProfileBlue;
                     profileHeaderLayout.onlineTextView[1].setTag(key);
-                    if (!profileHeaderLayout.isPulledDown()) {
-                        profileHeaderLayout.onlineTextView[1].setTextColor(applyPeerColor(getThemedColor(key), true, isOnline[0]));
-                    }
+
                 }
             }
             hasCustomPhoto = user.photo != null && user.photo.personal;
@@ -8970,7 +8965,6 @@ public class ProfileActivity2 extends ProfileBaseActivity implements Notificatio
             } else {
                 statusColor = getThemedColor(Theme.key_avatar_subtitleInProfileBlue);
             }
-            profileHeaderLayout.onlineTextView[1].setTextColor(ColorUtils.blendARGB(applyPeerColor(statusColor, true, isOnline[0]), 0xB3FFFFFF, profileHeaderLayout.currentExpandAnimatorValue));
         }
         if (showStatusButton != null) {
             showStatusButton.setBackgroundColor(ColorUtils.blendARGB(Theme.multAlpha(Theme.adaptHSV(profileHeaderLayout.actionBarBackgroundColor, +0.18f, -0.1f), 0.5f), 0x23ffffff, profileHeaderLayout.currentExpandAnimatorValue));
