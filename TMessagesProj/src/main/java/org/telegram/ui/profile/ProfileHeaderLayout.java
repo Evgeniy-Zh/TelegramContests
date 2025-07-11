@@ -309,7 +309,7 @@ public class ProfileHeaderLayout {
 
         final float diff = Math.min(1f, extraHeight / dp(headerHeight));
 
-        avatarY = (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0) + ActionBar.getCurrentActionBarHeight() / 2.0f * (1.0f + diff) - 21 * AndroidUtilities.density + 27 * AndroidUtilities.density * diff + actionBar.getTranslationY();
+        avatarY = AndroidUtilities.statusBarHeight + dp(16);
 
     }
 
@@ -321,7 +321,6 @@ public class ProfileHeaderLayout {
         avatarContainer.addView(giftsView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         avatarContainer.addView(innerAvatarContainer, LayoutHelper.createFrameMarginPx(smallAvatarSize, smallAvatarSize, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 0, 0, 0));
-
         avatarImage.setRoundRadius(smallAvatarRadius);
         innerAvatarContainer.addView(avatarImage, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
@@ -837,18 +836,24 @@ public class ProfileHeaderLayout {
 
             Log.d(TAG, "h = " + h);
 
-            float collapseProgress = (dp(headerHeight) / h) - 1f;
-
             if(h <= dp(headerHeight)) {
                 if(h < dp(headerHeight) / 2f) {
                     if(!avatarCollapseAnimator.isRunning() && !avatarCollapsed) { // collapse
+                        try {
                         avatarCollapseAnimator.start();
+                        } catch (Exception e) {
+                            //TODO: set collapsed state
+                        }
                         avatarCollapsed = true;
                     }
                 } else {
                     if(!avatarCollapseAnimator.isRunning() && avatarCollapsed) { // show
-                        avatarCollapseAnimator.setCurrentPlayTime(900);
-                        avatarCollapseAnimator.reverse();
+                        try {
+                            avatarCollapseAnimator.setCurrentPlayTime(900);
+                            avatarCollapseAnimator.reverse();
+                        } catch (Exception e) {
+                            //TODO: set shown state
+                        }
                         avatarCollapsed = false;
                     }
                 }

@@ -14,10 +14,8 @@ import android.graphics.Paint;
 import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.animation.Interpolator;
 
 import androidx.annotation.NonNull;
 
@@ -44,6 +42,10 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
     private final View avatarContainer;
     private final ProfileActivity.AvatarImageView avatarImage;
     private final Theme.ResourcesProvider resourcesProvider;
+
+    private float avY = 0f;
+    private float avX = 0f;
+
 
     public ProfileGiftsView(Context context, int currentAccount, long dialogId, @NonNull View avatarContainer, ProfileActivity.AvatarImageView avatarImage, Theme.ResourcesProvider resourcesProvider) {
         super(context);
@@ -111,6 +113,11 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
         }
         this.progressToInsets = progressToInsets;
         invalidate();
+    }
+
+    public void updateAvatarDefaultPosition(){
+        avX = avatarContainer.getX();
+        avY = avatarContainer.getY();
     }
 
     @Override
@@ -235,7 +242,6 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
     public int maxCount;
 
     public void update() {
-        avY = avatarContainer.getY();
         if (!MessagesController.getInstance(currentAccount).enableGiftsInProfile) {
             return;
         }
@@ -330,17 +336,12 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
             invalidate();
     }
 
-    public final AnimatedFloat animatedCount = new AnimatedFloat(this, 0, 320, CubicBezierInterpolator.EASE_OUT_QUINT);
-
-    Interpolator interpolator = CubicBezierInterpolator.EASE_BOTH;
 
     private float animationProgress;
 
-    private float avY = 0f;
     public Animator getAnimator(boolean reverse) {
 
-        avY = avatarContainer.getY();
-
+        updateAvatarDefaultPosition();
         ValueAnimator valueAnimator = ObjectAnimator.ofFloat(0f, 1f);
 
         valueAnimator.setInterpolator(CubicBezierInterpolator.EASE_OUT);
@@ -353,21 +354,19 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
         return valueAnimator;
     }
 
-    private float calculateTimeFraction(float x, int index){
+    private float calculateAcceleratedFraction(float x, int index){
         float c = index < 3 ? (1 + index) : index * 1.5f;
         double exp = Math.pow(x, c);
         float y  = (float) ( (2*exp) / (exp + Math.pow (1 - x, c)) );
         return y;
     }
 
-    Paint paint = new Paint();
-
     @Override
     protected void dispatchDraw(@NonNull Canvas canvas) {
         if (gifts.isEmpty() || expandProgress >= 1.0f) return;
 
-        final float ax = avatarContainer.getX();
-        final float ay = 180; //TODO
+        final float ax = avX;
+        final float ay = avY;
         final float aw = (avatarContainer.getWidth()) * avatarContainer.getScaleX();
         final float ah = (avatarContainer.getHeight()) * avatarContainer.getScaleY();
 
@@ -375,10 +374,6 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
         canvas.clipRect(0, 0, getWidth(), expandY);
 
 
-        final float acx = ax + aw / 2.0f;
-        final float cacx = Math.min(acx, dp(48));
-        final float acy = ay + ah / 2.0f;
-        final float ar = Math.min(aw, ah) / 2.0f + dp(6);
         final float cx = getWidth() / 2.0f;
 
         final float closedAlpha = 1f; //TODO: will it be used?
@@ -396,7 +391,7 @@ public class ProfileGiftsView extends View implements NotificationCenter.Notific
             float yDest = 0f;
             float scaleDest = 0.4f;
 
-            float animationProgress = calculateTimeFraction(this.animationProgress, index);
+            float animationProgress = calculateAcceleratedFraction(this.animationProgress, index);
 
             if (index == 0) {
                 y = lerp(ay + dp(12), yDest, animationProgress * animationProgress);
