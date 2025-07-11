@@ -467,7 +467,7 @@ public class ProfileHeaderLayout {
 
         avatarContainer.invalidate();
     }
-    
+
     private void setUpNameText() {
         for (int a = 0; a < nameTextView.length; a++) {
             // TODO:
@@ -610,7 +610,7 @@ public class ProfileHeaderLayout {
 
 
     }
-    
+
     public void setUserInfo(TLRPC.UserFull user) {
         userInfo = user;
         updateData();
@@ -899,7 +899,7 @@ public class ProfileHeaderLayout {
                         avatarsViewPagerIndicatorView.refreshVisibility(durationFactor);
                         avatarsViewPager.setCreateThumbFromParent(true);
                         avatarsViewPager.getAdapter().notifyDataSetChanged();
-                        expandAnimator.cancel();;
+                        expandAnimator.cancel();
                         float value = lerp(expandAnimatorValues, currentExpanAnimatorFracture);
                         expandAnimatorValues[0] = value;
                         expandAnimatorValues[1] = 1f;

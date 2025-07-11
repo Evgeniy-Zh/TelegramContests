@@ -158,7 +158,14 @@ public class ProfileButtonsView extends LinearLayout {
 
             setBackground(Theme.AdaptiveRipple.filledRect(Color.parseColor("#44313131"), 8));
 
+        }
 
+        public void setIcon(int iconRes) {
+            iconView.setImageResource(iconRes);
+        }
+
+        public void setText(String text) {
+            textView.setText(text);
         }
 
         public Animator getAnimator(float value) {
